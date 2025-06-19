@@ -1,10 +1,19 @@
 // Глобальная конфигурация приложения для международного использования
+import {
+  TWILIO_ACCOUNT_SID,
+  TWILIO_AUTH_TOKEN,
+  TWILIO_VERIFY_SID,
+  TWILIO_FROM_NUMBER,
+  APP_NAME,
+  VERSION,
+  ENVIRONMENT
+} from '@env';
 
 export const APP_CONFIG = {
   // Основные настройки
-  APP_NAME: 'WorkTime Tracker',
-  VERSION: '1.0.0',
-  ENVIRONMENT: 'production',
+  APP_NAME: APP_NAME || 'WorkTime Tracker',
+  VERSION: VERSION || '1.0.0',
+  ENVIRONMENT: ENVIRONMENT || 'production',
   
   // Локализация - по умолчанию международная
   DEFAULT_LOCALE: 'en-US',
@@ -13,10 +22,10 @@ export const APP_CONFIG = {
   
   // Twilio конфигурация для SMS
   TWILIO_CONFIG: {
-    ACCOUNT_SID: 'AC1ca01ae7f52d19196a0f443a7003c534',
-    AUTH_TOKEN: '359cda3afb765aec3c49399f1f5d3575',
-    VERIFY_SID: 'VA883a4afca1822e32904074f5f5551c7e',
-    FROM_NUMBER: '+19496666705',
+    ACCOUNT_SID: TWILIO_ACCOUNT_SID || '',
+    AUTH_TOKEN: TWILIO_AUTH_TOKEN || '',
+    VERIFY_SID: TWILIO_VERIFY_SID || '',
+    FROM_NUMBER: TWILIO_FROM_NUMBER || '',
     
     // Настройки отправки SMS
     SMS_CONFIG: {

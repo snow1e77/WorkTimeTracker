@@ -1,9 +1,10 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useRef } from 'react';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Platform } from 'react-native';
+import WebApp from './src/components/WebApp';
 
 import { RootStackParamList } from './src/types';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
@@ -20,10 +21,33 @@ import TimeTrackingScreen from './src/screens/TimeTrackingScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 
+// Admin screens
+import AdminScreen from './src/screens/AdminScreen';
+import SiteManagementScreen from './src/screens/SiteManagementScreen';
+import CreateSiteScreen from './src/screens/CreateSiteScreen';
+import WorkReportsScreen from './src/screens/WorkReportsScreen';
+import UserManagementScreen from './src/screens/UserManagementScreen';
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+
+  // Отладочная информация
+  console.log('🔍 AppNavigator - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
+
+  // Автоматическая навигация к Home после аутентификации
+  useEffect(() => {
+    if (isAuthenticated && navigationRef.current) {
+      console.log('🔄 Навигация к Home экрану');
+      try {
+        navigationRef.current.navigate('Home');
+      } catch (error) {
+        console.error('❌ Ошибка навигации к Home:', error);
+      }
+    }
+  }, [isAuthenticated]);
 
   if (isLoading) {
     return (
@@ -34,10 +58,10 @@ const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <StatusBar style="auto" />
       <Stack.Navigator 
-        initialRouteName={isAuthenticated ? "Home" : "Login"}
+        initialRouteName="Login"
         screenOptions={{
           headerStyle: {
             backgroundColor: '#2196F3',
@@ -48,8 +72,30 @@ const AppNavigator = () => {
           },
         }}
       >
+        {/* Authentication screens - всегда доступны */}
+        <Stack.Screen 
+          name="Login" 
+          component={LoginScreen} 
+          options={{ title: 'Login', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="Register" 
+          component={RegisterScreen} 
+          options={{ title: 'Register', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="VerifyPhone" 
+          component={VerifyPhoneScreen} 
+          options={{ title: 'Verify Phone Number' }}
+        />
+        <Stack.Screen 
+          name="ResetPassword" 
+          component={ResetPasswordScreen} 
+          options={{ title: 'Reset Password', headerShown: false }}
+        />
+        
+        {/* Main screens - доступны только для аутентифицированных пользователей */}
         {isAuthenticated ? (
-          // Screens for authenticated users
           <>
             <Stack.Screen 
               name="Home" 
@@ -71,38 +117,45 @@ const AppNavigator = () => {
               component={SettingsScreen} 
               options={{ title: 'Settings' }}
             />
+            <Stack.Screen 
+              name="Admin" 
+              component={AdminScreen} 
+              options={{ title: 'Foreman Panel' }}
+            />
+            <Stack.Screen 
+              name="SiteManagement" 
+              component={SiteManagementScreen} 
+              options={{ title: 'Site Management' }}
+            />
+            <Stack.Screen 
+              name="CreateSite" 
+              component={CreateSiteScreen} 
+              options={{ title: 'Create Site' }}
+            />
+            <Stack.Screen 
+              name="WorkReports" 
+              component={WorkReportsScreen} 
+              options={{ title: 'Work Reports' }}
+            />
+            <Stack.Screen 
+              name="UserManagement" 
+              component={UserManagementScreen} 
+              options={{ title: 'User Management' }}
+            />
           </>
-        ) : (
-          // Authentication screens
-          <>
-            <Stack.Screen 
-              name="Login" 
-              component={LoginScreen} 
-              options={{ title: 'Login', headerShown: false }}
-            />
-            <Stack.Screen 
-              name="Register" 
-              component={RegisterScreen} 
-              options={{ title: 'Register', headerShown: false }}
-            />
-            <Stack.Screen 
-              name="VerifyPhone" 
-              component={VerifyPhoneScreen} 
-              options={{ title: 'Verify Phone Number' }}
-            />
-            <Stack.Screen 
-              name="ResetPassword" 
-              component={ResetPasswordScreen} 
-              options={{ title: 'Reset Password', headerShown: false }}
-            />
-          </>
-        )}
+        ) : null}
       </Stack.Navigator>
     </NavigationContainer>
   );
 };
 
 export default function App() {
+  // Если это веб-платформа, показываем специальную админ панель
+  if (Platform.OS === 'web') {
+    return <WebApp />;
+  }
+
+  // Для мобильных устройств показываем обычное приложение
   return (
     <PaperProvider>
       <AuthProvider>

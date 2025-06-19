@@ -7,15 +7,18 @@ import {
   Button, 
   Text,
   Chip,
-  List,
   Divider,
   Surface
 } from 'react-native-paper';
 import { WorkShift } from '../types';
 
 export default function HistoryScreen() {
+  // Состояние для фильтров
+  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('today');
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'completed' | 'pending' | 'active'>('all');
+
   // Пример данных смен
-  const [shifts] = useState<WorkShift[]>([
+  const [allShifts] = useState<WorkShift[]>([
     {
       id: '1',
       userId: 'user1',
@@ -54,8 +57,77 @@ export default function HistoryScreen() {
       endMethod: 'manual',
       adminConfirmed: false,
       createdAt: new Date('2024-01-13T08:15:00')
+    },
+    {
+      id: '4',
+      userId: 'user1',
+      siteId: 'site1',
+      startTime: new Date('2024-01-12T09:00:00'),
+      endTime: new Date('2024-01-12T18:00:00'),
+      totalMinutes: 540,
+      status: 'completed',
+      startMethod: 'gps',
+      endMethod: 'gps',
+      adminConfirmed: true,
+      createdAt: new Date('2024-01-12T09:00:00')
+    },
+    {
+      id: '5',
+      userId: 'user1',
+      siteId: 'site1',
+      startTime: new Date(),
+      endTime: undefined,
+      totalMinutes: 0,
+      status: 'active',
+      startMethod: 'gps',
+      endMethod: 'manual',
+      adminConfirmed: false,
+      createdAt: new Date()
     }
   ]);
+
+  // Функция фильтрации по периоду
+  const filterByPeriod = (shifts: WorkShift[], period: string): WorkShift[] => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (period) {
+      case 'today':
+        return shifts.filter(shift => {
+          const shiftDate = new Date(shift.startTime.getFullYear(), shift.startTime.getMonth(), shift.startTime.getDate());
+          return shiftDate.getTime() === today.getTime();
+        });
+      
+      case 'week':
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        return shifts.filter(shift => shift.startTime >= weekAgo);
+      
+      case 'month':
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(today.getMonth() - 1);
+        return shifts.filter(shift => shift.startTime >= monthAgo);
+      
+      default:
+        return shifts;
+    }
+  };
+
+  // Функция фильтрации по статусу
+  const filterByStatus = (shifts: WorkShift[], status: string): WorkShift[] => {
+    if (status === 'all') return shifts;
+    if (status === 'pending') return shifts.filter(shift => shift.status === 'pending_approval');
+    return shifts.filter(shift => shift.status === status);
+  };
+
+  // Получаем отфильтрованные смены
+  const getFilteredShifts = (): WorkShift[] => {
+    let filtered = filterByPeriod(allShifts, selectedPeriod);
+    filtered = filterByStatus(filtered, selectedStatus);
+    return filtered.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+  };
+
+  const shifts = getFilteredShifts();
 
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -89,9 +161,7 @@ export default function HistoryScreen() {
     }
   };
 
-  const getMethodIcon = (method: 'manual' | 'gps') => {
-    return method === 'gps' ? 'map-marker' : 'hand-pointing-up';
-  };
+
 
   const calculateStats = () => {
     const totalMinutes = shifts.reduce((sum, shift) => sum + (shift.totalMinutes || 0), 0);
@@ -129,7 +199,6 @@ export default function HistoryScreen() {
 
         <View style={styles.timeRow}>
           <View style={styles.timeInfo}>
-            <List.Icon icon={getMethodIcon(item.startMethod)} />
             <Text style={styles.timeText}>
               {item.startTime.toLocaleTimeString('en-US', { 
                 hour: '2-digit', 
@@ -141,7 +210,6 @@ export default function HistoryScreen() {
           <Text style={styles.timeSeparator}>—</Text>
           
           <View style={styles.timeInfo}>
-            <List.Icon icon={getMethodIcon(item.endMethod || 'manual')} />
             <Text style={styles.timeText}>
               {item.endTime?.toLocaleTimeString('en-US', { 
                 hour: '2-digit', 
@@ -151,22 +219,22 @@ export default function HistoryScreen() {
           </View>
         </View>
 
-        {item.totalMinutes && (
+        {item.totalMinutes ? (
           <View style={styles.durationRow}>
             <Text style={styles.durationText}>
               Worked: {formatDuration(item.totalMinutes)}
             </Text>
-            {!item.adminConfirmed && (
+            {!item.adminConfirmed ? (
               <Chip icon="clock-alert" mode="outlined" style={styles.pendingChip}>
                 Pending approval
               </Chip>
-            )}
+            ) : null}
           </View>
-        )}
+        ) : null}
 
-        {item.notes && (
+        {item.notes ? (
           <Paragraph style={styles.notes}>{item.notes}</Paragraph>
-        )}
+        ) : null}
       </Card.Content>
     </Card>
   );
@@ -205,24 +273,86 @@ export default function HistoryScreen() {
       <Card style={styles.filtersCard}>
         <Card.Content>
           <View style={styles.filtersRow}>
-            <Button mode="contained-tonal" compact>Today</Button>
-            <Button mode="outlined" compact>Week</Button>
-            <Button mode="outlined" compact>Month</Button>
-            <Button mode="outlined" compact icon="filter">Filter</Button>
+            <Button 
+              mode={selectedPeriod === 'today' ? 'contained-tonal' : 'outlined'} 
+              compact
+              onPress={() => setSelectedPeriod('today')}
+            >
+              Today
+            </Button>
+            <Button 
+              mode={selectedPeriod === 'week' ? 'contained-tonal' : 'outlined'} 
+              compact
+              onPress={() => setSelectedPeriod('week')}
+            >
+              Week
+            </Button>
+            <Button 
+              mode={selectedPeriod === 'month' ? 'contained-tonal' : 'outlined'} 
+              compact
+              onPress={() => setSelectedPeriod('month')}
+            >
+              Month
+            </Button>
+          </View>
+          <View style={[styles.filtersRow, { marginTop: 8 }]}>
+            <Button 
+              mode={selectedStatus === 'all' ? 'contained-tonal' : 'outlined'} 
+              compact
+              onPress={() => setSelectedStatus('all')}
+            >
+              All
+            </Button>
+            <Button 
+              mode={selectedStatus === 'completed' ? 'contained-tonal' : 'outlined'} 
+              compact
+              onPress={() => setSelectedStatus('completed')}
+            >
+              Completed
+            </Button>
+            <Button 
+              mode={selectedStatus === 'pending' ? 'contained-tonal' : 'outlined'} 
+              compact
+              onPress={() => setSelectedStatus('pending')}
+            >
+              Pending
+            </Button>
+            <Button 
+              mode={selectedStatus === 'active' ? 'contained-tonal' : 'outlined'} 
+              compact
+              onPress={() => setSelectedStatus('active')}
+            >
+              Active
+            </Button>
           </View>
         </Card.Content>
       </Card>
 
       {/* Shift List */}
       <View style={styles.shiftsContainer}>
-        <Title style={styles.shiftsTitle}>Shift History</Title>
-        <FlatList
-          data={shifts}
-          renderItem={renderShiftItem}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
+        <View style={styles.shiftsHeader}>
+          <Title style={styles.shiftsTitle}>Shift History</Title>
+          <Text style={styles.shiftsCount}>
+            {shifts.length} shift{shifts.length !== 1 ? 's' : ''} found
+          </Text>
+        </View>
+        
+        {shifts.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No shifts found</Text>
+            <Text style={styles.emptySubtitle}>
+              Try adjusting your filters to see more results
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={shifts}
+            renderItem={renderShiftItem}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+          />
+        )}
       </View>
     </View>
   );
@@ -269,8 +399,33 @@ const styles = StyleSheet.create({
   shiftsContainer: {
     flex: 1,
   },
-  shiftsTitle: {
+  shiftsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
+  },
+  shiftsTitle: {
+    marginBottom: 0,
+  },
+  shiftsCount: {
+    fontSize: 14,
+    color: '#666',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#666',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
   },
   shiftCard: {
     marginBottom: 8,

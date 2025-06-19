@@ -176,8 +176,8 @@ const WorkReportsScreen: React.FC = () => {
                 </View>
                 
                 <View style={styles.hoursInfo}>
-                  <Text style={styles.hoursText}>{report.totalHours}ч</Text>
-                  <Text style={styles.shiftsText}>{report.shiftsCount} смен</Text>
+                  <Text style={styles.hoursText}>{report.totalHours}h</Text>
+                  <Text style={styles.shiftsText}>{report.shiftsCount} shifts</Text>
                 </View>
               </View>
 

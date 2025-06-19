@@ -61,7 +61,7 @@ export class DatabaseService {
     try {
       console.log('🔄 Initializing database...');
       
-      // Открываем базу данных - исправлено для expo-sqlite 15.x
+      // Открываем базу данных
       this.db = await SQLite.openDatabaseAsync('worktime.db');
       console.log('✅ Database connection opened');
 
@@ -348,7 +348,7 @@ export class DatabaseService {
     }
   }
 
-  async getSMSVerification(phoneNumber: string, type: 'registration' | 'password_reset'): Promise<SMSVerification | null> {
+  async getSMSVerification(phoneNumber: string, type: 'registration' | 'login'): Promise<SMSVerification | null> {
     await this.ensureInitialized();
 
     if (!this.db) {
@@ -370,7 +370,7 @@ export class DatabaseService {
         id: result.id,
         phoneNumber: result.phoneNumber,
         code: result.code,
-        type: result.type as 'registration' | 'password_reset',
+        type: result.type as 'registration' | 'login',
         isUsed: Boolean(result.isUsed),
         expiresAt: new Date(result.expiresAt),
         createdAt: new Date(result.createdAt)
@@ -482,44 +482,145 @@ export class DatabaseService {
       throw new Error('Database is not initialized');
     }
 
-    let dateFilter = '';
+    let startDate: Date;
     const now = new Date();
-    
+
     switch (period) {
       case 'today':
-        const today = now.toISOString().split('T')[0];
-        dateFilter = `AND date(ws.startTime) = '${today}'`;
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         break;
       case 'week':
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        dateFilter = `AND ws.startTime >= '${weekAgo.toISOString()}'`;
+        const dayOfWeek = now.getDay();
+        startDate = new Date(now.getTime() - (dayOfWeek * 24 * 60 * 60 * 1000));
+        startDate.setHours(0, 0, 0, 0);
         break;
       case 'month':
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        dateFilter = `AND ws.startTime >= '${monthAgo.toISOString()}'`;
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         break;
     }
 
     try {
-      const result = await this.db.getAllAsync(`
-        SELECT 
-          ws.id,
-          ws.startTime,
-          ws.endTime,
-          ws.totalMinutes,
-          ws.status,
-          u.name as userName,
-          cs.name as siteName
-        FROM work_shifts ws
-        JOIN users u ON ws.userId = u.id
-        JOIN construction_sites cs ON ws.siteId = cs.id
-        WHERE 1=1 ${dateFilter}
-        ORDER BY ws.startTime DESC
-      `);
-      
-      return result || [];
+      const result = await this.db.getAllAsync(
+        `SELECT 
+           ws.userId,
+           u.name as userName,
+           ws.siteId,
+           cs.name as siteName,
+           SUM(ws.totalMinutes) as totalMinutes,
+           COUNT(ws.id) as shiftsCount,
+           DATE(ws.startTime) as date
+         FROM work_shifts ws
+         JOIN users u ON ws.userId = u.id
+         JOIN construction_sites cs ON ws.siteId = cs.id
+         WHERE ws.startTime >= ?
+         GROUP BY ws.userId, ws.siteId, DATE(ws.startTime)
+         ORDER BY ws.startTime DESC`,
+        [startDate.toISOString()]
+      );
+
+      return (result as any[]).map(row => ({
+        userId: row.userId,
+        userName: row.userName,
+        siteId: row.siteId,
+        siteName: row.siteName,
+        totalHours: Math.floor((row.totalMinutes || 0) / 60),
+        totalMinutes: (row.totalMinutes || 0) % 60,
+        shiftsCount: row.shiftsCount,
+        date: row.date,
+        violations: 0 // TODO: Implement violations count
+      }));
     } catch (error) {
       console.error('Error getting work reports:', error);
+      throw error;
+    }
+  }
+
+  // User management methods
+  async getAllUsers(): Promise<AuthUser[]> {
+    await this.ensureInitialized();
+
+    if (!this.db) {
+      throw new Error('Database is not initialized');
+    }
+
+    try {
+      const result = await this.db.getAllAsync(
+        `SELECT id, phoneNumber, name, role, companyId, isVerified, isActive, createdAt
+         FROM users
+         ORDER BY name ASC`
+      );
+
+      return (result as UserRow[]).map(row => ({
+        id: row.id,
+        phoneNumber: row.phoneNumber,
+        name: row.name,
+        role: row.role as 'worker' | 'admin',
+        companyId: row.companyId || undefined,
+        isVerified: Boolean(row.isVerified),
+        isActive: Boolean(row.isActive),
+        createdAt: new Date(row.createdAt)
+      }));
+    } catch (error) {
+      console.error('Error getting all users:', error);
+      throw error;
+    }
+  }
+
+  async updateUserRole(userId: string, role: 'worker' | 'admin'): Promise<void> {
+    await this.ensureInitialized();
+
+    if (!this.db) {
+      throw new Error('Database is not initialized');
+    }
+
+    try {
+      await this.db.runAsync(
+        `UPDATE users SET role = ? WHERE id = ?`,
+        [role, userId]
+      );
+      console.log(`✅ User ${userId} role updated to ${role}`);
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      throw error;
+    }
+  }
+
+  async updateUserStatus(userId: string, isActive: boolean): Promise<void> {
+    await this.ensureInitialized();
+
+    if (!this.db) {
+      throw new Error('Database is not initialized');
+    }
+
+    try {
+      await this.db.runAsync(
+        `UPDATE users SET isActive = ? WHERE id = ?`,
+        [isActive ? 1 : 0, userId]
+      );
+      console.log(`✅ User ${userId} status updated to ${isActive ? 'active' : 'inactive'}`);
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      throw error;
+    }
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    await this.ensureInitialized();
+
+    if (!this.db) {
+      throw new Error('Database is not initialized');
+    }
+
+    try {
+      // Delete user password first (foreign key constraint)
+      await this.db.runAsync(`DELETE FROM user_passwords WHERE userId = ?`, [userId]);
+      
+      // Delete user
+      await this.db.runAsync(`DELETE FROM users WHERE id = ?`, [userId]);
+      
+      console.log(`✅ User ${userId} deleted successfully`);
+    } catch (error) {
+      console.error('Error deleting user:', error);
       throw error;
     }
   }

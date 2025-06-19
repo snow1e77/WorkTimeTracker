@@ -56,31 +56,32 @@ export default function VerifyPhoneScreen() {
 
   const handleVerifyCode = async () => {
     if (!code || code.length !== 6) {
-      Alert.alert('Ошибка', 'Введите 6-значный код подтверждения');
+      Alert.alert('Error', 'Enter the 6-digit verification code');
       return;
     }
 
     setLoading(true);
     try {
-      const isValid = await authService.verifyCode(phoneNumber, code, type);
+      // Используем новую систему аутентификации
+      const result = await authService.verifyLoginCode(phoneNumber, code);
       
-      if (isValid) {
-        if (type === 'registration') {
-          // For registration, complete the user creation process
-          Alert.alert('Успех', 'Номер телефона подтвержден!', [
-            { text: 'OK', onPress: () => navigation.navigate('Login') }
+      if (result.success) {
+        if (result.user) {
+          // Пользователь существовал и вошел
+          Alert.alert('Success', 'Welcome!', [
+            { text: 'OK', onPress: () => navigation.navigate('Home') }
           ]);
-        } else if (type === 'password_reset') {
-          // Navigate to password reset screen
-          Alert.alert('Успех', 'Код подтвержден! Теперь создайте новый пароль.', [
-            { text: 'OK', onPress: () => navigation.navigate('ResetPassword') }
+        } else if (result.needsProfile) {
+          // Новый пользователь - перенаправляем на создание профиля
+          Alert.alert('Verified', 'Now create your profile', [
+            { text: 'OK', onPress: () => navigation.navigate('Login') }
           ]);
         }
       } else {
-        Alert.alert('Ошибка', 'Неверный или истёкший код подтверждения');
+        Alert.alert('Error', result.error || 'Invalid or expired verification code');
       }
     } catch (error) {
-      Alert.alert('Ошибка', 'Произошла ошибка при проверке кода');
+      Alert.alert('Error', 'An error occurred while verifying code');
       console.error('Verify code error:', error);
     } finally {
       setLoading(false);
@@ -88,27 +89,26 @@ export default function VerifyPhoneScreen() {
   };
 
   const handleResendCode = async () => {
-    console.log('🔄 VerifyPhoneScreen: Starting resend code process');
-    console.log('📱 Phone number:', phoneNumber);
-    console.log('🔧 Type:', type);
+    console.log('🔄 VerifyPhoneScreen: Повторная отправка кода');
+    console.log('📱 Номер телефона:', phoneNumber);
     
     setResendLoading(true);
     try {
-      const sent = await authService.sendVerificationCode(phoneNumber, type);
+      const result = await authService.sendLoginCode(phoneNumber);
       
-      if (sent) {
-        console.log('✅ Code resent successfully');
-        Alert.alert('Успех', 'Код подтверждения отправлен повторно');
+      if (result.success) {
+        console.log('✅ Код отправлен повторно');
+        Alert.alert('Success', 'Verification code sent again');
         setTimeLeft(60);
         setCanResend(false);
-        startTimer(); // Перезапускаем таймер
+        startTimer();
       } else {
-        console.log('❌ Failed to resend code');
-        Alert.alert('Ошибка', 'Не удалось отправить код повторно. Проверьте ваш номер телефона и интернет-соединение.');
+        console.log('❌ Не удалось отправить код повторно');
+        Alert.alert('Error', result.error || 'Failed to resend code');
       }
     } catch (error) {
-      console.error('❌ Resend code error:', error);
-      Alert.alert('Ошибка', 'Произошла ошибка при отправке кода. Попробуйте позже.');
+      console.error('❌ Ошибка повторной отправки:', error);
+      Alert.alert('Error', 'An error occurred while sending code');
     } finally {
       setResendLoading(false);
     }
@@ -122,14 +122,14 @@ export default function VerifyPhoneScreen() {
 
   const getTitle = () => {
     return type === 'registration' 
-      ? 'Подтверждение регистрации'
-      : 'Восстановление пароля';
+      ? 'Registration Verification'
+      : 'Password Recovery';
   };
 
   const getDescription = () => {
     return type === 'registration'
-      ? 'Введите код, отправленный на ваш номер телефона для завершения регистрации'
-      : 'Введите код, отправленный на ваш номер телефона для восстановления пароля';
+      ? 'Enter the code sent to your phone number to complete registration'
+      : 'Enter the code sent to your phone number to recover your password';
   };
 
   return (
@@ -148,19 +148,19 @@ export default function VerifyPhoneScreen() {
             </Text>
             
             <TextInput
-              label="Код подтверждения"
+              label="Verification Code"
               value={code}
               onChangeText={(text) => setCode(text.replace(/\D/g, '').slice(0, 6))}
               keyboardType="numeric"
               mode="outlined"
               style={styles.input}
-              placeholder="Код подтверждения"
+              placeholder="Verification code"
               maxLength={6}
               textAlign="center"
               autoFocus={true}
             />
             <HelperText type="info" visible={true}>
-              Введите 6-значный код из SMS
+              Enter the 6-digit code from SMS
             </HelperText>
 
             <Button
@@ -170,7 +170,7 @@ export default function VerifyPhoneScreen() {
               disabled={loading || code.length !== 6}
               style={styles.button}
             >
-              Подтвердить
+              Verify
             </Button>
 
             <View style={styles.resendContainer}>
@@ -182,11 +182,11 @@ export default function VerifyPhoneScreen() {
                   disabled={resendLoading}
                   style={styles.resendButton}
                 >
-                  {resendLoading ? 'Отправка...' : 'Отправить код повторно'}
+                  {resendLoading ? 'Sending...' : 'Resend Code'}
                 </Button>
               ) : (
                 <Text style={styles.timerText}>
-                  Повторная отправка через {formatTime(timeLeft)}
+                  Resend in {formatTime(timeLeft)}
                 </Text>
               )}
             </View>
@@ -197,7 +197,7 @@ export default function VerifyPhoneScreen() {
                 onPress={() => navigation.goBack()}
                 style={styles.link}
               >
-                Изменить номер телефона
+                Change phone number
               </Button>
             </View>
           </Card.Content>

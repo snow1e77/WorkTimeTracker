@@ -145,11 +145,11 @@ export class TwilioService {
   async sendVerificationCode(
     phoneNumber: string,
     code: string,
-    type: 'registration' | 'password_reset'
+    type: 'login' | 'registration'
   ): Promise<SMSResult> {
     const messages = {
-      registration: `Your WorkTime Tracker verification code: ${code}. Valid for 10 minutes.`,
-      password_reset: `Your WorkTime Tracker password reset code: ${code}. Valid for 10 minutes.`
+      login: `Your WorkTime Tracker login code: ${code}. Valid for 10 minutes.`,
+      registration: `Your WorkTime Tracker verification code: ${code}. Valid for 10 minutes.`
     };
 
     return await this.sendSMS(phoneNumber, messages[type]);

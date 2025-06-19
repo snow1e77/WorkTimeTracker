@@ -34,10 +34,26 @@ export interface SMSVerification {
   id: string;
   phoneNumber: string;
   code: string;
-  type: 'registration' | 'password_reset';
+  type: 'registration' | 'login';
   isUsed: boolean;
   expiresAt: Date;
   createdAt: Date;
+}
+
+// Новые типы для SMS-аутентификации
+export interface LoginCodeRequest {
+  phoneNumber: string;
+}
+
+export interface VerifyCodeRequest {
+  phoneNumber: string;
+  code: string;
+}
+
+export interface CreateProfileRequest {
+  phoneNumber: string;
+  name: string;
+  smsCode: string;
 }
 
 export interface AuthState {
@@ -169,6 +185,52 @@ export interface WorkReport {
   shiftsCount: number;
   date: string;
   violations: number;
+}
+
+// Назначение рабочих на объекты
+export interface UserSiteAssignment {
+  id: string;
+  userId: string;
+  siteId: string;
+  assignedBy: string; // ID администратора
+  isActive: boolean;
+  assignedAt: Date;
+  validFrom?: Date;
+  validTo?: Date;
+  notes?: string;
+}
+
+// Метаданные синхронизации
+export interface SyncMetadata {
+  entityType: 'user' | 'site' | 'assignment' | 'shift' | 'report';
+  entityId: string;
+  lastModified: Date;
+  version: number;
+  deviceId: string;
+  syncStatus: 'pending' | 'synced' | 'conflict';
+  conflictData?: any;
+}
+
+// Пакет данных для синхронизации
+export interface SyncPayload {
+  users?: AuthUser[];
+  sites?: ConstructionSite[];
+  assignments?: UserSiteAssignment[];
+  shifts?: WorkShift[];
+  metadata: SyncMetadata[];
+  timestamp: Date;
+  deviceId: string;
+}
+
+// Конфликт синхронизации
+export interface SyncConflict {
+  id: string;
+  entityType: string;
+  entityId: string;
+  localData: any;
+  remoteData: any;
+  timestamp: Date;
+  resolution?: 'local' | 'remote' | 'manual';
 }
 
 export interface SiteFormData {

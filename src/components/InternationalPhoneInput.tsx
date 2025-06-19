@@ -162,7 +162,7 @@ export default function InternationalPhoneInput({
   return (
     <View style={styles.container}>
       <View style={styles.phoneInputWrapper}>
-        {showCountryPicker && (
+        {showCountryPicker ? (
           <TouchableOpacity
             style={[
               styles.countryButton,
@@ -176,7 +176,7 @@ export default function InternationalPhoneInput({
             <Text style={styles.flag}>{currentCountryData?.flag || '🌍'}</Text>
             <Text style={styles.callingCode}>{currentCountryData?.callingCode || '+X'}</Text>
           </TouchableOpacity>
-        )}
+        ) : null}
         
         <TextInput
           label={label}
@@ -194,12 +194,12 @@ export default function InternationalPhoneInput({
         />
       </View>
       
-      {(value && !isValid) && (
+      {(value && !isValid) ? (
         <Text style={styles.helperText}>Invalid phone number</Text>
-      )}
-      {(!value || isValid) && (
+      ) : null}
+      {(!value || isValid) ? (
         <Text style={styles.hintText}>{getHint()}</Text>
-      )}
+      ) : null}
 
       <Portal>
         <Modal

@@ -177,7 +177,7 @@ export default function SettingsScreen() {
           <List.Item
             title="Background tracking"
             description="GPS works when app is minimized"
-            left={() => <List.Icon icon="background-run" />}
+            left={() => <List.Icon icon="crosshairs-gps" />}
             right={() => (
               <Switch
                 value={backgroundTracking}

@@ -26,7 +26,7 @@ export class AuthService {
   }
 
   // Send SMS through Twilio
-  private async sendSMS(phoneNumber: string, code: string, type: 'registration' | 'password_reset'): Promise<boolean> {
+  private async sendSMS(phoneNumber: string, code: string, type: 'login' | 'registration'): Promise<boolean> {
     try {
       const result = await this.twilioService.sendVerificationCode(phoneNumber, code, type);
       return result.success;
@@ -36,15 +36,16 @@ export class AuthService {
     }
   }
 
-  // Password hashing (simplified version)
-  private hashPassword(password: string): string {
-    // In a real application, use bcrypt or another secure library
-    return Buffer.from(password).toString('base64');
+  // Password hashing for SMS codes (SMS код автоматически становится паролем)
+  private hashPassword(smsCode: string): string {
+    // В реальном приложении используйте bcrypt или другую безопасную библиотеку
+    // Используем btoa вместо Buffer для React Native совместимости
+    return btoa(smsCode);
   }
 
-  // Проверка пароля
-  private verifyPassword(password: string, hashedPassword: string): boolean {
-    return this.hashPassword(password) === hashedPassword;
+  // Проверка SMS-кода/пароля
+  private verifyPassword(smsCode: string, hashedPassword: string): boolean {
+    return this.hashPassword(smsCode) === hashedPassword;
   }
 
   // Сохранение токена аутентификации
@@ -62,174 +63,167 @@ export class AuthService {
     await AsyncStorage.removeItem('authToken');
   }
 
-  // Отправка кода подтверждения
-  async sendVerificationCode(phoneNumber: string, type: 'registration' | 'password_reset'): Promise<boolean> {
+  // Проверка существует ли пользователь с таким номером
+  async checkUserExists(phoneNumber: string): Promise<{ exists: boolean; user?: AuthUser }> {
     try {
-      console.log('🔄 AuthService: Starting verification code sending process');
-      console.log('📱 Phone number:', phoneNumber);
-      console.log('🔧 Type:', type);
+      const user = await this.dbService.getUserByPhone(phoneNumber);
+      return { exists: !!user, user: user || undefined };
+    } catch (error) {
+      console.error('Ошибка проверки пользователя:', error);
+      return { exists: false };
+    }
+  }
+
+  // Отправка SMS-кода для входа или регистрации
+  async sendLoginCode(phoneNumber: string): Promise<{ success: boolean; userExists: boolean; error?: string }> {
+    try {
+      console.log('🔄 AuthService: Отправка кода входа для:', phoneNumber);
+      
+      // Проверяем, существует ли пользователь
+      const { exists, user } = await this.checkUserExists(phoneNumber);
+      console.log('👤 Пользователь существует:', exists);
 
       const code = this.generateSMSCode();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 минут
 
-      console.log('🔑 Generated code:', code);
-      console.log('⏰ Expires at:', expiresAt);
+      console.log('🔑 Сгенерированный код:', code);
 
       const verification: SMSVerification = {
         id: Date.now().toString(),
         phoneNumber,
         code,
-        type,
+        type: exists ? 'login' : 'registration',
         isUsed: false,
         expiresAt,
         createdAt: new Date()
       };
 
-      console.log('💾 Saving verification to database...');
+      console.log('💾 Сохранение кода в БД...');
       await this.dbService.saveSMSVerification(verification);
-      console.log('✅ Verification saved to database');
 
-      console.log('📨 Sending SMS...');
-      const smsResult = await this.sendSMS(phoneNumber, code, type);
-      console.log('📨 SMS result:', smsResult);
+      console.log('📨 Отправка SMS...');
+      const smsResult = await this.sendSMS(phoneNumber, code, exists ? 'login' : 'registration');
       
       if (!smsResult) {
-        console.log('❌ SMS sending failed');
-        return false;
+        console.log('❌ Ошибка отправки SMS');
+        return { success: false, userExists: exists, error: 'Failed to send SMS' };
       }
 
-      console.log('✅ Verification code sent successfully');
-      return true;
+      console.log('✅ Код отправлен успешно');
+      return { success: true, userExists: exists };
     } catch (error) {
-      console.error('❌ Error in sendVerificationCode:', error);
-      console.error('Error details:', {
-        name: (error as Error).name,
-        message: (error as Error).message,
-        stack: (error as Error).stack
-      });
-      return false;
+      console.error('❌ Ошибка в sendLoginCode:', error);
+      return { success: false, userExists: false, error: 'Server error' };
     }
   }
 
-  // Проверка кода подтверждения
-  async verifyCode(phoneNumber: string, code: string, type: 'registration' | 'password_reset'): Promise<boolean> {
+  // Проверка SMS-кода
+  async verifyLoginCode(phoneNumber: string, code: string): Promise<{ success: boolean; user?: AuthUser; error?: string; needsProfile?: boolean }> {
     try {
-      const verification = await this.dbService.getSMSVerification(phoneNumber, type);
+      console.log('🔄 Проверка SMS-кода для:', phoneNumber);
+      
+      // Получаем SMS верификацию
+      const verification = await this.dbService.getSMSVerification(phoneNumber, 'login') 
+        || await this.dbService.getSMSVerification(phoneNumber, 'registration');
       
       if (!verification || verification.isUsed || verification.expiresAt < new Date()) {
-        return false;
+        return { success: false, error: 'Invalid or expired code' };
       }
 
-      if (verification.code === code) {
-        await this.dbService.markSMSVerificationAsUsed(verification.id);
-        return true;
+      if (verification.code !== code) {
+        return { success: false, error: 'Invalid code' };
       }
 
-      return false;
+      // Отмечаем код как использованный
+      await this.dbService.markSMSVerificationAsUsed(verification.id);
+
+      // Проверяем, есть ли пользователь
+      const { exists, user } = await this.checkUserExists(phoneNumber);
+
+      if (exists && user) {
+        // Пользователь существует - обновляем его пароль новым SMS-кодом
+        const hashedCode = this.hashPassword(code);
+        await this.dbService.updateUserPassword(user.id, hashedCode);
+        await this.saveAuthToken(user.id);
+        console.log('✅ Существующий пользователь вошел в систему');
+        return { success: true, user };
+      } else {
+        // Новый пользователь - нужно будет создать профиль
+        console.log('👤 Новый пользователь - требуется создание профиля');
+        return { success: true, needsProfile: true };
+      }
     } catch (error) {
       console.error('Ошибка проверки кода:', error);
-      return false;
+      return { success: false, error: 'Server error' };
     }
   }
 
-  // Регистрация пользователя
-  async register(data: RegisterRequest): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+  // Создание профиля после проверки SMS-кода (для новых пользователей)
+  async createUserProfile(phoneNumber: string, name: string, smsCode: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
     try {
-      console.log('🔄 Starting registration for:', data.phoneNumber);
+      console.log('🔄 Создание профиля для нового пользователя:', phoneNumber);
       
       // Проверяем, что пользователь с таким номером не существует
-      console.log('🔄 Checking if user exists...');
-      const existingUser = await this.dbService.getUserByPhone(data.phoneNumber);
+      const existingUser = await this.dbService.getUserByPhone(phoneNumber);
       if (existingUser) {
-        return { success: false, error: 'Пользователь с таким номером уже существует' };
-      }
-
-      // Проверяем код подтверждения если он предоставлен
-      if (data.verificationCode) {
-        const isValidCode = await this.verifyCode(data.phoneNumber, data.verificationCode, 'registration');
-        if (!isValidCode) {
-          return { success: false, error: 'Неверный или истёкший код подтверждения' };
-        }
-      } else {
-        // Отправляем код подтверждения
-        const codeSent = await this.sendVerificationCode(data.phoneNumber, 'registration');
-        if (!codeSent) {
-          return { success: false, error: 'Ошибка отправки кода подтверждения' };
-        }
-        return { success: false, error: 'CODE_REQUIRED' };
+        return { success: false, error: 'User with this phone number already exists' };
       }
 
       // Создаем пользователя
-      console.log('🔄 Creating new user...');
       const user: AuthUser = {
         id: Date.now().toString(),
-        phoneNumber: data.phoneNumber,
-        name: data.name,
+        phoneNumber,
+        name: name.trim(),
         role: 'worker',
         isVerified: true,
         isActive: true,
         createdAt: new Date()
       };
 
-      console.log('🔄 Hashing password and saving user to database...');
-      const hashedPassword = this.hashPassword(data.password);
-      await this.dbService.createUser(user, hashedPassword);
-      console.log('✅ User created successfully');
+      console.log('🔄 Хеширование SMS-кода как пароля и сохранение в БД...');
+      const hashedCode = this.hashPassword(smsCode);
+      await this.dbService.createUser(user, hashedCode);
+      console.log('✅ Пользователь создан успешно');
       await this.saveAuthToken(user.id);
 
       return { success: true, user };
     } catch (error) {
-      console.error('Ошибка регистрации:', error);
-      return { success: false, error: 'Ошибка сервера' };
+      console.error('Ошибка создания профиля:', error);
+      return { success: false, error: 'Server error' };
     }
   }
 
-  // Вход в систему
+  // Устаревшие методы - оставляем для совместимости, но помечаем как deprecated
+  /** @deprecated Используйте sendLoginCode вместо этого */
+  async sendVerificationCode(phoneNumber: string, type: 'registration' | 'password_reset'): Promise<boolean> {
+    console.warn('⚠️ sendVerificationCode устарел, используйте sendLoginCode');
+    const result = await this.sendLoginCode(phoneNumber);
+    return result.success;
+  }
+
+  /** @deprecated Используйте verifyLoginCode вместо этого */
+  async verifyCode(phoneNumber: string, code: string, type: 'registration' | 'password_reset'): Promise<boolean> {
+    console.warn('⚠️ verifyCode устарел, используйте verifyLoginCode');
+    const result = await this.verifyLoginCode(phoneNumber, code);
+    return result.success;
+  }
+
+  /** @deprecated Регистрация теперь происходит через sendLoginCode + createUserProfile */
+  async register(data: RegisterRequest): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+    console.warn('⚠️ register устарел, используйте sendLoginCode + createUserProfile');
+    return { success: false, error: 'Method deprecated' };
+  }
+
+  /** @deprecated Вход теперь происходит через sendLoginCode + verifyLoginCode */
   async login(data: LoginRequest): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-    try {
-      const user = await this.dbService.getUserByPhone(data.phoneNumber);
-      if (!user) {
-        return { success: false, error: 'Пользователь не найден' };
-      }
-
-      const storedPassword = await this.dbService.getUserPassword(user.id);
-      if (!storedPassword || !this.verifyPassword(data.password, storedPassword)) {
-        return { success: false, error: 'Неверный пароль' };
-      }
-
-      if (!user.isActive) {
-        return { success: false, error: 'Аккаунт заблокирован' };
-      }
-
-      await this.saveAuthToken(user.id);
-      return { success: true, user };
-    } catch (error) {
-      console.error('Ошибка входа:', error);
-      return { success: false, error: 'Ошибка сервера' };
-    }
+    console.warn('⚠️ login устарел, используйте sendLoginCode + verifyLoginCode');
+    return { success: false, error: 'Method deprecated' };
   }
 
-  // Восстановление пароля
+  /** @deprecated Сброс пароля заменен на sendLoginCode */
   async resetPassword(data: ResetPasswordRequest): Promise<{ success: boolean; error?: string }> {
-    try {
-      const user = await this.dbService.getUserByPhone(data.phoneNumber);
-      if (!user) {
-        return { success: false, error: 'Пользователь не найден' };
-      }
-
-      const isValidCode = await this.verifyCode(data.phoneNumber, data.verificationCode, 'password_reset');
-      if (!isValidCode) {
-        return { success: false, error: 'Неверный или истёкший код подтверждения' };
-      }
-
-      const hashedPassword = this.hashPassword(data.newPassword);
-      await this.dbService.updateUserPassword(user.id, hashedPassword);
-
-      return { success: true };
-    } catch (error) {
-      console.error('Ошибка сброса пароля:', error);
-      return { success: false, error: 'Ошибка сервера' };
-    }
+    console.warn('⚠️ resetPassword устарел, используйте sendLoginCode');
+    return { success: false, error: 'Method deprecated' };
   }
 
   // Получение текущего пользователя
@@ -241,13 +235,17 @@ export class AuthService {
       const user = await this.dbService.getUserById(token);
       return user;
     } catch (error) {
-      console.error('Ошибка получения пользователя:', error);
+      console.error('Ошибка получения текущего пользователя:', error);
       return null;
     }
   }
 
   // Выход из системы
   async logout(): Promise<void> {
-    await this.removeAuthToken();
+    try {
+      await this.removeAuthToken();
+    } catch (error) {
+      console.error('Ошибка выхода:', error);
+    }
   }
 } 
