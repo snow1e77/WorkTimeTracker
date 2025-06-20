@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, StyleSheet, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { Text, TextInput, Button, Card, Title, HelperText } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,6 +23,8 @@ export default function VerifyPhoneScreen() {
   const [resendLoading, setResendLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [statusType, setStatusType] = useState<'error' | 'info'>('info');
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -56,11 +58,13 @@ export default function VerifyPhoneScreen() {
 
   const handleVerifyCode = async () => {
     if (!code || code.length !== 6) {
-      Alert.alert('Error', 'Enter the 6-digit verification code');
+      setStatusMessage('Enter the 6-digit verification code');
+      setStatusType('error');
       return;
     }
 
     setLoading(true);
+    setStatusMessage('');
     try {
       // Используем новую систему аутентификации
       const result = await authService.verifyLoginCode(phoneNumber, code);
@@ -68,20 +72,22 @@ export default function VerifyPhoneScreen() {
       if (result.success) {
         if (result.user) {
           // Пользователь существовал и вошел
-          Alert.alert('Success', 'Welcome!', [
-            { text: 'OK', onPress: () => navigation.navigate('Home') }
-          ]);
+          setStatusMessage('Welcome!');
+          setStatusType('info');
+          setTimeout(() => navigation.navigate('Home'), 1000);
         } else if (result.needsProfile) {
           // Новый пользователь - перенаправляем на создание профиля
-          Alert.alert('Verified', 'Now create your profile', [
-            { text: 'OK', onPress: () => navigation.navigate('Login') }
-          ]);
+          setStatusMessage('Verified! Now create your profile');
+          setStatusType('info');
+          setTimeout(() => navigation.navigate('Login'), 1000);
         }
       } else {
-        Alert.alert('Error', result.error || 'Invalid or expired verification code');
+        setStatusMessage(result.error || 'Invalid or expired verification code');
+        setStatusType('error');
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred while verifying code');
+      setStatusMessage('An error occurred while verifying code');
+      setStatusType('error');
       console.error('Verify code error:', error);
     } finally {
       setLoading(false);
@@ -93,22 +99,26 @@ export default function VerifyPhoneScreen() {
     console.log('📱 Номер телефона:', phoneNumber);
     
     setResendLoading(true);
+    setStatusMessage('');
     try {
       const result = await authService.sendLoginCode(phoneNumber);
       
       if (result.success) {
         console.log('✅ Код отправлен повторно');
-        Alert.alert('Success', 'Verification code sent again');
+        setStatusMessage('Verification code sent again');
+        setStatusType('info');
         setTimeLeft(60);
         setCanResend(false);
         startTimer();
       } else {
         console.log('❌ Не удалось отправить код повторно');
-        Alert.alert('Error', result.error || 'Failed to resend code');
+        setStatusMessage(result.error || 'Failed to resend code');
+        setStatusType('error');
       }
     } catch (error) {
       console.error('❌ Ошибка повторной отправки:', error);
-      Alert.alert('Error', 'An error occurred while sending code');
+      setStatusMessage('An error occurred while sending code');
+      setStatusType('error');
     } finally {
       setResendLoading(false);
     }
@@ -162,6 +172,12 @@ export default function VerifyPhoneScreen() {
             <HelperText type="info" visible={true}>
               Enter the 6-digit code from SMS
             </HelperText>
+
+            {statusMessage ? (
+              <HelperText type={statusType} visible={true} style={styles.statusMessage}>
+                {statusMessage}
+              </HelperText>
+            ) : null}
 
             <Button
               mode="contained"
@@ -241,6 +257,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 24,
     textAlign: 'center',
+  },
+  statusMessage: {
+    textAlign: 'center',
+    marginVertical: 8,
   },
   button: {
     marginTop: 24,

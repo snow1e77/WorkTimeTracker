@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { 
   Card, 
   Title, 
@@ -9,7 +9,8 @@ import {
   Text,
   Chip,
   List,
-  ProgressBar
+  ProgressBar,
+  HelperText
 } from 'react-native-paper';
 import * as Location from 'expo-location';
 
@@ -20,6 +21,8 @@ export default function TimeTrackingScreen() {
   const [distance, setDistance] = useState(0);
   const [isInSiteRadius, setIsInSiteRadius] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
 
   // Координаты стройки (пример)
   const siteLocation = {
@@ -36,7 +39,7 @@ export default function TimeTrackingScreen() {
     let subscription: Location.LocationSubscription | null = null;
 
     const setupTracking = async () => {
-      if (isTracking && gpsEnabled) {
+      if (isTracking && gpsEnabled && hasLocationPermission) {
         const result = await startLocationTracking();
         if (result) {
           subscription = result;
@@ -54,28 +57,25 @@ export default function TimeTrackingScreen() {
         subscription.remove();
       }
     };
-  }, [isTracking, gpsEnabled]);
+  }, [isTracking, gpsEnabled, hasLocationPermission]);
 
   const requestLocationPermission = async () => {
     try {
       const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
       
       if (foregroundStatus !== 'granted') {
-        Alert.alert(
-          'Permission Denied', 
-          'Location permission is required for GPS tracking to work'
-        );
+        setStatusMessage('Location permission is required for GPS tracking to work');
+        setHasLocationPermission(false);
         return;
       }
 
       const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
       
       if (backgroundStatus !== 'granted') {
-        Alert.alert(
-          'Background Tracking', 
-          'Background location permission is recommended for automatic time tracking'
-        );
+        setStatusMessage('Background location permission is recommended for automatic time tracking');
       }
+
+      setHasLocationPermission(true);
 
       // Получаем текущее местоположение
       const currentLocation = await Location.getCurrentPositionAsync({
@@ -83,10 +83,12 @@ export default function TimeTrackingScreen() {
       });
       setLocation(currentLocation);
       calculateDistance(currentLocation);
+      setStatusMessage('Location permission granted');
       
     } catch (error) {
       console.error('Permission request error:', error);
-      Alert.alert('Error', 'Unable to get location permissions');
+      setStatusMessage('Unable to get location permissions');
+      setHasLocationPermission(false);
     }
   };
 
@@ -105,10 +107,11 @@ export default function TimeTrackingScreen() {
         }
       );
 
+      setStatusMessage('GPS tracking active');
       return subscription;
     } catch (error) {
       console.error('Tracking error:', error);
-      Alert.alert('Error', 'Unable to start GPS tracking');
+      setStatusMessage('Unable to start GPS tracking');
       return null;
     }
   };
@@ -133,10 +136,10 @@ export default function TimeTrackingScreen() {
   const toggleTracking = () => {
     if (isTracking) {
       setIsTracking(false);
-      Alert.alert('GPS Tracking', 'GPS tracking stopped');
+      setStatusMessage('GPS tracking stopped');
     } else {
       setIsTracking(true);
-      Alert.alert('GPS Tracking', 'GPS tracking started');
+      setStatusMessage('GPS tracking started');
     }
   };
 
@@ -154,6 +157,17 @@ export default function TimeTrackingScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Status Message */}
+      {statusMessage ? (
+        <Card style={styles.statusCard}>
+          <Card.Content>
+            <HelperText type="info" visible={true}>
+              {statusMessage}
+            </HelperText>
+          </Card.Content>
+        </Card>
+      ) : null}
+
       {/* GPS Status */}
       <Card style={styles.card}>
         <Card.Content>
@@ -202,6 +216,7 @@ export default function TimeTrackingScreen() {
             onPress={toggleTracking}
             style={styles.trackingButton}
             buttonColor={isTracking ? undefined : '#4CAF50'}
+            disabled={!hasLocationPermission}
           >
             {isTracking ? 'Stop tracking' : 'Start tracking'}
           </Button>
@@ -247,6 +262,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
     padding: 16,
+  },
+  statusCard: {
+    marginBottom: 16,
+    backgroundColor: '#e3f2fd',
   },
   card: {
     marginBottom: 16,

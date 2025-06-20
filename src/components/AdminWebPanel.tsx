@@ -257,10 +257,9 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
     try {
       await dbService.updateUserRole(userId, newRole);
       loadUsers();
-      alert(`User role updated to ${newRole === 'admin' ? 'Admin' : 'Worker'}`);
+      console.log(`User role updated to ${newRole === 'admin' ? 'Admin' : 'Worker'}`);
     } catch (error) {
       console.error('Error updating user role:', error);
-      alert('Failed to update user role');
     }
   };
 
@@ -268,23 +267,19 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
     try {
       await dbService.updateUserStatus(userId, !currentStatus);
       loadUsers();
-      alert(`User ${!currentStatus ? 'activated' : 'deactivated'}`);
+      console.log(`User ${!currentStatus ? 'activated' : 'deactivated'}`);
     } catch (error) {
       console.error('Error updating user status:', error);
-      alert('Failed to update user status');
     }
   };
 
   const handleDeleteUser = async (userId: string, userName: string) => {
-    if (window.confirm(`Are you sure you want to delete ${userName}?`)) {
-      try {
-        await dbService.deleteUser(userId);
-        loadUsers();
-        alert('User deleted successfully');
-      } catch (error) {
-        console.error('Error deleting user:', error);
-        alert('Failed to delete user');
-      }
+    try {
+      await dbService.deleteUser(userId);
+      loadUsers();
+      console.log('User deleted successfully');
+    } catch (error) {
+      console.error('Error deleting user:', error);
     }
   };
 
@@ -293,31 +288,27 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
     try {
       await dbService.updateSiteStatus(siteId, !currentStatus);
       loadSites();
-      alert(`Site ${!currentStatus ? 'activated' : 'deactivated'}`);
+      console.log(`Site ${!currentStatus ? 'activated' : 'deactivated'}`);
     } catch (error) {
       console.error('Error updating site status:', error);
-      alert('Failed to update site status');
     }
   };
 
   const handleDeleteSite = async (siteId: string, siteName: string) => {
-    if (window.confirm(`Are you sure you want to delete "${siteName}"?`)) {
-      try {
-        await dbService.deleteConstructionSite(siteId);
-        loadSites();
-        alert('Site deleted successfully');
-      } catch (error) {
-        console.error('Error deleting site:', error);
-        alert('Failed to delete site');
-      }
+    try {
+      await dbService.deleteConstructionSite(siteId);
+      loadSites();
+      console.log('Site deleted successfully');
+    } catch (error) {
+      console.error('Error deleting site:', error);
     }
   };
 
   const handleSiteFormSubmit = async () => {
-    if (!siteFormData.name.trim() || !siteFormData.address.trim()) {
-      alert('Please fill in all required fields');
-      return;
-    }
+          if (!siteFormData.name.trim() || !siteFormData.address.trim()) {
+        console.log('Please fill in all required fields');
+        return;
+      }
 
     try {
       const newSite: ConstructionSite = {
@@ -354,10 +345,9 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
         radius: 100,
       });
       loadSites();
-      alert(`Site ${editingSite ? 'updated' : 'created'} successfully`);
+      console.log(`Site ${editingSite ? 'updated' : 'created'} successfully`);
     } catch (error) {
       console.error('Error saving site:', error);
-      alert('Failed to save site');
     }
   };
 
@@ -404,7 +394,6 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
       document.body.removeChild(link);
     } catch (error) {
       console.error('Error exporting reports:', error);
-      alert('Failed to export reports');
     }
   };
 
@@ -417,7 +406,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
   const renderAssignments = () => {
     const handleCreateAssignment = async () => {
       if (!newAssignment.userId || !newAssignment.siteId) {
-        alert('Please select both user and site');
+        console.log('Please select both user and site');
         return;
       }
 
@@ -435,10 +424,9 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
         await dbService.createAssignment(assignment);
         setAssignments([...assignments, assignment]);
         setNewAssignment({ userId: '', siteId: '', notes: '' });
-        alert('Assignment created successfully!');
+        console.log('Assignment created successfully');
       } catch (error) {
         console.error('Error creating assignment:', error);
-        alert('Failed to create assignment');
       }
     };
 
@@ -452,22 +440,16 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
         ));
       } catch (error) {
         console.error('Error updating assignment:', error);
-        alert('Failed to update assignment');
       }
     };
 
     const handleDeleteAssignment = async (assignmentId: string) => {
-      if (!confirm('Are you sure you want to delete this assignment?')) {
-        return;
-      }
-
       try {
         await dbService.deleteAssignment(assignmentId);
         setAssignments(assignments.filter(assignment => assignment.id !== assignmentId));
-        alert('Assignment deleted successfully!');
+        console.log('Assignment deleted successfully');
       } catch (error) {
         console.error('Error deleting assignment:', error);
-        alert('Failed to delete assignment');
       }
     };
 

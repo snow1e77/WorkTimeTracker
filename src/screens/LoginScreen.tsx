@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, StyleSheet, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { Text, TextInput, Button, Card, Title, HelperText } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,12 +25,14 @@ export default function LoginScreen() {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [userExists, setUserExists] = useState(false);
+  const [error, setError] = useState('');
 
   const validatePhoneNumber = () => {
     if (!isValidInternationalPhoneNumber(phoneNumber, selectedCountry)) {
-      Alert.alert('Error', 'Enter a valid phone number');
+      setError('Enter a valid phone number');
       return false;
     }
+    setError('');
     return true;
   };
 
@@ -38,6 +40,7 @@ export default function LoginScreen() {
     if (!validatePhoneNumber()) return;
 
     setLoading(true);
+    setError('');
     try {
       const cleanPhone = getCleanInternationalPhoneNumber(phoneNumber, selectedCountry);
       const result = await authService.sendLoginCode(cleanPhone);
@@ -45,15 +48,11 @@ export default function LoginScreen() {
       if (result.success) {
         setUserExists(result.userExists);
         setStep('code');
-        Alert.alert(
-          'Code Sent', 
-          `SMS code sent to ${cleanPhone}. ${result.userExists ? 'Sign in to your account.' : 'Create your profile.'}`
-        );
       } else {
-        Alert.alert('Error', result.error || 'Failed to send code');
+        setError(result.error || 'Failed to send code');
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred while sending code');
+      setError('An error occurred while sending code');
       console.error('Send code error:', error);
     } finally {
       setLoading(false);
@@ -62,11 +61,12 @@ export default function LoginScreen() {
 
   const handleVerifyCode = async () => {
     if (!smsCode || smsCode.length !== 6) {
-      Alert.alert('Error', 'Enter the 6-digit code from SMS');
+      setError('Enter the 6-digit code from SMS');
       return;
     }
 
     setLoading(true);
+    setError('');
     try {
       const cleanPhone = getCleanInternationalPhoneNumber(phoneNumber, selectedCountry);
       const result = await authService.verifyLoginCode(cleanPhone, smsCode);
@@ -74,18 +74,16 @@ export default function LoginScreen() {
       if (result.success) {
         if (result.user) {
           // Пользователь существовал и вошел в систему
-          Alert.alert('Welcome!', `Hello, ${result.user.name}!`, [
-            { text: 'OK', onPress: () => navigation.navigate('Home') }
-          ]);
+          navigation.navigate('Home');
         } else if (result.needsProfile) {
           // Новый пользователь - нужно создать профиль
           setStep('profile');
         }
       } else {
-        Alert.alert('Error', result.error || 'Invalid code');
+        setError(result.error || 'Invalid code');
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred while verifying code');
+      setError('An error occurred while verifying code');
       console.error('Verify code error:', error);
     } finally {
       setLoading(false);
@@ -94,29 +92,28 @@ export default function LoginScreen() {
 
   const handleCreateProfile = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'Please enter your full name');
+      setError('Please enter your full name');
       return;
     }
 
     if (name.trim().length < 2) {
-      Alert.alert('Error', 'Name must be at least 2 characters long');
+      setError('Name must be at least 2 characters long');
       return;
     }
 
     setLoading(true);
+    setError('');
     try {
       const cleanPhone = getCleanInternationalPhoneNumber(phoneNumber, selectedCountry);
       const result = await authService.createUserProfile(cleanPhone, name.trim(), smsCode);
 
       if (result.success && result.user) {
-        Alert.alert('Registration Complete!', `Welcome, ${result.user.name}!`, [
-          { text: 'OK', onPress: () => navigation.navigate('Home') }
-        ]);
+        navigation.navigate('Home');
       } else {
-        Alert.alert('Error', result.error || 'Failed to create profile');
+        setError(result.error || 'Failed to create profile');
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred while creating profile');
+      setError('An error occurred while creating profile');
       console.error('Create profile error:', error);
     } finally {
       setLoading(false);
@@ -139,7 +136,15 @@ export default function LoginScreen() {
         selectedCountry={selectedCountry}
         placeholder="Enter phone number"
         autoFocus={true}
+        autoDetectCountry={true}
+        error={!!error}
       />
+
+      {error ? (
+        <HelperText type="error" visible={true}>
+          {error}
+        </HelperText>
+      ) : null}
 
       <Button
         mode="contained"
@@ -181,10 +186,16 @@ export default function LoginScreen() {
         maxLength={6}
         textAlign="center"
         autoFocus={true}
+        error={!!error}
       />
-      <HelperText type="info" visible={true}>
+      <HelperText type="info" visible={!error}>
         Enter the 6-digit code from SMS
       </HelperText>
+      {error ? (
+        <HelperText type="error" visible={true}>
+          {error}
+        </HelperText>
+      ) : null}
 
       <Button
         mode="contained"
@@ -225,7 +236,14 @@ export default function LoginScreen() {
         placeholder="Enter your full name"
         autoCapitalize="words"
         autoFocus={true}
+        error={!!error}
       />
+
+      {error ? (
+        <HelperText type="error" visible={true}>
+          {error}
+        </HelperText>
+      ) : null}
 
       <Button
         mode="contained"

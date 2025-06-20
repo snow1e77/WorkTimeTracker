@@ -6,8 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  Alert,
-  Modal,
   TextInput,
 } from 'react-native';
 import { DatabaseService } from '../services/DatabaseService';
@@ -16,9 +14,10 @@ import { AuthUser } from '../types';
 const UserManagementScreen: React.FC = () => {
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<AuthUser | null>(null);
-  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
+  const [statusType, setStatusType] = useState<'error' | 'info'>('info');
 
   const dbService = DatabaseService.getInstance();
 
@@ -29,11 +28,13 @@ const UserManagementScreen: React.FC = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
+      setStatusMessage('');
       const allUsers = await dbService.getAllUsers();
       setUsers(allUsers);
     } catch (error) {
       console.error('Error loading users:', error);
-      Alert.alert('Error', 'Failed to load users');
+      setStatusMessage('Failed to load users');
+      setStatusType('error');
     } finally {
       setLoading(false);
     }
@@ -42,54 +43,41 @@ const UserManagementScreen: React.FC = () => {
   const handleRoleChange = async (userId: string, newRole: 'worker' | 'admin') => {
     try {
       await dbService.updateUserRole(userId, newRole);
-      Alert.alert(
-        'Success', 
-        `User role updated to ${newRole === 'admin' ? 'Foreman' : 'Worker'}`
-      );
+      setStatusMessage(`User role updated to ${newRole === 'admin' ? 'Foreman' : 'Worker'}`);
+      setStatusType('info');
       loadUsers(); // Refresh the list
-      setShowRoleModal(false);
+      setSelectedUserId(null);
     } catch (error) {
       console.error('Error updating user role:', error);
-      Alert.alert('Error', 'Failed to update user role');
+      setStatusMessage('Failed to update user role');
+      setStatusType('error');
     }
   };
 
   const handleStatusToggle = async (userId: string, currentStatus: boolean) => {
     try {
       await dbService.updateUserStatus(userId, !currentStatus);
-      Alert.alert(
-        'Success', 
-        `User ${!currentStatus ? 'activated' : 'deactivated'}`
-      );
+      setStatusMessage(`User ${!currentStatus ? 'activated' : 'deactivated'}`);
+      setStatusType('info');
       loadUsers(); // Refresh the list
     } catch (error) {
       console.error('Error updating user status:', error);
-      Alert.alert('Error', 'Failed to update user status');
+      setStatusMessage('Failed to update user status');
+      setStatusType('error');
     }
   };
 
-  const handleDeleteUser = (user: AuthUser) => {
-    Alert.alert(
-      'Delete User',
-      `Are you sure you want to delete ${user.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await dbService.deleteUser(user.id);
-              Alert.alert('Success', 'User deleted successfully');
-              loadUsers(); // Refresh the list
-            } catch (error) {
-              console.error('Error deleting user:', error);
-              Alert.alert('Error', 'Failed to delete user');
-            }
-          },
-        },
-      ]
-    );
+  const handleDeleteUser = async (user: AuthUser) => {
+    try {
+      await dbService.deleteUser(user.id);
+      setStatusMessage('User deleted successfully');
+      setStatusType('info');
+      loadUsers(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      setStatusMessage('Failed to delete user');
+      setStatusType('error');
+    }
   };
 
   const filteredUsers = users.filter(user =>
@@ -117,6 +105,20 @@ const UserManagementScreen: React.FC = () => {
         <Text style={styles.subtitle}>Manage roles and permissions</Text>
       </View>
 
+      {statusMessage ? (
+        <View style={[styles.statusCard, statusType === 'error' ? styles.statusError : styles.statusInfo]}>
+          <Text style={[styles.statusText, statusType === 'error' ? styles.statusTextError : styles.statusTextInfo]}>
+            {statusMessage}
+          </Text>
+          <TouchableOpacity
+            style={styles.dismissButton}
+            onPress={() => setStatusMessage('')}
+          >
+            <Text style={styles.dismissButtonText}>×</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -137,81 +139,67 @@ const UserManagementScreen: React.FC = () => {
                   <Text style={styles.roleText}>{getRoleText(user.role)}</Text>
                 </View>
                 <View style={[styles.statusBadge, user.isActive ? styles.activeBadge : styles.inactiveBadge]}>
-                  <Text style={styles.statusText}>{user.isActive ? 'Active' : 'Inactive'}</Text>
+                  <Text style={styles.statusBadgeText}>{user.isActive ? 'Active' : 'Inactive'}</Text>
                 </View>
               </View>
             </View>
 
-            <View style={styles.userActions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => {
-                  setSelectedUser(user);
-                  setShowRoleModal(true);
-                }}
-              >
-                <Text style={styles.actionButtonText}>Change Role</Text>
-              </TouchableOpacity>
+            {selectedUserId === user.id ? (
+              <View style={styles.roleSelectionContainer}>
+                <Text style={styles.roleSelectionTitle}>Select new role for {user.name}:</Text>
+                
+                <TouchableOpacity
+                  style={styles.roleOption}
+                  onPress={() => handleRoleChange(user.id, 'worker')}
+                >
+                  <Text style={styles.roleOptionText}>👷 Worker</Text>
+                  <Text style={styles.roleOptionDesc}>Regular employee</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.actionButton, styles.statusButton]}
-                onPress={() => handleStatusToggle(user.id, user.isActive)}
-              >
-                <Text style={styles.actionButtonText}>
-                  {user.isActive ? 'Deactivate' : 'Activate'}
-                </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.roleOption}
+                  onPress={() => handleRoleChange(user.id, 'admin')}
+                >
+                  <Text style={styles.roleOptionText}>👨‍💼 Foreman</Text>
+                  <Text style={styles.roleOptionDesc}>Site manager with admin access</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.actionButton, styles.deleteButton]}
-                onPress={() => handleDeleteUser(user)}
-              >
-                <Text style={styles.deleteButtonText}>Delete</Text>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setSelectedUserId(null)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.userActions}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => setSelectedUserId(user.id)}
+                >
+                  <Text style={styles.actionButtonText}>Change Role</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.statusButton]}
+                  onPress={() => handleStatusToggle(user.id, user.isActive)}
+                >
+                  <Text style={styles.actionButtonText}>
+                    {user.isActive ? 'Deactivate' : 'Activate'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.deleteButton]}
+                  onPress={() => handleDeleteUser(user)}
+                >
+                  <Text style={styles.deleteButtonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         ))}
       </ScrollView>
-
-      {/* Role Change Modal */}
-      <Modal
-        visible={showRoleModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowRoleModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Change User Role</Text>
-            <Text style={styles.modalSubtitle}>
-              Select new role for {selectedUser?.name}
-            </Text>
-
-            <TouchableOpacity
-              style={styles.roleOption}
-              onPress={() => selectedUser && handleRoleChange(selectedUser.id, 'worker')}
-            >
-              <Text style={styles.roleOptionText}>👷 Worker</Text>
-              <Text style={styles.roleOptionDesc}>Regular employee</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.roleOption}
-              onPress={() => selectedUser && handleRoleChange(selectedUser.id, 'admin')}
-            >
-              <Text style={styles.roleOptionText}>👨‍💼 Foreman</Text>
-              <Text style={styles.roleOptionDesc}>Site manager with admin access</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setShowRoleModal(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -245,6 +233,40 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#7f8c8d',
+  },
+  statusCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    margin: 20,
+    padding: 15,
+    borderRadius: 8,
+    elevation: 2,
+  },
+  statusInfo: {
+    backgroundColor: '#e3f2fd',
+  },
+  statusError: {
+    backgroundColor: '#ffebee',
+  },
+  statusText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  statusTextInfo: {
+    color: '#1976d2',
+  },
+  statusTextError: {
+    color: '#c62828',
+  },
+  dismissButton: {
+    padding: 5,
+  },
+  dismissButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#666',
   },
   searchContainer: {
     padding: 20,
@@ -320,10 +342,23 @@ const styles = StyleSheet.create({
   inactiveBadge: {
     backgroundColor: '#e74c3c',
   },
-  statusText: {
+  statusBadgeText: {
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
+  },
+  roleSelectionContainer: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 8,
+  },
+  roleSelectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   userActions: {
     flexDirection: 'row',
@@ -356,38 +391,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 24,
-    width: '80%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
   roleOption: {
     padding: 16,
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     marginBottom: 12,
+    backgroundColor: 'white',
   },
   roleOptionText: {
     fontSize: 16,

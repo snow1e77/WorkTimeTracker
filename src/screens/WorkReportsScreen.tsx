@@ -7,7 +7,6 @@ import {
   ScrollView,
   SafeAreaView,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { WorkReport } from '../types';
@@ -18,10 +17,13 @@ const WorkReportsScreen: React.FC = () => {
   const [reports, setReports] = useState<WorkReport[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('today');
+  const [statusMessage, setStatusMessage] = useState('');
+  const [statusType, setStatusType] = useState<'error' | 'info'>('info');
   const dbService = DatabaseService.getInstance();
 
   const loadReports = async () => {
     setRefreshing(true);
+    setStatusMessage('');
     
     try {
       // Load real reports from database
@@ -29,7 +31,8 @@ const WorkReportsScreen: React.FC = () => {
       setReports(periodReports);
     } catch (error) {
       console.error('Error loading reports:', error);
-      Alert.alert('Error', 'Failed to load reports');
+      setStatusMessage('Failed to load reports');
+      setStatusType('error');
     } finally {
       setRefreshing(false);
     }
@@ -60,30 +63,32 @@ const WorkReportsScreen: React.FC = () => {
 
   const exportToExcel = async () => {
     try {
-      Alert.alert('Export', 'Excel export feature will be available in the next version');
+      setStatusMessage('Excel export feature will be available in the next version');
+      setStatusType('info');
     } catch (error) {
-      Alert.alert('Error', 'Failed to export report');
+      setStatusMessage('Failed to export report');
+      setStatusType('error');
     }
   };
 
   const exportToPDF = async () => {
     try {
-      Alert.alert('Export', 'PDF export feature will be available in the next version');
+      setStatusMessage('PDF export feature will be available in the next version');
+      setStatusType('info');
     } catch (error) {
-      Alert.alert('Error', 'Failed to export report');
+      setStatusMessage('Failed to export report');
+      setStatusType('error');
     }
   };
 
-  const exportReports = () => {
-    Alert.alert(
-      'Export Report',
-      'Choose export format',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Excel', onPress: () => exportToExcel() },
-        { text: 'PDF', onPress: () => exportToPDF() },
-      ]
-    );
+  const showDetails = () => {
+    setStatusMessage('Detailed information will be available in the next version');
+    setStatusType('info');
+  };
+
+  const showViolations = () => {
+    setStatusMessage('Violation details will be available in the next version');
+    setStatusType('info');
   };
 
   const stats = getTotalStats();
@@ -98,13 +103,35 @@ const WorkReportsScreen: React.FC = () => {
           <Text style={styles.backButtonText}>‹ Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Time Reports</Text>
-        <TouchableOpacity
-          style={styles.exportButton}
-          onPress={exportReports}
-        >
-          <Text style={styles.exportButtonText}>📊 Export</Text>
-        </TouchableOpacity>
+        <View style={styles.exportButtons}>
+          <TouchableOpacity
+            style={styles.exportButton}
+            onPress={exportToExcel}
+          >
+            <Text style={styles.exportButtonText}>📊 Excel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.exportButton}
+            onPress={exportToPDF}
+          >
+            <Text style={styles.exportButtonText}>📄 PDF</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {statusMessage ? (
+        <View style={[styles.statusCard, statusType === 'error' ? styles.statusError : styles.statusInfo]}>
+          <Text style={[styles.statusText, statusType === 'error' ? styles.statusTextError : styles.statusTextInfo]}>
+            {statusMessage}
+          </Text>
+          <TouchableOpacity
+            style={styles.dismissButton}
+            onPress={() => setStatusMessage('')}
+          >
+            <Text style={styles.dismissButtonText}>×</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {/* Фильтр периода */}
       <View style={styles.periodSelector}>
@@ -210,7 +237,7 @@ const WorkReportsScreen: React.FC = () => {
               <View style={styles.reportActions}>
                 <TouchableOpacity
                   style={styles.actionButton}
-                  onPress={() => Alert.alert('Details', 'Detailed information will be available in the next version')}
+                  onPress={showDetails}
                 >
                   <Text style={styles.actionButtonText}>Details</Text>
                 </TouchableOpacity>
@@ -218,7 +245,7 @@ const WorkReportsScreen: React.FC = () => {
                 {report.violations > 0 && (
                   <TouchableOpacity
                     style={[styles.actionButton, styles.violationsButton]}
-                    onPress={() => Alert.alert('Violations', 'Violation details will be available in the next version')}
+                    onPress={showViolations}
                   >
                     <Text style={styles.actionButtonText}>Violations</Text>
                   </TouchableOpacity>
@@ -259,6 +286,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2c3e50',
   },
+  exportButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   exportButton: {
     backgroundColor: '#9b59b6',
     paddingHorizontal: 12,
@@ -269,6 +300,40 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     fontSize: 12,
+  },
+  statusCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    margin: 20,
+    padding: 15,
+    borderRadius: 8,
+    elevation: 2,
+  },
+  statusInfo: {
+    backgroundColor: '#e3f2fd',
+  },
+  statusError: {
+    backgroundColor: '#ffebee',
+  },
+  statusText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  statusTextInfo: {
+    color: '#1976d2',
+  },
+  statusTextError: {
+    color: '#c62828',
+  },
+  dismissButton: {
+    padding: 5,
+  },
+  dismissButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#666',
   },
   periodSelector: {
     flexDirection: 'row',

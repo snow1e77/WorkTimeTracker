@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Modal, FlatList, TouchableOpacity } from 'react-native';
-import { TextInput, Button, List, Searchbar, Text, Portal, Surface } from 'react-native-paper';
+import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { TextInput, Button, List, Searchbar, Text, Card } from 'react-native-paper';
 import { CountryCode } from 'libphonenumber-js';
 import { 
   formatPhoneNumberAsYouType, 
   isValidInternationalPhoneNumber, 
   getPhoneNumberHint,
-  POPULAR_COUNTRY_CODES 
+  POPULAR_COUNTRY_CODES,
+  autoDetectUserCountry
 } from '../utils/phoneUtils';
 
 interface Props {
@@ -21,6 +22,7 @@ interface Props {
   selectedCountry?: CountryCode;
   mode?: 'outlined' | 'flat';
   showCountryPicker?: boolean;
+  autoDetectCountry?: boolean;
 }
 
 interface CountryItem {
@@ -90,13 +92,15 @@ export default function InternationalPhoneInput({
   autoFocus = false,
   selectedCountry = 'US',
   mode = 'outlined',
-  showCountryPicker = true
+  showCountryPicker = true,
+  autoDetectCountry = true
 }: Props) {
   const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentCountry, setCurrentCountry] = useState<CountryCode>(selectedCountry);
   const [formattedValue, setFormattedValue] = useState(value);
   const [isFocused, setIsFocused] = useState(false);
+  const [isDetectingCountry, setIsDetectingCountry] = useState(false);
 
   // Фильтрация стран по поисковому запросу
   const filteredCountries = COUNTRIES_WITH_FLAGS.filter(country =>
@@ -107,6 +111,27 @@ export default function InternationalPhoneInput({
 
   // Получение текущей страны
   const currentCountryData = COUNTRIES_WITH_FLAGS.find(c => c.code === currentCountry);
+
+  // Автоопределение страны при загрузке компонента
+  useEffect(() => {
+    if (autoDetectCountry && !isDetectingCountry) {
+      setIsDetectingCountry(true);
+      console.log('🔍 Автоопределение страны для телефонного номера...');
+      
+      autoDetectUserCountry()
+        .then((detectedCountry) => {
+          console.log(`✅ Автоопределена страна: ${detectedCountry}`);
+          setCurrentCountry(detectedCountry);
+          onCountryChange?.(detectedCountry);
+        })
+        .catch((error) => {
+          console.error('❌ Ошибка автоопределения страны:', error);
+        })
+        .finally(() => {
+          setIsDetectingCountry(false);
+        });
+    }
+  }, [autoDetectCountry, onCountryChange]);
 
   useEffect(() => {
     // Форматирование номера при изменении
@@ -169,12 +194,21 @@ export default function InternationalPhoneInput({
               (countryPickerVisible || isFocused) && styles.countryButtonActive,
               error && styles.countryButtonError
             ]}
-            onPress={() => setCountryPickerVisible(true)}
-            disabled={disabled}
+            onPress={() => setCountryPickerVisible(!countryPickerVisible)}
+            disabled={disabled || isDetectingCountry}
             activeOpacity={0.7}
           >
-            <Text style={styles.flag}>{currentCountryData?.flag || '🌍'}</Text>
-            <Text style={styles.callingCode}>{currentCountryData?.callingCode || '+X'}</Text>
+            {isDetectingCountry ? (
+              <>
+                <Text style={styles.flag}>🔍</Text>
+                <Text style={[styles.callingCode, styles.detectingText]}>...</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.flag}>{currentCountryData?.flag || '🌍'}</Text>
+                <Text style={styles.callingCode}>{currentCountryData?.callingCode || '+X'}</Text>
+              </>
+            )}
           </TouchableOpacity>
         ) : null}
         
@@ -194,21 +228,22 @@ export default function InternationalPhoneInput({
         />
       </View>
       
+      {isDetectingCountry ? (
+        <Text style={styles.detectingHelperText}>🔍 Detecting your country...</Text>
+      ) : null}
+      
       {(value && !isValid) ? (
         <Text style={styles.helperText}>Invalid phone number</Text>
       ) : null}
-      {(!value || isValid) ? (
+      {(!value || isValid) && !isDetectingCountry ? (
         <Text style={styles.hintText}>{getHint()}</Text>
       ) : null}
 
-      <Portal>
-        <Modal
-          visible={countryPickerVisible}
-          onDismiss={() => setCountryPickerVisible(false)}
-        >
-          <View style={styles.modalContainer}>
-            <Surface style={styles.modalSurface}>
-            <Text style={styles.modalTitle}>Select country</Text>
+      {/* Country Picker */}
+      {countryPickerVisible && (
+        <Card style={styles.countryPicker}>
+          <Card.Content>
+            <Text style={styles.pickerTitle}>Select country</Text>
             
             <Searchbar
               placeholder="Search country..."
@@ -218,7 +253,7 @@ export default function InternationalPhoneInput({
             />
             
             <FlatList
-              data={filteredCountries}
+              data={filteredCountries.slice(0, 10)} // Ограничиваем до 10 стран для лучшей производительности
               renderItem={renderCountryItem}
               keyExtractor={item => item.code}
               style={styles.countryList}
@@ -232,10 +267,9 @@ export default function InternationalPhoneInput({
             >
               Close
             </Button>
-          </Surface>
-          </View>
-        </Modal>
-      </Portal>
+          </Card.Content>
+        </Card>
+      )}
     </View>
   );
 }
@@ -286,31 +320,23 @@ const styles = StyleSheet.create({
   phoneInputWithCountry: {
     // Дополнительные стили для поля с селектором страны
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalSurface: {
+  countryPicker: {
+    marginTop: 8,
+    elevation: 4,
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    maxHeight: '80%',
-    elevation: 8,
   },
-  modalTitle: {
-    fontSize: 20,
+  pickerTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
     color: '#1C1B1F',
   },
   searchBar: {
     marginBottom: 16,
   },
   countryList: {
-    maxHeight: 400,
+    maxHeight: 300,
   },
   countryItem: {
     paddingVertical: 12,
@@ -323,7 +349,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   closeButton: {
-    marginTop: 20,
+    marginTop: 16,
   },
   helperText: {
     fontSize: 12,
@@ -336,5 +362,18 @@ const styles = StyleSheet.create({
     color: '#49454F',
     marginTop: 4,
     marginLeft: 16,
+  },
+  detectingText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6750A4',
+    fontStyle: 'italic',
+  },
+  detectingHelperText: {
+    fontSize: 12,
+    color: '#6750A4',
+    marginTop: 4,
+    marginLeft: 16,
+    fontStyle: 'italic',
   },
 }); 

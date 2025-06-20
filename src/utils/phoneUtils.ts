@@ -1,4 +1,281 @@
 import { parsePhoneNumber, isValidPhoneNumber, formatIncompletePhoneNumber, AsYouType, CountryCode, PhoneNumber } from 'libphonenumber-js';
+import * as Location from 'expo-location';
+
+// Маппинг ISO кодов стран к телефонным кодам
+const COUNTRY_TO_PHONE_CODE_MAPPING: Record<string, CountryCode> = {
+  'US': 'US', // United States
+  'CA': 'CA', // Canada
+  'GB': 'GB', // United Kingdom
+  'DE': 'DE', // Germany
+  'FR': 'FR', // France
+  'ES': 'ES', // Spain
+  'IT': 'IT', // Italy
+  'RU': 'RU', // Russia
+  'CN': 'CN', // China
+  'JP': 'JP', // Japan
+  'KR': 'KR', // South Korea
+  'AU': 'AU', // Australia
+  'IN': 'IN', // India
+  'BR': 'BR', // Brazil
+  'MX': 'MX', // Mexico
+  'SE': 'SE', // Sweden
+  'NO': 'NO', // Norway
+  'FI': 'FI', // Finland
+  'DK': 'DK', // Denmark
+  'NL': 'NL', // Netherlands
+  'BE': 'BE', // Belgium
+  'CH': 'CH', // Switzerland
+  'AT': 'AT', // Austria
+  'PL': 'PL', // Poland
+  'CZ': 'CZ', // Czech Republic
+  'UA': 'UA', // Ukraine
+  'AR': 'AR', // Argentina
+  'CL': 'CL', // Chile
+  'CO': 'CO', // Colombia
+  'PE': 'PE', // Peru
+  'AE': 'AE', // United Arab Emirates
+  'SA': 'SA', // Saudi Arabia
+  'ZA': 'ZA', // South Africa
+  'EG': 'EG', // Egypt
+  'IL': 'IL', // Israel
+  'TR': 'TR', // Turkey
+  'SG': 'SG', // Singapore
+  'HK': 'HK', // Hong Kong
+  'TW': 'TW', // Taiwan
+  'TH': 'TH', // Thailand
+  'MY': 'MY', // Malaysia
+  'ID': 'ID', // Indonesia
+  'PH': 'PH', // Philippines
+  'VN': 'VN', // Vietnam
+  'NZ': 'NZ', // New Zealand
+};
+
+/**
+ * Определяет страну пользователя по геолокации
+ */
+export const detectUserCountryByLocation = async (): Promise<CountryCode | null> => {
+  try {
+    console.log('🌍 Запрос разрешений на геолокацию...');
+    
+    // Запрашиваем разрешение на геолокацию
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    
+    if (status !== 'granted') {
+      console.log('❌ Разрешение на геолокацию не предоставлено');
+      return null;
+    }
+
+    console.log('📍 Получение текущего местоположения с таймаутом...');
+    
+    // Функция с таймаутом для геолокации
+    const locationWithTimeout = Promise.race([
+      Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      }),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Location timeout')), 3000) // 3 секунды таймаут
+      )
+    ]);
+
+    const location = await locationWithTimeout;
+    console.log(`📍 Местоположение получено: ${location.coords.latitude}, ${location.coords.longitude}`);
+
+    console.log('🗺️ Выполнение обратного геокодирования с таймаутом...');
+    
+    // Обратное геокодирование с таймаутом
+    const geocodeWithTimeout = Promise.race([
+      Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      }),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Geocoding timeout')), 3000) // 3 секунды таймаут
+      )
+    ]);
+
+    const reverseGeocode = await geocodeWithTimeout;
+
+    if (reverseGeocode && reverseGeocode.length > 0) {
+      const address = reverseGeocode[0];
+      const isoCountryCode = address.isoCountryCode;
+      
+      console.log(`🏁 Определена страна: ${isoCountryCode} (${address.country || 'Unknown'})`);
+      
+      if (isoCountryCode && COUNTRY_TO_PHONE_CODE_MAPPING[isoCountryCode]) {
+        return COUNTRY_TO_PHONE_CODE_MAPPING[isoCountryCode];
+      }
+    }
+
+    console.log('❓ Не удалось определить страну по геолокации');
+    return null;
+  } catch (error: any) {
+    if (error?.message === 'Location timeout') {
+      console.warn('⏱️ Таймаут при получении местоположения (3 сек)');
+    } else if (error?.message === 'Geocoding timeout') {
+      console.warn('⏱️ Таймаут при обратном геокодировании (3 сек)');
+    } else {
+      console.error('❌ Ошибка при определении страны по геолокации:', error);
+    }
+    return null;
+  }
+};
+
+/**
+ * Определяет страну пользователя по часовому поясу (fallback метод)
+ */
+export const detectUserCountryByTimezone = (): CountryCode | null => {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    console.log(`🕐 Определение страны по часовому поясу: ${timezone}`);
+
+    // Расширенное сопоставление часовых поясов со странами
+    const timezoneToCountry: Record<string, CountryCode> = {
+      // США
+      'America/New_York': 'US',
+      'America/Los_Angeles': 'US',
+      'America/Chicago': 'US',
+      'America/Denver': 'US',
+      'America/Phoenix': 'US',
+      'America/Anchorage': 'US',
+      'Pacific/Honolulu': 'US',
+      
+      // Канада
+      'America/Toronto': 'CA',
+      'America/Vancouver': 'CA',
+      'America/Montreal': 'CA',
+      'America/Winnipeg': 'CA',
+      'America/Halifax': 'CA',
+      
+      // Великобритания и Ирландия
+      'Europe/London': 'GB',
+      'Europe/Dublin': 'GB',
+      
+      // Западная Европа
+      'Europe/Berlin': 'DE',
+      'Europe/Paris': 'FR',
+      'Europe/Madrid': 'ES',
+      'Europe/Rome': 'IT',
+      'Europe/Amsterdam': 'NL',
+      'Europe/Brussels': 'BE',
+      'Europe/Zurich': 'CH',
+      'Europe/Vienna': 'AT',
+      'Europe/Stockholm': 'SE',
+      'Europe/Oslo': 'NO',
+      'Europe/Helsinki': 'FI',
+      'Europe/Copenhagen': 'DK',
+      
+      // Восточная Европа
+      'Europe/Warsaw': 'PL',
+      'Europe/Prague': 'CZ',
+      'Europe/Kiev': 'UA',
+      'Europe/Bucharest': 'RU', // Ближе к России по часовому поясу
+      
+      // Россия - все основные часовые пояса
+      'Europe/Moscow': 'RU',
+      'Europe/Kaliningrad': 'RU',
+      'Europe/Volgograd': 'RU',
+      'Europe/Samara': 'RU',
+      'Asia/Yekaterinburg': 'RU',    // ← Это твой часовой пояс!
+      'Asia/Omsk': 'RU',
+      'Asia/Novosibirsk': 'RU',
+      'Asia/Krasnoyarsk': 'RU',
+      'Asia/Irkutsk': 'RU',
+      'Asia/Yakutsk': 'RU',
+      'Asia/Vladivostok': 'RU',
+      'Asia/Magadan': 'RU',
+      'Asia/Kamchatka': 'RU',
+      'Asia/Sakhalin': 'RU',
+      'Asia/Chukotka': 'RU',
+      
+      // Азия
+      'Asia/Shanghai': 'CN',
+      'Asia/Beijing': 'CN',
+      'Asia/Hong_Kong': 'HK',
+      'Asia/Tokyo': 'JP',
+      'Asia/Seoul': 'KR',
+      'Asia/Kolkata': 'IN',
+      'Asia/Mumbai': 'IN',
+      'Asia/Singapore': 'SG',
+      'Asia/Bangkok': 'TH',
+      'Asia/Kuala_Lumpur': 'MY',
+      'Asia/Jakarta': 'ID',
+      'Asia/Manila': 'PH',
+      'Asia/Ho_Chi_Minh': 'VN',
+      'Asia/Taipei': 'TW',
+      
+      // Ближний Восток
+      'Asia/Dubai': 'AE',
+      'Asia/Riyadh': 'SA',
+      'Asia/Tel_Aviv': 'IL',
+      'Europe/Istanbul': 'TR',
+      
+      // Африка
+      'Africa/Cairo': 'EG',
+      'Africa/Johannesburg': 'ZA',
+      
+      // Океания
+      'Australia/Sydney': 'AU',
+      'Australia/Melbourne': 'AU',
+      'Australia/Perth': 'AU',
+      'Pacific/Auckland': 'NZ',
+      
+      // Южная Америка
+      'America/Sao_Paulo': 'BR',
+      'America/Buenos_Aires': 'AR',
+      'America/Santiago': 'CL',
+      'America/Lima': 'PE',
+      'America/Bogota': 'CO',
+      'America/Mexico_City': 'MX',
+    };
+
+    if (timezoneToCountry[timezone]) {
+      console.log(`🏁 Определена страна по часовому поясу: ${timezoneToCountry[timezone]} (${timezone})`);
+      return timezoneToCountry[timezone];
+    }
+
+    // Дополнительная логика для российских часовых поясов
+    if (timezone.includes('Asia/') && (timezone.includes('Russia') || timezone.includes('Yekaterinburg') || timezone.includes('Omsk') || timezone.includes('Novosibirsk'))) {
+      console.log(`🇷🇺 Обнаружен российский часовой пояс: ${timezone}, устанавливаем RU`);
+      return 'RU';
+    }
+
+    console.log(`❓ Неизвестный часовой пояс: ${timezone}`);
+    return null;
+  } catch (error) {
+    console.error('❌ Ошибка при определении страны по часовому поясу:', error);
+    return null;
+  }
+};
+
+/**
+ * Автоматическое определение страны пользователя (комбинированный метод)
+ */
+export const autoDetectUserCountry = async (): Promise<CountryCode> => {
+  try {
+    console.log('🔍 Начинаем автоопределение страны пользователя...');
+
+    // Сначала пробуем определить по геолокации
+    const locationCountry = await detectUserCountryByLocation();
+    if (locationCountry) {
+      console.log(`✅ Страна определена по геолокации: ${locationCountry}`);
+      return locationCountry;
+    }
+
+    // Fallback: определяем по часовому поясу
+    const timezoneCountry = detectUserCountryByTimezone();
+    if (timezoneCountry) {
+      console.log(`✅ Страна определена по часовому поясу: ${timezoneCountry}`);
+      return timezoneCountry;
+    }
+
+    // Если ничего не получилось, возвращаем США по умолчанию
+    console.log('⚠️ Не удалось определить страну, используем US по умолчанию');
+    return 'US';
+  } catch (error) {
+    console.error('❌ Критическая ошибка автоопределения страны:', error);
+    return 'US';
+  }
+};
 
 /**
  * Определяет код страны по номеру телефона или возвращает null

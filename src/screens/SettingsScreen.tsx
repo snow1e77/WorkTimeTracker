@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { 
   Card, 
   Title, 
@@ -9,8 +9,7 @@ import {
   Text,
   TextInput,
   Chip,
-  Dialog,
-  Portal
+  HelperText
 } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { formatInternationalPhoneNumber } from '../utils/phoneUtils';
@@ -36,102 +35,84 @@ export default function SettingsScreen() {
   const [privacyStartTime, setPrivacyStartTime] = useState('18:00');
   const [privacyEndTime, setPrivacyEndTime] = useState('08:00');
 
-  // Dialogs
-  const [showTimeDialog, setShowTimeDialog] = useState(false);
-  const [editingTime, setEditingTime] = useState<'start' | 'end' | null>(null);
-  const [tempTime, setTempTime] = useState('');
+  // Status messages
+  const [statusMessage, setStatusMessage] = useState('');
+  const [isEditing, setIsEditing] = useState<'start' | 'end' | null>(null);
 
   const handleGpsToggle = (value: boolean) => {
     setGpsEnabled(value);
     if (!value) {
-      Alert.alert(
-        'GPS Disabled',
-        'Automatic time tracking will be unavailable',
-        [{ text: 'OK' }]
-      );
+      setStatusMessage('GPS disabled - automatic time tracking will be unavailable');
+    } else {
+      setStatusMessage('GPS enabled');
     }
   };
 
   const handlePrivacyToggle = (value: boolean) => {
     setPrivacyMode(value);
     if (value) {
-      Alert.alert(
-        'Privacy Mode',
-        'GPS tracking will be disabled during specified hours',
-        [{ text: 'OK' }]
-      );
+      setStatusMessage('Privacy mode enabled - GPS tracking will be disabled during specified hours');
+    } else {
+      setStatusMessage('Privacy mode disabled');
     }
   };
 
   const handleTimeEdit = (type: 'start' | 'end') => {
-    setEditingTime(type);
-    setTempTime(type === 'start' ? privacyStartTime : privacyEndTime);
-    setShowTimeDialog(true);
+    setIsEditing(type);
   };
 
-  const handleTimeSave = () => {
-    if (editingTime === 'start') {
-      setPrivacyStartTime(tempTime);
-    } else if (editingTime === 'end') {
-      setPrivacyEndTime(tempTime);
+  const handleTimeSave = (time: string) => {
+    if (isEditing === 'start') {
+      setPrivacyStartTime(time);
+      setStatusMessage('Privacy start time updated');
+    } else if (isEditing === 'end') {
+      setPrivacyEndTime(time);
+      setStatusMessage('Privacy end time updated');
     }
-    setShowTimeDialog(false);
-    setEditingTime(null);
+    setIsEditing(null);
   };
 
   const resetSettings = () => {
-    Alert.alert(
-      'Reset Settings',
-      'Restore default settings?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Reset', 
-          style: 'destructive',
-          onPress: () => {
-            setGpsEnabled(true);
-            setBackgroundTracking(true);
-            setHighAccuracy(true);
-            setUpdateInterval('5');
-            setNotificationsEnabled(true);
-            setViolationAlerts(true);
-            setShiftReminders(true);
-            setSoundEnabled(true);
-            setPrivacyMode(false);
-            setPrivacyStartTime('18:00');
-            setPrivacyEndTime('08:00');
-            Alert.alert('Done', 'Settings reset');
-          }
-        }
-      ]
-    );
+    setGpsEnabled(true);
+    setBackgroundTracking(true);
+    setHighAccuracy(true);
+    setUpdateInterval('5');
+    setNotificationsEnabled(true);
+    setViolationAlerts(true);
+    setShiftReminders(true);
+    setSoundEnabled(true);
+    setPrivacyMode(false);
+    setPrivacyStartTime('18:00');
+    setPrivacyEndTime('08:00');
+    setStatusMessage('Settings restored to defaults');
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out of your account?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Sign Out', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-            } catch (error) {
-              Alert.alert('Error', 'Unable to sign out');
-            }
-          }
-        }
-      ]
-    );
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setStatusMessage('Signed out successfully');
+    } catch (error) {
+      setStatusMessage('Unable to sign out');
+    }
   };
 
-
+  const handleSaveSettings = () => {
+    setStatusMessage('Settings saved successfully');
+  };
 
   return (
     <ScrollView style={styles.container}>
+      {/* Status Message */}
+      {statusMessage ? (
+        <Card style={styles.statusCard}>
+          <Card.Content>
+            <HelperText type="info" visible={true}>
+              {statusMessage}
+            </HelperText>
+          </Card.Content>
+        </Card>
+      ) : null}
+
       {/* User Profile */}
       <Card style={styles.card}>
         <Card.Content>
@@ -309,6 +290,18 @@ export default function SettingsScreen() {
                 )}
               />
 
+              {isEditing === 'start' && (
+                <View style={styles.timeEditContainer}>
+                  <TextInput
+                    label="Start Time (HH:MM)"
+                    value={privacyStartTime}
+                    onChangeText={handleTimeSave}
+                    placeholder="18:00"
+                    style={styles.timeInput}
+                  />
+                </View>
+              )}
+
               <List.Item
                 title="End of privacy time"
                 description={`Enable from ${privacyEndTime}`}
@@ -320,6 +313,18 @@ export default function SettingsScreen() {
                   </Chip>
                 )}
               />
+
+              {isEditing === 'end' && (
+                <View style={styles.timeEditContainer}>
+                  <TextInput
+                    label="End Time (HH:MM)"
+                    value={privacyEndTime}
+                    onChangeText={handleTimeSave}
+                    placeholder="08:00"
+                    style={styles.timeInput}
+                  />
+                </View>
+              )}
             </>
           )}
         </Card.Content>
@@ -341,7 +346,7 @@ export default function SettingsScreen() {
 
           <Button
             mode="contained"
-            onPress={() => Alert.alert('Saved', 'Settings saved')}
+            onPress={handleSaveSettings}
             style={styles.actionButton}
             icon="content-save"
           >
@@ -360,28 +365,6 @@ export default function SettingsScreen() {
           </Button>
         </Card.Content>
       </Card>
-
-      {/* Time Edit Dialog */}
-      <Portal>
-        <Dialog visible={showTimeDialog} onDismiss={() => setShowTimeDialog(false)}>
-          <Dialog.Title>
-            {editingTime === 'start' ? 'Start Time' : 'End Time'}
-          </Dialog.Title>
-          <Dialog.Content>
-            <TextInput
-              label="Time (HH:MM)"
-              value={tempTime}
-              onChangeText={setTempTime}
-              placeholder="End Time"
-              style={styles.timeInput}
-            />
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setShowTimeDialog(false)}>Cancel</Button>
-            <Button onPress={handleTimeSave}>Save</Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
     </ScrollView>
   );
 }
@@ -391,6 +374,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
     padding: 16,
+  },
+  statusCard: {
+    marginBottom: 16,
+    backgroundColor: '#e3f2fd',
   },
   card: {
     marginBottom: 16,
@@ -409,6 +396,12 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     marginTop: 16,
+  },
+  timeEditContainer: {
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+    marginVertical: 8,
+    borderRadius: 8,
   },
   timeInput: {
     marginVertical: 8,

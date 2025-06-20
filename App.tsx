@@ -72,31 +72,33 @@ const AppNavigator = () => {
           },
         }}
       >
-        {/* Authentication screens - всегда доступны */}
-        <Stack.Screen 
-          name="Login" 
-          component={LoginScreen} 
-          options={{ title: 'Login', headerShown: false }}
-        />
-        <Stack.Screen 
-          name="Register" 
-          component={RegisterScreen} 
-          options={{ title: 'Register', headerShown: false }}
-        />
-        <Stack.Screen 
-          name="VerifyPhone" 
-          component={VerifyPhoneScreen} 
-          options={{ title: 'Verify Phone Number' }}
-        />
-        <Stack.Screen 
-          name="ResetPassword" 
-          component={ResetPasswordScreen} 
-          options={{ title: 'Reset Password', headerShown: false }}
-        />
-        
-        {/* Main screens - доступны только для аутентифицированных пользователей */}
-        {isAuthenticated ? (
+        {!isAuthenticated ? (
           <>
+            {/* Authentication screens - доступны только для неавторизованных пользователей */}
+            <Stack.Screen 
+              name="Login" 
+              component={LoginScreen} 
+              options={{ title: 'Login', headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Register" 
+              component={RegisterScreen} 
+              options={{ title: 'Register', headerShown: false }}
+            />
+            <Stack.Screen 
+              name="VerifyPhone" 
+              component={VerifyPhoneScreen} 
+              options={{ title: 'Verify Phone Number' }}
+            />
+            <Stack.Screen 
+              name="ResetPassword" 
+              component={ResetPasswordScreen} 
+              options={{ title: 'Reset Password', headerShown: false }}
+            />
+          </>
+        ) : (
+          <>
+            {/* Main screens - доступны только для аутентифицированных пользователей */}
             <Stack.Screen 
               name="Home" 
               component={HomeScreen} 
@@ -143,7 +145,7 @@ const AppNavigator = () => {
               options={{ title: 'User Management' }}
             />
           </>
-        ) : null}
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

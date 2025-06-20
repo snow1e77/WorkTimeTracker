@@ -6,96 +6,107 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  Alert,
   RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ConstructionSite } from '../types';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList, ConstructionSite } from '../types';
 import { DatabaseService } from '../services/DatabaseService';
 
+type SiteManagementScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'SiteManagement'>;
+
 const SiteManagementScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<SiteManagementScreenNavigationProp>();
   const [sites, setSites] = useState<ConstructionSite[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const dbService = DatabaseService.getInstance();
+  const [statusMessage, setStatusMessage] = useState('');
+  const [statusType, setStatusType] = useState<'error' | 'info'>('info');
 
-  const loadSites = async () => {
-    setRefreshing(true);
-    try {
-      // Load real sites from database
-      const constructionSites = await dbService.getConstructionSites();
-      setSites(constructionSites);
-    } catch (error) {
-      console.error('Error loading sites:', error);
-      Alert.alert('Error', 'Failed to load sites');
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  const dbService = DatabaseService.getInstance();
 
   useEffect(() => {
     loadSites();
   }, []);
 
-  const deleteSite = (siteId: string) => {
-    Alert.alert(
-      'Delete Site',
-      'Are you sure you want to delete this site?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await dbService.deleteConstructionSite(siteId);
-              setSites(sites.filter(site => site.id !== siteId));
-            } catch (error) {
-              console.error('Error deleting site:', error);
-              Alert.alert('Error', 'Failed to delete site');
-            }
-          },
-        },
-      ]
-    );
+  const loadSites = async () => {
+    setRefreshing(true);
+    setStatusMessage('');
+    try {
+      const allSites = await dbService.getConstructionSites();
+      setSites(allSites);
+    } catch (error) {
+      console.error('Error loading sites:', error);
+      setStatusMessage('Failed to load sites');
+      setStatusType('error');
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  const toggleSiteStatus = async (siteId: string) => {
+  const handleDeleteSite = async (siteId: string) => {
     try {
-      const site = sites.find(s => s.id === siteId);
-      if (site) {
-        await dbService.updateSiteStatus(siteId, !site.isActive);
-        setSites(sites.map(site => 
-          site.id === siteId 
-            ? { ...site, isActive: !site.isActive }
-            : site
-        ));
-      }
+      await dbService.deleteConstructionSite(siteId);
+      setStatusMessage('Site deleted successfully');
+      setStatusType('info');
+      loadSites();
+    } catch (error) {
+      console.error('Error deleting site:', error);
+      setStatusMessage('Failed to delete site');
+      setStatusType('error');
+    }
+  };
+
+  const handleStatusChange = async (siteId: string, isActive: boolean) => {
+    try {
+      await dbService.updateSiteStatus(siteId, !isActive);
+      setStatusMessage(`Site ${!isActive ? 'activated' : 'deactivated'} successfully`);
+      setStatusType('info');
+      loadSites();
     } catch (error) {
       console.error('Error changing site status:', error);
-      Alert.alert('Error', 'Failed to change site status');
+      setStatusMessage('Failed to change site status');
+      setStatusType('error');
     }
+  };
+
+  const handleEditSite = () => {
+    setStatusMessage('Editing feature will be available in the next version');
+    setStatusType('info');
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
+        <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Text style={styles.backButtonText}>‹ Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Sites</Text>
-        <TouchableOpacity
+        <Text style={styles.title}>Site Management</Text>
+        <TouchableOpacity 
           style={styles.addButton}
-          onPress={() => navigation.navigate('CreateSite' as never)}
+          onPress={() => navigation.navigate('CreateSite')}
         >
-          <Text style={styles.addButtonText}>+ Create</Text>
+          <Text style={styles.addButtonText}>+ Add</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView
+      {statusMessage ? (
+        <View style={[styles.statusCard, statusType === 'error' ? styles.statusError : styles.statusInfo]}>
+          <Text style={[styles.statusText, statusType === 'error' ? styles.statusTextError : styles.statusTextInfo]}>
+            {statusMessage}
+          </Text>
+          <TouchableOpacity
+            style={styles.dismissButton}
+            onPress={() => setStatusMessage('')}
+          >
+            <Text style={styles.dismissButtonText}>×</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      <ScrollView 
         style={styles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={loadSites} />
@@ -103,10 +114,16 @@ const SiteManagementScreen: React.FC = () => {
       >
         {sites.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No Sites</Text>
+            <Text style={styles.emptyTitle}>No Sites Found</Text>
             <Text style={styles.emptySubtitle}>
-              Create your first site to get started
+              Create your first work site to get started
             </Text>
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={() => navigation.navigate('CreateSite')}
+            >
+              <Text style={styles.createButtonText}>Create First Site</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           sites.map((site) => (
@@ -115,42 +132,38 @@ const SiteManagementScreen: React.FC = () => {
                 <View style={styles.siteInfo}>
                   <Text style={styles.siteName}>{site.name}</Text>
                   <Text style={styles.siteAddress}>{site.address}</Text>
-                  <Text style={styles.siteRadius}>
-                    Geofence radius: {site.radius}m
-                  </Text>
+                  <Text style={styles.siteRadius}>Radius: {site.radius}m</Text>
                 </View>
                 <View style={[
-                  styles.statusBadge,
-                  { backgroundColor: site.isActive ? '#27ae60' : '#e74c3c' }
+                  styles.statusBadge, 
+                  site.isActive ? styles.activeBadge : styles.inactiveBadge
                 ]}>
-                  <Text style={styles.statusText}>
+                  <Text style={styles.statusBadgeText}>
                     {site.isActive ? 'Active' : 'Inactive'}
                   </Text>
                 </View>
               </View>
 
               <View style={styles.siteActions}>
-                <TouchableOpacity
+                <TouchableOpacity 
                   style={[styles.actionButton, styles.editButton]}
-                  onPress={() => {
-                    Alert.alert('Edit', 'Editing feature will be available in the next version');
-                  }}
+                  onPress={handleEditSite}
                 >
                   <Text style={styles.actionButtonText}>Edit</Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.toggleButton]}
-                  onPress={() => toggleSiteStatus(site.id)}
+
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.statusButton]}
+                  onPress={() => handleStatusChange(site.id, site.isActive)}
                 >
                   <Text style={styles.actionButtonText}>
                     {site.isActive ? 'Deactivate' : 'Activate'}
                   </Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity
+
+                <TouchableOpacity 
                   style={[styles.actionButton, styles.deleteButton]}
-                  onPress={() => deleteSite(site.id)}
+                  onPress={() => handleDeleteSite(site.id)}
                 >
                   <Text style={styles.deleteButtonText}>Delete</Text>
                 </TouchableOpacity>
@@ -264,7 +277,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     height: 24,
   },
-  statusText: {
+  activeBadge: {
+    backgroundColor: '#2ecc71',
+  },
+  inactiveBadge: {
+    backgroundColor: '#e74c3c',
+  },
+  statusBadgeText: {
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
@@ -282,7 +301,7 @@ const styles = StyleSheet.create({
   editButton: {
     backgroundColor: '#3498db',
   },
-  toggleButton: {
+  statusButton: {
     backgroundColor: '#f39c12',
   },
   deleteButton: {
@@ -297,6 +316,52 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
+  },
+  statusCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    margin: 20,
+    padding: 15,
+    borderRadius: 8,
+    elevation: 2,
+  },
+  statusError: {
+    backgroundColor: '#ffebee',
+  },
+  statusInfo: {
+    backgroundColor: '#e3f2fd',
+  },
+  statusText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  statusTextError: {
+    color: '#c62828',
+  },
+  statusTextInfo: {
+    color: '#1976d2',
+  },
+  dismissButton: {
+    padding: 5,
+  },
+  dismissButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  createButton: {
+    backgroundColor: '#27ae60',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 6,
+    marginTop: 20,
+  },
+  createButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
