@@ -61,7 +61,6 @@ const AppNavigator = () => {
     <NavigationContainer ref={navigationRef}>
       <StatusBar style="auto" />
       <Stack.Navigator 
-        initialRouteName="Login"
         screenOptions={{
           headerStyle: {
             backgroundColor: '#2196F3',
