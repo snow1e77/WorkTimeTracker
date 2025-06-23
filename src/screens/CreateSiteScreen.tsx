@@ -36,12 +36,12 @@ const CreateSiteScreen: React.FC = () => {
 
   const [showMap, setShowMap] = useState(false);
 
-  const handleMapPress = (event: any) => {
-    const coordinate = event.nativeEvent.coordinate;
+  const handleMapPress = (event: { nativeEvent: { coordinate: { latitude: number; longitude: number } } }) => {
+    const { latitude, longitude } = event.nativeEvent.coordinate;
     setFormData({
       ...formData,
-      latitude: coordinate.latitude,
-      longitude: coordinate.longitude,
+      latitude,
+      longitude,
     });
   };
 

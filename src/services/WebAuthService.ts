@@ -115,12 +115,12 @@ export class WebAuthService {
     return false;
   }
 
-  async register(data: any): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+  async register(data: Record<string, unknown>): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
     // В веб версии регистрация не поддерживается
     return { success: false, error: 'Registration not supported in web version' };
   }
 
-  async resetPassword(data: any): Promise<{ success: boolean; error?: string }> {
+  async resetPassword(data: Record<string, unknown>): Promise<{ success: boolean; error?: string }> {
     // В веб версии сброс пароля не поддерживается
     return { success: false, error: 'Password reset not supported in web version' };
   }

@@ -166,7 +166,7 @@ export class WebSocketService {
   }
 
   // Отправка запроса синхронизации
-  async requestSync(data: any): Promise<void> {
+  async requestSync(data: Record<string, unknown>): Promise<void> {
     if (!this.isConnected || !this.socket) {
       console.warn('WebSocket not connected, cannot request sync');
       return;
@@ -227,13 +227,13 @@ export class WebSocketService {
   }
 
   // Обработчики входящих событий
-  private handleSyncResponse(data: any): void {
+  private handleSyncResponse(data: Record<string, unknown>): void {
     // Здесь можно добавить логику обработки ответа синхронизации
     // Например, обновление локального состояния
     console.log('Processing sync response:', data);
   }
 
-  private handleNewAssignment(data: any): void {
+  private handleNewAssignment(data: Record<string, unknown>): void {
     // Уведомляем пользователя о новом назначении
     // Можно показать push-уведомление или обновить UI
     console.log('Processing new assignment:', data);
@@ -242,17 +242,17 @@ export class WebSocketService {
     // или обновления локальной базы данных
   }
 
-  private handleAssignmentUpdate(data: any): void {
+  private handleAssignmentUpdate(data: Record<string, unknown>): void {
     // Обрабатываем обновление назначения
     console.log('Processing assignment update:', data);
   }
 
-  private handleProfileUpdate(data: any): void {
+  private handleProfileUpdate(data: Record<string, unknown>): void {
     // Обрабатываем обновление профиля пользователя
     console.log('Processing profile update:', data);
   }
 
-  private handleSiteUpdate(data: any): void {
+  private handleSiteUpdate(data: Record<string, unknown>): void {
     // Обрабатываем обновление объекта
     console.log('Processing site update:', data);
   }
@@ -292,21 +292,21 @@ export class WebSocketService {
   }
 
   // Подписка на конкретное событие
-  on(event: string, callback: (data: any) => void): void {
+  on(event: string, callback: (data: Record<string, unknown>) => void): void {
     if (this.socket) {
       this.socket.on(event, callback);
     }
   }
 
   // Отписка от события
-  off(event: string, callback?: (data: any) => void): void {
+  off(event: string, callback?: (data: Record<string, unknown>) => void): void {
     if (this.socket) {
       this.socket.off(event, callback);
     }
   }
 
   // Отправка произвольного события
-  emit(event: string, data: any): void {
+  emit(event: string, data: Record<string, unknown>): void {
     if (this.isConnected && this.socket) {
       this.socket.emit(event, data);
     } else {

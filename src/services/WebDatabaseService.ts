@@ -1,4 +1,4 @@
-import { AuthUser, SMSVerification, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation } from '../types';
+import { AuthUser, SMSVerification, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation, ConstructionSite, WorkReport, LocationEvent, Chat, ChatMessage } from '../types';
 
 // Веб-версия DatabaseService для работы с localStorage
 export class WebDatabaseService {
@@ -94,12 +94,11 @@ export class WebDatabaseService {
 
   async getAllUsers(): Promise<AuthUser[]> {
     const usersData = localStorage.getItem('worktime_users');
-    if (!usersData) {
-      return [];
-    }
+    if (!usersData) return [];
+    
     const users = JSON.parse(usersData);
     // Преобразуем строки createdAt обратно в Date объекты
-    return users.map((user: any) => ({
+    return users.map((user: AuthUser) => ({
       ...user,
       createdAt: typeof user.createdAt === 'string' ? new Date(user.createdAt) : user.createdAt
     }));
@@ -152,7 +151,7 @@ export class WebDatabaseService {
   }
 
   // Методы для строительных площадок (заглушка)
-  async getConstructionSites(): Promise<any[]> {
+  async getConstructionSites(): Promise<ConstructionSite[]> {
     const sitesData = localStorage.getItem('worktime_sites');
     if (!sitesData) {
       const defaultSites = [
@@ -184,7 +183,7 @@ export class WebDatabaseService {
     }
     const sites = JSON.parse(sitesData);
     // Преобразуем строки createdAt обратно в Date объекты
-    return sites.map((site: any) => ({
+    return sites.map((site: ConstructionSite) => ({
       ...site,
       createdAt: typeof site.createdAt === 'string' ? new Date(site.createdAt) : site.createdAt
     }));
@@ -206,7 +205,7 @@ export class WebDatabaseService {
   }
 
   // Методы для отчетов о работе (заглушка)
-  async getWorkReports(period: 'today' | 'week' | 'month'): Promise<any[]> {
+  async getWorkReports(period: 'today' | 'week' | 'month'): Promise<WorkReport[]> {
     // Возвращаем демонстрационные данные
     const demoReports = [
       {
@@ -277,7 +276,7 @@ export class WebDatabaseService {
     
     const assignments = JSON.parse(assignmentsData);
     // Преобразуем строки дат обратно в Date объекты
-    return assignments.map((assignment: any) => ({
+    return assignments.map((assignment: UserSiteAssignment) => ({
       ...assignment,
       assignedAt: typeof assignment.assignedAt === 'string' ? new Date(assignment.assignedAt) : assignment.assignedAt,
       validFrom: assignment.validFrom ? (typeof assignment.validFrom === 'string' ? new Date(assignment.validFrom) : assignment.validFrom) : undefined,
@@ -316,7 +315,7 @@ export class WebDatabaseService {
     return assignments.filter(assignment => assignment.siteId === siteId);
   }
 
-  async getUserAssignedSites(userId: string): Promise<any[]> {
+  async getUserAssignedSites(userId: string): Promise<ConstructionSite[]> {
     const assignments = await this.getUserAssignments(userId);
     const sites = await this.getConstructionSites();
     const activeAssignments = assignments.filter(assignment => assignment.isActive);
@@ -327,63 +326,55 @@ export class WebDatabaseService {
   }
 
   // Методы для отслеживания местоположения работников
-  async getUsersCurrentLocations(): Promise<any[]> {
+  async getUsersCurrentLocations(): Promise<LocationEvent[]> {
     // В веб версии возвращаем демонстрационные данные
-    // В реальном приложении это было бы из базы данных
-    const demoLocations = [
+    const demoLocations: LocationEvent[] = [
       {
+        id: 'location-1',
         userId: 'worker-1',
-        userName: 'John Smith',
         latitude: 40.7128,
         longitude: -74.0060,
-        timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 минут назад
+        timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 минут назад
         eventType: 'site_entry',
         siteId: 'site-1',
-        siteName: 'Construction Site Alpha',
         distance: 25,
-        lastUpdate: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
       },
       {
+        id: 'location-2',
         userId: 'worker-2',
-        userName: 'Jane Doe',
         latitude: 40.7589,
         longitude: -73.9851,
-        timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(), // 2 минуты назад
+        timestamp: new Date(Date.now() - 2 * 60 * 1000), // 2 минуты назад
         eventType: 'tracking_update',
         siteId: 'site-2',
-        siteName: 'Construction Site Beta',
         distance: 75,
-        lastUpdate: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
       },
       {
+        id: 'location-3',
         userId: 'worker-3',
-        userName: 'Mike Worker',
         latitude: 40.7505,
         longitude: -73.9934,
-        timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 минут назад
+        timestamp: new Date(Date.now() - 10 * 60 * 1000), // 10 минут назад
         eventType: 'site_exit',
-        siteId: null,
-        siteName: null,
         distance: 250,
-        lastUpdate: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
       },
     ];
     
     return demoLocations;
   }
 
-  async getRecentLocationEvents(userId?: string, limit: number = 100): Promise<any[]> {
+  async getRecentLocationEvents(userId?: string, limit: number = 100): Promise<LocationEvent[]> {
     const eventsData = localStorage.getItem('worktime_location_events');
     if (!eventsData) return [];
     
     let events = JSON.parse(eventsData);
     
     if (userId) {
-      events = events.filter((event: any) => event.userId === userId);
+      events = events.filter((event: LocationEvent) => event.userId === userId);
     }
     
     // Сортируем по времени (новые сначала) и ограничиваем количество
-    events.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    events.sort((a: LocationEvent, b: LocationEvent) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     return events.slice(0, limit);
   }
 
@@ -581,7 +572,7 @@ export class WebDatabaseService {
   }
 
   // Chat system methods
-  async getForemanChats(): Promise<{ success: boolean; data?: any[]; error?: string }> {
+  async getForemanChats(): Promise<{ success: boolean; data?: Chat[]; error?: string }> {
     try {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -602,9 +593,9 @@ export class WebDatabaseService {
           workerName: worker.name,
           foremanId: 'admin-1',
           foremanName: 'Admin User',
-          unreadCount: messages.filter((m: any) => !m.isRead && m.senderId === worker.id).length,
-          currentTask: existingChat?.currentTask || null,
-          lastPhotoTime: messages.find((m: any) => m.messageType === 'photo')?.timestamp || null,
+          unreadCount: messages.filter((m: ChatMessage) => !m.isRead && m.senderId === worker.id).length,
+          currentTask: existingChat?.currentTask || undefined,
+          lastPhotoTime: messages.find((m: ChatMessage) => m.messageType === 'photo')?.timestamp || undefined,
           isActive: true,
           createdAt: new Date(),
           lastMessage: lastMessage ? {
@@ -616,8 +607,12 @@ export class WebDatabaseService {
             messageType: lastMessage.messageType,
             content: lastMessage.content,
             timestamp: new Date(lastMessage.timestamp),
-            isRead: lastMessage.isRead
-          } : null
+            isRead: lastMessage.isRead,
+            photoUri: lastMessage.photoUri,
+            latitude: lastMessage.latitude,
+            longitude: lastMessage.longitude,
+            isPinned: lastMessage.isPinned
+          } : undefined
         };
       });
       
@@ -628,14 +623,14 @@ export class WebDatabaseService {
     }
   }
 
-  async getChatMessages(chatId: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
+  async getChatMessages(chatId: string): Promise<{ success: boolean; data?: ChatMessage[]; error?: string }> {
     try {
       // Extract worker ID from chat ID
       const workerId = chatId.replace('chat-', '');
       const messages = JSON.parse(localStorage.getItem(`worktime_messages_${workerId}`) || '[]');
       
       // Mark messages as read
-      const updatedMessages = messages.map((m: any) => ({ ...m, isRead: true }));
+      const updatedMessages = messages.map((m: ChatMessage) => ({ ...m, isRead: true }));
       localStorage.setItem(`worktime_messages_${workerId}`, JSON.stringify(updatedMessages));
       
       return { success: true, data: messages };
@@ -652,7 +647,7 @@ export class WebDatabaseService {
     photoUri?: string;
     latitude?: number;
     longitude?: number;
-  }): Promise<{ success: boolean; data?: any; error?: string }> {
+  }): Promise<{ success: boolean; data?: ChatMessage; error?: string }> {
     try {
       const workerId = messageData.chatId.replace('chat-', '');
       const messages = JSON.parse(localStorage.getItem(`worktime_messages_${workerId}`) || '[]');
@@ -662,7 +657,7 @@ export class WebDatabaseService {
         chatId: messageData.chatId,
         senderId: 'admin-1',
         senderName: 'Admin User',
-        senderRole: 'admin',
+        senderRole: 'admin' as const,
         messageType: messageData.messageType,
         content: messageData.content,
         photoUri: messageData.photoUri,

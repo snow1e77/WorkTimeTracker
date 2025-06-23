@@ -93,7 +93,7 @@ export class ApiClient {
   }
 
   // Выполнение HTTP запроса
-  async request<T = any>(
+  async request<T = unknown>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
@@ -188,29 +188,29 @@ export class ApiClient {
   }
 
   // Методы для различных типов запросов
-  async get<T = any>(endpoint: string): Promise<ApiResponse<T>> {
+  async get<T = unknown>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
-  async post<T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async post<T = unknown>(endpoint: string, data?: Record<string, unknown>): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async put<T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async put<T = unknown>(endpoint: string, data?: Record<string, unknown>): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async delete<T = any>(endpoint: string): Promise<ApiResponse<T>> {
+  async delete<T = unknown>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
-  async patch<T = any>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  async patch<T = unknown>(endpoint: string, data?: Record<string, unknown>): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,
@@ -238,7 +238,7 @@ export class ApiClient {
   }
 
   // Получение информации о сервере
-  async getServerInfo(): Promise<ApiResponse<any>> {
+  async getServerInfo(): Promise<ApiResponse<Record<string, unknown>>> {
     return this.get('/info');
   }
 

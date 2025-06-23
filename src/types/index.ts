@@ -217,7 +217,7 @@ export interface SyncMetadata {
   version: number;
   deviceId: string;
   syncStatus: 'pending' | 'synced' | 'conflict';
-  conflictData?: any;
+  conflictData?: Record<string, unknown>;
 }
 
 // Пакет данных для синхронизации
@@ -236,8 +236,8 @@ export interface SyncConflict {
   id: string;
   entityType: string;
   entityId: string;
-  localData: any;
-  remoteData: any;
+  localData: Record<string, unknown>;
+  remoteData: Record<string, unknown>;
   timestamp: Date;
   resolution?: 'local' | 'remote' | 'manual';
 }

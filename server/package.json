@@ -17,7 +17,7 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
-    "postbuild": "npm run migrate:prod"
+    "build:only": "tsc"
   },
   "dependencies": {
     "@types/socket.io": "^3.0.1",

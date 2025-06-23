@@ -285,24 +285,16 @@ app.use('*', (req, res) => {
 });
 
 // Глобальная обработка ошибок
-app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  logger.error('Global error handler', { 
-    error: error.message,
+app.use((error: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  logger.error('Unhandled error:', { 
+    message: error.message, 
     stack: error.stack,
-    url: req.originalUrl,
-    method: req.method,
-    ip: req.ip,
-    userId: req.user?.id
+    url: req.url,
+    method: req.method
   });
-  
-  const status = error.status || error.statusCode || 500;
-  const message = error.message || 'Internal server error';
-  
-  res.status(status).json({
-    success: false,
-    error: message,
-    timestamp: new Date().toISOString(),
-    ...(process.env.NODE_ENV !== 'production' && { stack: error.stack })
+  res.status(500).json({ 
+    success: false, 
+    error: 'Internal server error' 
   });
 });
 

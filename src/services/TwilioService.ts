@@ -85,6 +85,13 @@ export class TwilioService {
       console.log('🌐 API URL:', url);
       console.log('📤 From number:', fromNumber);
 
+      if (!fromNumber) {
+        return {
+          success: false,
+          error: 'No FROM number configured in Twilio settings'
+        };
+      }
+
       const formData = this.encodeFormData({
         To: to,
         From: fromNumber,

@@ -24,3 +24,54 @@
 {"environment":"development","level":"info","message":"Database connection successful","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.971Z","version":"1.0.0"}
 {"environment":"development","level":"info","message":"Initializing sync tables...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.972Z","version":"1.0.0"}
 {"environment":"development","level":"info","message":"Sync tables initialized","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.976Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:41.196Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:41.199Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:41.249Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:42.829Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:42.834Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:42.871Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:44.457Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:44.461Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:44.502Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:46.045Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:46.048Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:46.108Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:47.986Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:47.990Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:48.042Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:50.747Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:50.751Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:50.790Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:55.106Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:55.109Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:55.159Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:02.988Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:02.992Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:03.056Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:22.914Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:22.919Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:22.948Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:25.036Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:25.040Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:25.065Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:26.832Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:26.839Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Database connection successful","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:26.900Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Initializing sync tables...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:26.902Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Sync tables initialized","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:26.910Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Initializing WebSocket server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:26.911Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"WebSocket server initialized","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:26.914Z","version":"1.0.0"}
+{"apiBaseUrl":"http://localhost:3001/api","connectedUsers":0,"environment":"production","healthCheck":"http://localhost:3001/health","level":"info","message":"Server started successfully","port":"3001","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:26.917Z","version":"1.0.0","webSocketUrl":"ws://localhost:3001"}
+{"duration":3,"environment":"production","ip":"::ffff:172.18.0.1","level":"http","message":"HTTP Request","method":"GET","requestId":"88okix","service":"worktime-tracker-server","status":200,"timestamp":"2025-06-23T17:05:47.413Z","url":"/health","userAgent":"Mozilla/5.0 (Windows NT; Windows NT 10.0; ru-RU) WindowsPowerShell/5.1.26100.4202","version":"1.0.0"}
+{"environment":"production","level":"info","message":"SIGTERM received, shutting down gracefully","service":"worktime-tracker-server","timestamp":"2025-06-23T17:06:54.629Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:06:58.310Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:06:58.313Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Database connection successful","service":"worktime-tracker-server","timestamp":"2025-06-23T17:06:58.369Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Initializing sync tables...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:06:58.370Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Sync tables initialized","service":"worktime-tracker-server","timestamp":"2025-06-23T17:06:58.377Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"Initializing WebSocket server...","service":"worktime-tracker-server","timestamp":"2025-06-23T17:06:58.378Z","version":"1.0.0"}
+{"environment":"production","level":"info","message":"WebSocket server initialized","service":"worktime-tracker-server","timestamp":"2025-06-23T17:06:58.381Z","version":"1.0.0"}
+{"apiBaseUrl":"http://localhost:3001/api","connectedUsers":0,"environment":"production","healthCheck":"http://localhost:3001/health","level":"info","message":"Server started successfully","port":"3001","service":"worktime-tracker-server","timestamp":"2025-06-23T17:06:58.386Z","version":"1.0.0","webSocketUrl":"ws://localhost:3001"}
+{"duration":3,"environment":"production","ip":"::ffff:172.18.0.1","level":"http","message":"HTTP Request","method":"GET","requestId":"y1mx2f","service":"worktime-tracker-server","status":200,"timestamp":"2025-06-23T17:07:10.418Z","url":"/health","userAgent":"Mozilla/5.0 (Windows NT; Windows NT 10.0; ru-RU) WindowsPowerShell/5.1.26100.4202","version":"1.0.0"}
+{"duration":16,"environment":"production","ip":"::ffff:172.18.0.1","level":"http","message":"HTTP Request","method":"GET","requestId":"6jm7nq","service":"worktime-tracker-server","status":200,"timestamp":"2025-06-23T17:08:13.695Z","url":"/health","userAgent":"Mozilla/5.0 (Windows NT; Windows NT 10.0; ru-RU) WindowsPowerShell/5.1.26100.4202","version":"1.0.0"}
+{"duration":2,"environment":"production","ip":"::ffff:172.18.0.1","level":"warn","message":"Client Error","method":"GET","requestId":"fjtkp3","service":"worktime-tracker-server","status":404,"timestamp":"2025-06-23T17:22:35.021Z","url":"/api/health","userAgent":"Mozilla/5.0 (Windows NT; Windows NT 10.0; ru-RU) WindowsPowerShell/5.1.26100.4202","version":"1.0.0"}

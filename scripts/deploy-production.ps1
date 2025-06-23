@@ -30,7 +30,7 @@ Set-Location $ProjectRoot
 Write-Host "📁 Работаем в директории: $ProjectRoot" -ForegroundColor Yellow
 
 # Проверяем наличие .env файла
-$EnvFile = ".env.production"
+$EnvFile = "production.env"
 if (!(Test-Path $EnvFile)) {
     Write-Host "⚠️ Файл $EnvFile не найден. Создаем шаблон..." -ForegroundColor Yellow
     
@@ -62,23 +62,79 @@ CORS_ORIGINS=https://$Domain,https://app.$Domain
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
+# Проверяем наличие Node.js и npm
+if (!(Get-Command node -ErrorAction SilentlyContinue)) {
+    Write-Error "Node.js не установлен. Установите Node.js и попробуйте снова."
+    exit 1
+}
+
+if (!(Get-Command npm -ErrorAction SilentlyContinue)) {
+    Write-Error "npm не установлен. Установите npm и попробуйте снова."
+    exit 1
+}
+
+# Устанавливаем зависимости
+Write-Host "📦 Устанавливаем зависимости..." -ForegroundColor Blue
+try {
+    npm install
+    Write-Host "✅ Зависимости установлены" -ForegroundColor Green
+} catch {
+    Write-Error "Ошибка при установке зависимостей: $_"
+    exit 1
+}
+
 # Сборка веб-версии
 Write-Host "🏗️ Собираем веб-версию приложения..." -ForegroundColor Blue
 try {
-    if (Test-Path "build") {
-        Remove-Item -Recurse -Force "build"
+    # Удаляем старую сборку
+    if (Test-Path "dist") {
+        Remove-Item -Recurse -Force "dist"
+        Write-Host "🗑️ Старая сборка удалена" -ForegroundColor Yellow
     }
     
-    npm run web
+    # Запускаем сборку
+    npm run build:web
     
-    if (!(Test-Path "build")) {
-        Write-Error "Сборка веб-версии не удалась. Проверьте логи выше."
+    # Проверяем результат сборки
+    if (!(Test-Path "dist")) {
+        Write-Error "Сборка веб-версии не удалась. Директория 'dist' не создана. Проверьте логи выше."
+        exit 1
+    }
+    
+    if (!(Test-Path "dist/index.html")) {
+        Write-Error "Сборка веб-версии не удалась. Файл index.html не найден в директории 'dist'."
         exit 1
     }
     
     Write-Host "✅ Веб-версия собрана успешно" -ForegroundColor Green
 } catch {
     Write-Error "Ошибка при сборке веб-версии: $_"
+    exit 1
+}
+
+# Сборка серверной части
+Write-Host "🏗️ Собираем серверную часть..." -ForegroundColor Blue
+try {
+    Push-Location server
+    
+    # Устанавливаем зависимости сервера (включая dev для сборки)
+    npm ci
+    
+    # Собираем TypeScript
+    npm run build
+    
+    # Проверяем результат сборки
+    if (!(Test-Path "dist/index.js")) {
+        Write-Error "Сборка сервера не удалась. Файл dist/index.js не найден."
+        Pop-Location
+        exit 1
+    }
+    
+    Pop-Location
+    Write-Host "✅ Серверная часть собрана успешно" -ForegroundColor Green
+} catch {
+    Pop-Location
+    Write-Error "Ошибка при сборке серверной части: $_"
     exit 1
 }
 
@@ -130,39 +186,83 @@ DNS.2 = *.$Domain
     }
 }
 
+# Проверяем наличие необходимых файлов
+Write-Host "🔍 Проверяем конфигурационные файлы..." -ForegroundColor Blue
+
+if (!(Test-Path "docker-compose.prod.yml")) {
+    Write-Error "Файл docker-compose.prod.yml не найден!"
+    exit 1
+}
+
+if (!(Test-Path "$EnvFile")) {
+    Write-Error "Файл $EnvFile не найден!"
+    exit 1
+}
+
+if (!(Test-Path "server/dist/index.js")) {
+    Write-Warning "Серверная часть не собрана. Соберем сейчас..."
+    Push-Location server
+    npm run build
+    Pop-Location
+}
+
+if (!(Test-Path "dist/index.html")) {
+    Write-Warning "Веб-версия не собрана. Соберем сейчас..."
+    npm run build:web
+}
+
 # Останавливаем существующие контейнеры
 Write-Host "🛑 Останавливаем существующие контейнеры..." -ForegroundColor Blue
-docker-compose -f docker-compose.prod.yml --env-file .env.production down --remove-orphans
+docker-compose -f docker-compose.prod.yml --env-file $EnvFile down --remove-orphans
 
 # Пересобираем и запускаем контейнеры
 Write-Host "🚀 Запускаем production контейнеры..." -ForegroundColor Blue
-docker-compose -f docker-compose.prod.yml --env-file .env.production up --build -d
+docker-compose -f docker-compose.prod.yml --env-file $EnvFile up --build -d
 
 # Ждем запуска сервисов
 Write-Host "⏳ Ждем запуска сервисов..." -ForegroundColor Yellow
 Start-Sleep -Seconds 30
 
-# Проверяем статус
-Write-Host "🔍 Проверяем статус сервисов..." -ForegroundColor Blue
-$HealthCheck = try {
-    Invoke-RestMethod -Uri "http://localhost:3001/health" -TimeoutSec 10
-} catch {
-    Write-Warning "Не удалось подключиться к API серверу. Проверьте логи: docker-compose -f docker-compose.prod.yml logs"
-    $null
+# Проверяем статус контейнеров
+Write-Host "🔍 Проверяем статус контейнеров..." -ForegroundColor Blue
+$ContainerStatus = docker-compose -f docker-compose.prod.yml ps --format "table"
+Write-Host $ContainerStatus -ForegroundColor Gray
+
+# Проверяем работу API
+Write-Host "🔍 Проверяем работу API сервера..." -ForegroundColor Blue
+$ApiUrl = if ($SkipSSL) { "http://localhost/api/health" } else { "https://localhost/api/health" }
+
+$HealthCheck = $null
+for ($i = 1; $i -le 5; $i++) {
+    try {
+        Write-Host "Попытка $i из 5..." -ForegroundColor Yellow
+        $HealthCheck = Invoke-RestMethod -Uri $ApiUrl -TimeoutSec 10 -SkipCertificateCheck
+        if ($HealthCheck) { break }
+    } catch {
+        Write-Host "Попытка $i неудачна: $($_.Exception.Message)" -ForegroundColor Yellow
+        if ($i -lt 5) { Start-Sleep -Seconds 10 }
+    }
 }
 
 if ($HealthCheck -and $HealthCheck.status -eq "ok") {
     Write-Host "✅ API сервер работает корректно" -ForegroundColor Green
-    Write-Host "✅ База данных: $($HealthCheck.database)" -ForegroundColor Green
+    if ($HealthCheck.database) {
+        Write-Host "✅ База данных: $($HealthCheck.database)" -ForegroundColor Green
+    }
 } else {
     Write-Warning "❌ API сервер не отвечает или работает некорректно"
+    Write-Host "📋 Проверьте логи: docker-compose -f docker-compose.prod.yml logs worktime-server-prod" -ForegroundColor Yellow
 }
 
 # Показываем итоговую информацию
 Write-Host "`n🎉 Развертывание завершено!" -ForegroundColor Green
-Write-Host "🌐 Веб-приложение: https://$Domain" -ForegroundColor Cyan
-Write-Host "🔗 API: https://$Domain/api" -ForegroundColor Cyan
-Write-Host "💚 Health Check: https://$Domain/health" -ForegroundColor Cyan
+
+$Protocol = if ($SkipSSL) { "http" } else { "https" }
+$HostName = if ($Domain -eq "yourdomain.com") { "localhost" } else { $Domain }
+
+Write-Host "🌐 Веб-приложение: $Protocol`://$HostName" -ForegroundColor Cyan
+Write-Host "🔗 API: $Protocol`://$HostName/api" -ForegroundColor Cyan
+Write-Host "💚 Health Check: $Protocol`://$HostName/api/health" -ForegroundColor Cyan
 
 Write-Host "`n📋 Полезные команды:" -ForegroundColor Yellow
 Write-Host "• Просмотр логов: docker-compose -f docker-compose.prod.yml logs -f" -ForegroundColor White

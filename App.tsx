@@ -179,7 +179,11 @@ const AppNavigator = () => {
 export default function App() {
   // Если это веб-платформа, показываем специальную админ панель
   if (Platform.OS === 'web') {
-    return <WebApp />;
+    return (
+      <PaperProvider>
+        <WebApp />
+      </PaperProvider>
+    );
   }
 
   // Для мобильных устройств показываем обычное приложение

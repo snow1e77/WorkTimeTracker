@@ -15,8 +15,10 @@ import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-naviga
 import { RootStackParamList, ConstructionSite } from '../types';
 import { DatabaseService } from '../services/DatabaseService';
 
-// Import map components conditionally
-let MapView: any, Marker: any, Circle: any;
+// Динамически импортируем компоненты карт только на нативных платформах
+let MapView: React.ComponentType<any>, 
+    Marker: React.ComponentType<any>, 
+    Circle: React.ComponentType<any>;
 if (Platform.OS !== 'web') {
   try {
     const MapModule = require('react-native-maps');

@@ -11,14 +11,21 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.snow1e77.WorkTimeTracker"
+      "bundleIdentifier": "com.snow1e77.WorkTimeTracker",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.snow1e77.WorkTimeTracker"
+      "package": "com.snow1e77.WorkTimeTracker",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -28,6 +35,11 @@
       "expo-task-manager",
       "expo-location",
       "expo-notifications"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ce37d90b-5a49-4b34-b909-3dbb0d14eb06"
+      }
+    }
   }
 }

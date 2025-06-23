@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   Animated,
   ActivityIndicator,
-  Alert
+  Alert,
+  ViewStyle
 } from 'react-native';
 import { SyncService } from '../services/SyncService';
 
@@ -20,7 +21,9 @@ interface SyncStatus {
 }
 
 interface SyncStatusIndicatorProps {
-  style?: any;
+  status: 'idle' | 'syncing' | 'success' | 'error';
+  lastSyncTime?: Date;
+  style?: ViewStyle;
   showDetails?: boolean;
 }
 

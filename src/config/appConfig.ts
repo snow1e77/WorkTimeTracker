@@ -205,15 +205,15 @@ export const APP_CONFIG = {
 };
 
 // Функция для получения конфигурации по ключу
-export const getConfig = (key: string): any => {
+export const getConfig = (key: string): unknown => {
   const keys = key.split('.');
-  let value: any = APP_CONFIG;
+  let value: unknown = APP_CONFIG;
   
   for (const k of keys) {
-    if (value[k] !== undefined) {
-      value = value[k];
+    if (value && typeof value === 'object' && k in (value as Record<string, unknown>)) {
+      value = (value as Record<string, unknown>)[k];
     } else {
-      return null;
+      return undefined;
     }
   }
   

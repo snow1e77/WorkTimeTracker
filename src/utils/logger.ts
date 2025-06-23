@@ -6,10 +6,9 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 interface LogEntry {
   level: LogLevel;
   message: string;
-  timestamp: Date;
-  data?: any;
-  userId?: string;
+  data?: Record<string, unknown>;
   context?: string;
+  timestamp: Date;
 }
 
 class ClientLogger {
@@ -21,81 +20,81 @@ class ClientLogger {
     this.isDevelopment = __DEV__;
   }
 
-  private log(level: LogLevel, message: string, data?: any, context?: string) {
+  private log(level: LogLevel, message: string, data?: Record<string, unknown>, context?: string) {
+    const timestamp = new Date();
     const entry: LogEntry = {
       level,
       message,
-      timestamp: new Date(),
       data,
-      context
+      context,
+      timestamp,
     };
 
-    // Добавляем в локальный буфер
     this.logs.push(entry);
-    
-    // Ограничиваем количество логов
+
+    // Limit log size to prevent memory issues
     if (this.logs.length > this.maxLogs) {
-      this.logs = this.logs.slice(-this.maxLogs);
+      this.logs.shift();
     }
 
-    // В development режиме выводим в консоль
+    // Console output for development
     if (this.isDevelopment) {
-      const logMessage = `[${level.toUpperCase()}] ${message}`;
-      const logData = data ? [logMessage, data] : [logMessage];
+      const contextStr = context ? `[${context.toUpperCase()}] ` : '';
+      const logMessage = `${contextStr}${message}`;
       
       switch (level) {
         case 'debug':
-          console.log(...logData);
+          console.log(`[DEBUG] ${logMessage}`, data || '');
           break;
         case 'info':
-          console.info(...logData);
+          console.info(`[INFO] ${logMessage}`, data || '');
           break;
         case 'warn':
-          console.warn(...logData);
+          console.warn(`[WARN] ${logMessage}`, data || '');
           break;
         case 'error':
-          console.error(...logData);
+          console.error(`[ERROR] ${logMessage}`, data || '');
           break;
       }
     }
-
-    // В продакшене отправляем критичные ошибки на сервер
+    
+    // Send critical errors to server in production
     if (!this.isDevelopment && level === 'error') {
       this.sendErrorToServer(entry);
     }
   }
 
-  debug(message: string, data?: any, context?: string) {
+  debug(message: string, data?: Record<string, unknown>, context?: string) {
     this.log('debug', message, data, context);
   }
 
-  info(message: string, data?: any, context?: string) {
+  info(message: string, data?: Record<string, unknown>, context?: string) {
     this.log('info', message, data, context);
   }
 
-  warn(message: string, data?: any, context?: string) {
+  warn(message: string, data?: Record<string, unknown>, context?: string) {
     this.log('warn', message, data, context);
   }
 
-  error(message: string, data?: any, context?: string) {
+  error(message: string, data?: Record<string, unknown>, context?: string) {
     this.log('error', message, data, context);
   }
 
-  // Специальные методы для различных контекстов
-  auth(message: string, data?: any) {
-    this.log('info', message, data, 'AUTH');
+  // Specialized logging methods
+  auth(message: string, data?: Record<string, unknown>) {
+    this.log('info', `[AUTH] ${message}`, data, 'auth');
   }
 
-  sync(message: string, data?: any) {
-    this.log('info', message, data, 'SYNC');
+  sync(message: string, data?: Record<string, unknown>) {
+    this.log('info', `[SYNC] ${message}`, data, 'sync');
   }
 
-  api(message: string, data?: any) {
-    this.log('info', message, data, 'API');
+  api(message: string, data?: Record<string, unknown>) {
+    this.log('info', `[API] ${message}`, data, 'api');
   }
 
-  location(message: string, data?: any) {
-    this.log('info', message, data, 'LOCATION');
+  location(message: string, data?: Record<string, unknown>) {
+    this.log('debug', `[LOCATION] ${message}`, data, 'location');
   }
 
   // Получить логи для отправки на сервер
@@ -163,7 +162,7 @@ const logger = new ClientLogger();
 export default logger;
 
 // Вспомогательные функции для совместимости с console
-export const logInfo = (message: string, data?: any) => logger.info(message, data);
-export const logError = (message: string, data?: any) => logger.error(message, data);
-export const logWarn = (message: string, data?: any) => logger.warn(message, data);
-export const logDebug = (message: string, data?: any) => logger.debug(message, data); 
+export const logInfo = (message: string, data?: Record<string, unknown>) => logger.info(message, data);
+export const logError = (message: string, data?: Record<string, unknown>) => logger.error(message, data);
+export const logWarn = (message: string, data?: Record<string, unknown>) => logger.warn(message, data);
+export const logDebug = (message: string, data?: Record<string, unknown>) => logger.debug(message, data); 

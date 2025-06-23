@@ -15,8 +15,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install all dependencies (including dev)
-RUN npm ci --only=production \
+# Install all dependencies (including dev for build)
+RUN npm ci \
     && npm cache clean --force
 
 # Copy source code
@@ -28,9 +28,9 @@ RUN npm run build
 # Production stage
 FROM node:18-alpine AS production
 
-# Create non-root user
-RUN addgroup -g 1001 -S node && \
-    adduser -S node -u 1001 -G node
+# Create non-root user (if not exists)
+RUN addgroup -g 1001 -S nodeapp 2>/dev/null || true && \
+    adduser -S nodeapp -u 1001 -G nodeapp 2>/dev/null || true
 
 # Install security updates
 RUN apk update && apk upgrade && \
@@ -43,12 +43,12 @@ RUN apk update && apk upgrade && \
 WORKDIR /app
 
 # Copy built application
-COPY --from=builder --chown=node:node /app/dist ./dist
-COPY --from=builder --chown=node:node /app/node_modules ./node_modules
-COPY --from=builder --chown=node:node /app/package*.json ./
+COPY --from=builder --chown=nodeapp:nodeapp /app/dist ./dist
+COPY --from=builder --chown=nodeapp:nodeapp /app/node_modules ./node_modules
+COPY --from=builder --chown=nodeapp:nodeapp /app/package*.json ./
 
 # Create logs directory
-RUN mkdir -p /app/logs && chown -R node:node /app/logs
+RUN mkdir -p /app/logs && chown -R nodeapp:nodeapp /app/logs
 
 # Remove unnecessary files and set permissions
 RUN rm -rf /tmp/* /var/tmp/* \
@@ -56,7 +56,7 @@ RUN rm -rf /tmp/* /var/tmp/* \
     && chmod -R 777 /app/logs
 
 # Switch to non-root user
-USER node
+USER nodeapp
 
 # Expose port
 EXPOSE 3001

@@ -1,0 +1,10 @@
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:41.249Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:42.871Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:44.502Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:46.108Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:48.042Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:50.790Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:04:55.159Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:03.056Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:22.948Z","version":"1.0.0"}
+{"environment":"production","level":"error","message":"Failed to connect to database","service":"worktime-tracker-server","timestamp":"2025-06-23T17:05:25.065Z","version":"1.0.0"}

@@ -236,19 +236,28 @@ export const INTERNATIONAL_LOCALIZATION = {
 };
 
 // Function to get localized text
-export const getLocalizedText = (key: string): string => {
+export const t = (key: string, params?: Record<string, string>): string => {
   const keys = key.split('.');
-  let value: any = INTERNATIONAL_LOCALIZATION;
+  let value: unknown = INTERNATIONAL_LOCALIZATION;
   
   for (const k of keys) {
-    if (value[k]) {
-      value = value[k];
+    if (value && typeof value === 'object' && k in (value as Record<string, unknown>)) {
+      value = (value as Record<string, unknown>)[k];
     } else {
       return key; // Return key if translation not found
     }
   }
   
-  return typeof value === 'string' ? value : key;
+  let result = typeof value === 'string' ? value : key;
+  
+  // Replace parameters if provided
+  if (params) {
+    Object.entries(params).forEach(([paramKey, paramValue]) => {
+      result = result.replace(new RegExp(`{{${paramKey}}}`, 'g'), paramValue);
+    });
+  }
+  
+  return result;
 };
 
 // Function to format currency with international support

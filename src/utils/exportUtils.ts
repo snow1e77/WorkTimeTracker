@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { WorkReport } from '../types';
+import { WorkReport, Violation } from '../types';
 
 // For web platforms - CSV export
 export const exportToCSV = (reports: WorkReport[], period: string): void => {
@@ -188,17 +188,17 @@ export const exportToPDF = (reports: WorkReport[], period: string): void => {
     
     // Wait for content to load then trigger print
     printWindow.onload = () => {
-      printWindow.print();
+      printWindow!.print();
       // Close window after printing (user will be prompted to save as PDF)
       setTimeout(() => {
-        printWindow.close();
+        printWindow!.close();
       }, 100);
     };
   }
 };
 
 // Export violations to CSV
-export const exportViolationsToCSV = (violations: any[], period: string): void => {
+export const exportViolationsToCSV = (violations: Violation[], period: string): void => {
   if (Platform.OS !== 'web') {
     console.warn('CSV export is only available on web platform');
     return;
@@ -208,8 +208,8 @@ export const exportViolationsToCSV = (violations: any[], period: string): void =
   const csvContent = [
     headers.join(','),
     ...violations.map(violation => [
-      `"${violation.userName || 'Unknown'}"`,
-      `"${violation.siteName || 'Unknown Site'}"`,
+      `"${(violation as any).userName || 'Unknown'}"`,
+      `"${(violation as any).siteName || 'Unknown Site'}"`,
       `"${violation.type.replace(/_/g, ' ')}"`,
       `"${violation.description}"`,
       violation.severity,
@@ -258,7 +258,12 @@ export const generateReportSummary = (reports: WorkReport[]) => {
     acc[report.siteName].violations += report.violations;
     acc[report.siteName].shifts += report.shiftsCount;
     return acc;
-  }, {} as Record<string, any>);
+  }, {} as Record<string, {
+    workers: number;
+    totalHours: number;
+    violations: number;
+    shifts: number;
+  }>);
 
   return {
     totalHours: Math.round(totalHours * 100) / 100,
