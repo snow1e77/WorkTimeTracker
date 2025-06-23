@@ -1,0 +1,26 @@
+{"environment":"development","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:11.938Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:11.941Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Database connection successful","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:12.006Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Initializing sync tables...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:12.007Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Sync tables initialized","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:12.011Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Initializing WebSocket server...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:12.012Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"WebSocket server initialized","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:12.016Z","version":"1.0.0"}
+{"apiBaseUrl":"http://localhost:3001/api","connectedUsers":0,"environment":"development","healthCheck":"http://localhost:3001/health","level":"info","message":"Server started successfully","port":"3001","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:12.019Z","version":"1.0.0","webSocketUrl":"ws://localhost:3001"}
+{"environment":"development","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:18.271Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:18.273Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Database connection successful","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:18.359Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Initializing sync tables...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:18.360Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Sync tables initialized","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:18.368Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.653Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.656Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Database connection successful","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.770Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Initializing sync tables...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.771Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Sync tables initialized","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.777Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Initializing WebSocket server...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.778Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"WebSocket server initialized","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.781Z","version":"1.0.0"}
+{"apiBaseUrl":"http://localhost:3001/api","connectedUsers":0,"environment":"development","healthCheck":"http://localhost:3001/health","level":"info","message":"Server started successfully","port":"3001","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.785Z","version":"1.0.0","webSocketUrl":"ws://localhost:3001"}
+{"environment":"development","level":"info","message":"Starting WorkTime Tracker Server...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.896Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Testing database connection...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.900Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Database connection successful","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.971Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Initializing sync tables...","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.972Z","version":"1.0.0"}
+{"environment":"development","level":"info","message":"Sync tables initialized","service":"worktime-tracker-server","timestamp":"2025-06-23T05:45:27.976Z","version":"1.0.0"}

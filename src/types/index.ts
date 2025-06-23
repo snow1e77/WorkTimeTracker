@@ -85,9 +85,10 @@ export interface ConstructionSite {
   latitude: number;
   longitude: number;
   radius: number; // radius in meters
-  companyId: string;
+  companyId?: string;
   isActive: boolean;
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 export interface WorkShift {
@@ -136,6 +137,14 @@ export interface Violation {
   timestamp: Date;
   severity: 'low' | 'medium' | 'high';
   isResolved: boolean;
+}
+
+export interface ViolationsSummary {
+  total: number;
+  resolved: number;
+  unresolved: number;
+  byType: { [key: string]: number };
+  bySeverity: { low: number; medium: number; high: number };
 }
 
 export interface Notification {
@@ -246,6 +255,107 @@ export interface MapCoordinate {
   longitude: number;
 }
 
+// Новые типы для фотоотчётов
+export interface PhotoReport {
+  id: string;
+  userId: string;
+  siteId: string;
+  shiftId?: string;
+  photoUri: string;
+  latitude: number;
+  longitude: number;
+  timestamp: Date;
+  isValidated: boolean;
+  notes?: string;
+}
+
+// Новые типы для расписаний
+export interface WorkSchedule {
+  id: string;
+  siteId: string;
+  dayOfWeek: number; // 0-6 (Sunday-Saturday)
+  startTime: string; // HH:MM format
+  endTime: string; // HH:MM format
+  lunchStart?: string; // HH:MM format
+  lunchEnd?: string; // HH:MM format
+  isActive: boolean;
+  createdAt: Date;
+}
+
+// Расширенный тип для отслеживания рабочих в реальном времени
+export interface WorkerLocation {
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  currentSiteId?: string;
+  currentSiteName?: string;
+  latitude: number;
+  longitude: number;
+  timestamp: Date;
+  isOnSite: boolean;
+  shiftStartTime?: Date;
+  timeOnSite?: number; // в минутах
+  lastPhotoReportTime?: Date;
+  status: 'working' | 'lunch' | 'offline' | 'left_site';
+}
+
+// Chat system types
+export interface ChatMessage {
+  id: string;
+  chatId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: 'worker' | 'admin';
+  messageType: 'text' | 'photo' | 'task';
+  content: string;
+  photoUri?: string;
+  latitude?: number;
+  longitude?: number;
+  timestamp: Date;
+  isRead: boolean;
+  isPinned?: boolean;
+}
+
+export interface Chat {
+  id: string;
+  workerId: string;
+  workerName: string;
+  foremanId: string;
+  foremanName: string;
+  lastMessage?: ChatMessage;
+  unreadCount: number;
+  currentTask?: string;
+  lastPhotoTime?: Date;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface DailyTask {
+  id: string;
+  chatId: string;
+  assignedBy: string;
+  assignedTo: string;
+  taskDescription: string;
+  assignedDate: Date;
+  isCompleted: boolean;
+  completedAt?: Date;
+}
+
+export interface PhotoReport {
+  id: string;
+  chatId: string;
+  messageId: string;
+  userId: string;
+  photoUri: string;
+  latitude: number;
+  longitude: number;
+  timestamp: Date;
+  isValidated: boolean;
+  validatedBy?: string;
+  validatedAt?: Date;
+  notes?: string;
+}
+
 // Navigation types
 export type RootStackParamList = {
   Login: undefined;
@@ -265,4 +375,6 @@ export type RootStackParamList = {
   UserManagement: undefined;
   ViolationsReport: undefined;
   Reports: undefined;
+  Chat: undefined;
+  ChatDetails: { chatId: string; workerName: string };
 };

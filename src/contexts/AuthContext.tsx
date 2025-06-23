@@ -1,13 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthUser, AuthState } from '../types';
 import { AuthService } from '../services/AuthService';
-import { DatabaseService } from '../services/DatabaseService';
+import { ApiDatabaseService } from '../services/ApiDatabaseService';
 
 interface AuthContextType extends AuthState {
   // Новые методы для SMS-аутентификации
   sendLoginCode: (phoneNumber: string) => Promise<{ success: boolean; userExists: boolean; error?: string }>;
   verifyLoginCode: (phoneNumber: string, code: string) => Promise<{ success: boolean; user?: AuthUser; error?: string; needsProfile?: boolean }>;
   createUserProfile: (phoneNumber: string, name: string, smsCode: string) => Promise<{ success: boolean; user?: AuthUser; error?: string }>;
+  
+  // Утилитарные методы
+  refreshToken: () => Promise<{ success: boolean; error?: string }>;
   
   // Устаревшие методы - оставляем для совместимости
   /** @deprecated Используйте sendLoginCode + verifyLoginCode */
@@ -33,17 +36,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   });
 
   const authService = AuthService.getInstance();
-  const dbService = DatabaseService.getInstance();
+  const dbService = ApiDatabaseService.getInstance();
 
   const checkAuthStatus = async () => {
     try {
       console.log('🔄 Проверка статуса аутентификации...');
       setAuthState(prev => ({ ...prev, isLoading: true }));
       
-      // Инициализируем базу данных сначала
-      console.log('🔄 Инициализация базы данных из AuthContext...');
+      // Инициализируем API подключение
+      console.log('🔄 Инициализация API подключения из AuthContext...');
       await dbService.initDatabase();
-      console.log('✅ База данных инициализирована из AuthContext');
+      console.log('✅ API подключение инициализировано из AuthContext');
       
       // Проверяем аутентификацию
       console.log('🔄 Получение текущего пользователя...');
@@ -57,6 +60,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
     } catch (error) {
       console.error('❌ Ошибка проверки статуса аутентификации:', error);
+      
+      // Если ошибка связана с неавторизованным доступом, попробуем обновить токен
+      if (error instanceof Error && error.message.includes('401')) {
+        console.log('🔄 Попытка обновления токена...');
+        const refreshResult = await authService.refreshToken();
+        
+        if (refreshResult.success) {
+          console.log('✅ Токен обновлен, повторная проверка пользователя...');
+          try {
+            const user = await authService.getCurrentUser();
+            setAuthState({
+              isAuthenticated: !!user,
+              user,
+              isLoading: false,
+            });
+            return;
+          } catch (retryError) {
+            console.error('❌ Ошибка после обновления токена:', retryError);
+          }
+        }
+      }
+      
       setAuthState({
         isAuthenticated: false,
         user: null,
@@ -115,6 +140,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Обновление токена
+  const refreshToken = async () => {
+    try {
+      const result = await authService.refreshToken();
+      
+      if (result.success) {
+        // После успешного обновления токена, перепроверяем пользователя
+        const user = await authService.getCurrentUser();
+        setAuthState(prev => ({
+          ...prev,
+          isAuthenticated: !!user,
+          user,
+        }));
+      } else {
+        // Если обновление токена не удалось, выходим из системы
+        setAuthState({
+          isAuthenticated: false,
+          user: null,
+          isLoading: false,
+        });
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Ошибка обновления токена:', error);
+      setAuthState({
+        isAuthenticated: false,
+        user: null,
+        isLoading: false,
+      });
+      return { success: false, error: 'Failed to refresh token' };
+    }
+  };
+
   // Устаревшие методы - оставляем для совместимости
   const login = async (phoneNumber: string, password: string): Promise<boolean> => {
     console.warn('⚠️ AuthContext.login устарел, используйте sendLoginCode + verifyLoginCode');
@@ -168,6 +227,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
     } catch (error) {
       console.error('Logout error:', error);
+      // Даже если logout на сервере не удался, очищаем локальное состояние
+      setAuthState({
+        isAuthenticated: false,
+        user: null,
+        isLoading: false,
+      });
     }
   };
 
@@ -181,6 +246,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     sendLoginCode,
     verifyLoginCode,
     createUserProfile,
+    refreshToken,
     // Устаревшие методы
     login,
     register,

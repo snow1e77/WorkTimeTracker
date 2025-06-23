@@ -1,15 +1,15 @@
 import { UserSiteAssignment, AuthUser, ConstructionSite } from '../types';
-import { DatabaseService } from './DatabaseService';
+import { ApiDatabaseService } from './ApiDatabaseService';
 import { SyncService } from './SyncService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export class AssignmentService {
   private static instance: AssignmentService;
-  private dbService: DatabaseService;
+  private dbService: ApiDatabaseService;
   private syncService: SyncService;
 
   private constructor() {
-    this.dbService = DatabaseService.getInstance();
+    this.dbService = ApiDatabaseService.getInstance();
     this.syncService = SyncService.getInstance();
   }
 
@@ -39,7 +39,7 @@ export class AssignmentService {
       // Проверить, что пользователь и объект существуют
       const user = await this.dbService.getUserById(userId);
       const sites = await this.dbService.getConstructionSites();
-      const site = sites.find(s => s.id === siteId);
+      const site = sites.find((s: ConstructionSite) => s.id === siteId);
 
       if (!user) {
         return { success: false, error: 'User not found' };
@@ -49,27 +49,21 @@ export class AssignmentService {
         return { success: false, error: 'Construction site not found' };
       }
 
-      // Создать назначение
-      const assignment: UserSiteAssignment = {
-        id: `assignment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      // Создать назначение через API
+      const assignment: Omit<UserSiteAssignment, 'id' | 'assignedAt'> = {
         userId,
         siteId,
         assignedBy,
         isActive: true,
-        assignedAt: new Date(),
         validFrom,
         validTo,
         notes
       };
 
-      // Сохранить в локальном хранилище
-      await this.saveAssignmentToLocal(assignment);
+      await this.dbService.createUserSiteAssignment(assignment);
 
-      // Добавить в очередь синхронизации
-      await this.syncService.addSyncMetadata('assignment', assignment.id, 'create');
-
-      console.log('✅ Assignment created:', assignment);
-      return { success: true, assignment };
+      console.log('✅ Assignment created via API');
+      return { success: true };
     } catch (error) {
       console.error('Failed to create assignment:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -89,27 +83,11 @@ export class AssignmentService {
         return { success: false, error: 'Only administrators can update assignments' };
       }
 
-      // Получить существующее назначение
-      const existingAssignment = await this.getAssignmentById(assignmentId);
-      if (!existingAssignment) {
-        return { success: false, error: 'Assignment not found' };
-      }
+      // Обновить назначение через API
+      await this.dbService.updateUserSiteAssignment(assignmentId, updates);
 
-      // Обновить назначение
-      const updatedAssignment: UserSiteAssignment = {
-        ...existingAssignment,
-        ...updates,
-        id: assignmentId // Убедиться, что ID не изменился
-      };
-
-      // Сохранить обновление
-      await this.saveAssignmentToLocal(updatedAssignment);
-
-      // Добавить в очередь синхронизации
-      await this.syncService.addSyncMetadata('assignment', assignmentId, 'update');
-
-      console.log('✅ Assignment updated:', updatedAssignment);
-      return { success: true, assignment: updatedAssignment };
+      console.log('✅ Assignment updated via API');
+      return { success: true };
     } catch (error) {
       console.error('Failed to update assignment:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -135,8 +113,7 @@ export class AssignmentService {
   // Получить все назначения пользователя
   public async getUserAssignments(userId: string): Promise<UserSiteAssignment[]> {
     try {
-      const allAssignments = await this.getAllAssignments();
-      return allAssignments.filter(assignment => assignment.userId === userId);
+      return await this.dbService.getUserSiteAssignments(userId);
     } catch (error) {
       console.error('Failed to get user assignments:', error);
       return [];
@@ -168,7 +145,7 @@ export class AssignmentService {
       const allSites = await this.dbService.getConstructionSites();
       
       for (const assignment of activeAssignments) {
-        const site = allSites.find(s => s.id === assignment.siteId);
+        const site = allSites.find((s: ConstructionSite) => s.id === assignment.siteId);
         if (site && site.isActive) {
           sites.push(site);
         }
@@ -195,24 +172,28 @@ export class AssignmentService {
   // Получить все назначения для объекта
   public async getSiteAssignments(siteId: string): Promise<UserSiteAssignment[]> {
     try {
-      const allAssignments = await this.getAllAssignments();
-      return allAssignments.filter(assignment => assignment.siteId === siteId);
+      const response = await this.dbService.getSiteAssignments(siteId);
+      if (response.success && response.data) {
+        return response.data;
+      }
+      console.error('Failed to get site assignments:', response.error); 
+      return [];
     } catch (error) {
       console.error('Failed to get site assignments:', error);
       return [];
     }
   }
 
-  // Получить активных работников на объекте
+  // Получить активных сотрудников на объекте
   public async getSiteActiveWorkers(siteId: string): Promise<AuthUser[]> {
     try {
       const assignments = await this.getSiteAssignments(siteId);
-      const activeAssignments = assignments.filter(assignment => assignment.isActive);
+      const activeAssignments = assignments.filter(a => a.isActive);
       const workers: AuthUser[] = [];
       
       for (const assignment of activeAssignments) {
         const user = await this.dbService.getUserById(assignment.userId);
-        if (user && user.isActive) {
+        if (user) {
           workers.push(user);
         }
       }
@@ -232,17 +213,21 @@ export class AssignmentService {
     sitesWithAssignments: number;
   }> {
     try {
-      const allAssignments = await this.getAllAssignments();
-      const activeAssignments = allAssignments.filter(a => a.isActive);
-      
-      const uniqueUsers = new Set(allAssignments.map(a => a.userId));
-      const uniqueSites = new Set(allAssignments.map(a => a.siteId));
-      
+      const response = await this.dbService.getAssignmentStats();
+      if (response.success && response.data) {
+        return {
+          totalAssignments: response.data.total || 0,
+          activeAssignments: response.data.active || 0,
+          usersWithAssignments: response.data.usersWithAssignments || 0,
+          sitesWithAssignments: response.data.sitesWithAssignments || 0
+        };
+      }
+      console.error('Failed to get assignment stats:', response.error);
       return {
-        totalAssignments: allAssignments.length,
-        activeAssignments: activeAssignments.length,
-        usersWithAssignments: uniqueUsers.size,
-        sitesWithAssignments: uniqueSites.size
+        totalAssignments: 0,
+        activeAssignments: 0,
+        usersWithAssignments: 0,
+        sitesWithAssignments: 0
       };
     } catch (error) {
       console.error('Failed to get assignment stats:', error);
@@ -258,14 +243,37 @@ export class AssignmentService {
   // Проверить конфликты назначений (пользователь назначен на несколько объектов одновременно)
   public async checkAssignmentConflicts(userId: string): Promise<UserSiteAssignment[]> {
     try {
+      // Получаем все активные назначения пользователя
       const activeAssignments = await this.getUserActiveAssignments(userId);
       
-      // Если у пользователя больше одного активного назначения, это может быть конфликтом
-      if (activeAssignments.length > 1) {
-        return activeAssignments;
+      // Проверяем есть ли перекрывающиеся назначения
+      const conflicts: UserSiteAssignment[] = [];
+      const now = new Date();
+      
+      for (let i = 0; i < activeAssignments.length; i++) {
+        for (let j = i + 1; j < activeAssignments.length; j++) {
+          const assignment1 = activeAssignments[i];
+          const assignment2 = activeAssignments[j];
+          
+          // Проверяем временные пересечения
+          const start1 = assignment1.validFrom || new Date(0);
+          const end1 = assignment1.validTo || new Date('2099-12-31');
+          const start2 = assignment2.validFrom || new Date(0);
+          const end2 = assignment2.validTo || new Date('2099-12-31');
+          
+          // Есть пересечение если одно назначение начинается до окончания другого
+          if (start1 <= end2 && start2 <= end1) {
+            if (!conflicts.find(c => c.id === assignment1.id)) {
+              conflicts.push(assignment1);
+            }
+            if (!conflicts.find(c => c.id === assignment2.id)) {
+              conflicts.push(assignment2);
+            }
+          }
+        }
       }
       
-      return [];
+      return conflicts;
     } catch (error) {
       console.error('Failed to check assignment conflicts:', error);
       return [];
@@ -280,96 +288,32 @@ export class AssignmentService {
     validFrom?: Date,
     validTo?: Date
   ): Promise<{ success: boolean; assignments?: UserSiteAssignment[]; errors?: string[] }> {
-    const assignments: UserSiteAssignment[] = [];
-    const errors: string[] = [];
-
-    for (const userId of userIds) {
-      const result = await this.createAssignment(userId, siteId, assignedBy, validFrom, validTo);
+    try {
+      const response = await this.dbService.bulkAssignUsersToSite({
+        userIds,
+        siteId,
+        validFrom,
+        validTo
+      });
       
-      if (result.success && result.assignment) {
-        assignments.push(result.assignment);
+      if (response.success && response.data) {
+        return {
+          success: true,
+          assignments: response.data.assignments || [],
+          errors: response.data.errors || []
+        };
       } else {
-        errors.push(`Failed to assign user ${userId}: ${result.error}`);
-      }
-    }
-
-    return {
-      success: errors.length === 0,
-      assignments: assignments.length > 0 ? assignments : undefined,
-      errors: errors.length > 0 ? errors : undefined
-    };
-  }
-
-  // Вспомогательные методы для работы с локальным хранилищем
-  private async getAllAssignments(): Promise<UserSiteAssignment[]> {
-    try {
-      const assignmentsJson = await AsyncStorage.getItem('local_assignments');
-      return assignmentsJson ? JSON.parse(assignmentsJson) : [];
-    } catch (error) {
-      console.error('Failed to get all assignments:', error);
-      return [];
-    }
-  }
-
-  private async getAssignmentById(assignmentId: string): Promise<UserSiteAssignment | null> {
-    try {
-      const allAssignments = await this.getAllAssignments();
-      return allAssignments.find(assignment => assignment.id === assignmentId) || null;
-    } catch (error) {
-      console.error('Failed to get assignment by ID:', error);
-      return null;
-    }
-  }
-
-  private async saveAssignmentToLocal(assignment: UserSiteAssignment): Promise<void> {
-    try {
-      const allAssignments = await this.getAllAssignments();
-      
-      // Удалить существующее назначение с таким же ID
-      const filteredAssignments = allAssignments.filter(a => a.id !== assignment.id);
-      
-      // Добавить обновленное назначение
-      filteredAssignments.push(assignment);
-      
-      await AsyncStorage.setItem('local_assignments', JSON.stringify(filteredAssignments));
-    } catch (error) {
-      console.error('Failed to save assignment to local storage:', error);
-      throw error;
-    }
-  }
-
-  // Синхронизация назначений с веб-панелью
-  public async syncAssignmentsFromWeb(): Promise<void> {
-    try {
-      // В реальном приложении здесь будет API запрос
-      // Сейчас читаем из localStorage веб-панели
-      if (typeof localStorage !== 'undefined') {
-        const webAssignments = JSON.parse(localStorage.getItem('worktime_assignments') || '[]');
-        
-        for (const webAssignment of webAssignments) {
-          await this.saveAssignmentToLocal(webAssignment);
-        }
-        
-        console.log('✅ Assignments synced from web panel');
+        return {
+          success: false,
+          errors: [response.error || 'Failed to bulk assign users']
+        };
       }
     } catch (error) {
-      console.error('Failed to sync assignments from web:', error);
-    }
-  }
-
-  // Отправить назначения в веб-панель
-  public async syncAssignmentsToWeb(): Promise<void> {
-    try {
-      const localAssignments = await this.getAllAssignments();
-      
-      // В реальном приложении здесь будет API запрос
-      // Сейчас записываем в localStorage веб-панели
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('worktime_assignments', JSON.stringify(localAssignments));
-        console.log('✅ Assignments synced to web panel');
-      }
-    } catch (error) {
-      console.error('Failed to sync assignments to web:', error);
+      console.error('Failed to bulk assign users to site:', error);
+      return {
+        success: false,
+        errors: [error instanceof Error ? error.message : 'Unknown error']
+      };
     }
   }
 } 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Text } from 'react-native';
 import { 
   Card, 
   Title, 
@@ -13,6 +13,9 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { LocationService } from '../services/LocationService';
+import { DatabaseService } from '../services/DatabaseService';
+import SyncStatusIndicator from '../components/SyncStatusIndicator';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -24,6 +27,50 @@ export default function HomeScreen() {
   const [shiftStartTime, setShiftStartTime] = useState<Date | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [currentDuration, setCurrentDuration] = useState('00:00:00');
+  const [locationTracking, setLocationTracking] = useState(false);
+
+  const locationService = LocationService.getInstance();
+  const dbService = DatabaseService.getInstance();
+
+  // Инициализация фонового отслеживания геолокации
+  useEffect(() => {
+    const initializeLocationTracking = async () => {
+      if (user && user.role === 'worker') {
+        try {
+          console.log('🔄 Инициализация отслеживания геолокации для работника');
+          
+          // Получаем список активных объектов
+          const sites = await dbService.getConstructionSites();
+          
+          // Запускаем фоновое отслеживание
+          const success = await locationService.initializeBackgroundTracking(user.id, sites);
+          
+          if (success) {
+            setLocationTracking(true);
+            setStatusMessage('Location tracking started automatically');
+            console.log('✅ Отслеживание геолокации запущено');
+          } else {
+            setStatusMessage('Could not start location tracking. Please enable location permissions.');
+            console.log('❌ Не удалось запустить отслеживание геолокации');
+          }
+        } catch (error) {
+          console.error('❌ Ошибка инициализации отслеживания:', error);
+          setStatusMessage('Location tracking initialization failed');
+        }
+      }
+    };
+
+    if (user) {
+      initializeLocationTracking();
+    }
+
+    // Очистка при размонтировании компонента
+    return () => {
+      if (user?.role === 'worker') {
+        locationService.stopBackgroundTracking();
+      }
+    };
+  }, [user]);
 
   // Таймер для обновления длительности смены
   useEffect(() => {
@@ -74,6 +121,24 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.userInfo}>
+          <Text style={styles.greeting}>Hello, {user?.name || 'User'}!</Text>
+          <Text style={styles.subtitle}>Work Time Tracker</Text>
+        </View>
+        
+        {/* Добавляем индикатор синхронизации */}
+        <View style={styles.syncContainer}>
+          <SyncStatusIndicator showDetails={false} />
+        </View>
+      </View>
+
+      {/* Детальный индикатор синхронизации в настройках */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Sync Status</Text>
+        <SyncStatusIndicator showDetails={true} />
+      </View>
+
       {/* Status Message */}
       {statusMessage ? (
         <Card style={styles.statusCard}>
@@ -133,6 +198,21 @@ export default function HomeScreen() {
           
           <Paragraph>Current Duration: {currentDuration}</Paragraph>
           
+          {/* Location tracking status - только для работников */}
+          {user?.role === 'worker' && (
+            <View style={styles.locationStatus}>
+              <Chip 
+                icon={locationTracking ? "map-marker-check" : "map-marker-off"} 
+                style={[styles.locationChip, { 
+                  backgroundColor: locationTracking ? '#4CAF50' : '#FF5722' 
+                }]}
+                textStyle={{ color: 'white', fontSize: 12 }}
+              >
+                {locationTracking ? 'Location tracking active' : 'Location tracking off'}
+              </Chip>
+            </View>
+          )}
+          
           <Button
             mode={isWorking ? "outlined" : "contained"}
             onPress={isWorking ? handleEndShift : handleStartShift}
@@ -144,52 +224,40 @@ export default function HomeScreen() {
         </Card.Content>
       </Card>
 
-      {/* Quick Actions */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title>Quick Actions</Title>
-          
-          <List.Item
-            title="Time Tracking"
-            description="Monitor GPS and work location"
-            left={() => <List.Icon icon="crosshairs-gps" />}
-            onPress={() => navigation.navigate('TimeTracking')}
-          />
-          
-          <List.Item
-            title="Shift History"
-            description="View your work history"
-            left={() => <List.Icon icon="history" />}
-            onPress={() => navigation.navigate('History')}
-          />
-          
-          <List.Item
-            title="Settings"
-            description="Configure app preferences"
-            left={() => <List.Icon icon="cog" />}
-            onPress={() => navigation.navigate('Settings')}
-          />
-          
-          {user?.role === 'admin' && (
-            <List.Item
-              title="Admin Panel"
-              description="Manage sites and users"
-              left={() => <List.Icon icon="account-supervisor" />}
+      {/* Admin Panel Access - только для админов */}
+      {user?.role === 'admin' && (
+        <Card style={styles.card}>
+          <Card.Content>
+            <Title>Admin Panel</Title>
+            <Button
+              mode="contained"
+              icon="account-supervisor"
               onPress={() => navigation.navigate('Admin')}
-            />
-          )}
-        </Card.Content>
-      </Card>
+              style={[styles.adminButton, { backgroundColor: '#FF9800' }]}
+            >
+              Open Admin Panel
+            </Button>
+          </Card.Content>
+        </Card>
+      )}
 
-      {/* Today's Summary */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title>Today's Summary</Title>
-          <Paragraph>Total hours: 0.0</Paragraph>
-          <Paragraph>Shifts: 0</Paragraph>
-          <Paragraph>Status: No violations</Paragraph>
-        </Card.Content>
-      </Card>
+      {/* Chat Access - только для работников */}
+      {user?.role === 'worker' && (
+        <Card style={styles.card}>
+          <Card.Content>
+            <Title>Communication</Title>
+            <Paragraph>Chat with your foreman and send work photos</Paragraph>
+            <Button
+              mode="contained"
+              icon="chat"
+              onPress={() => navigation.navigate('Chat')}
+              style={[styles.chatButton, { backgroundColor: '#2196F3' }]}
+            >
+              Open Chat
+            </Button>
+          </Card.Content>
+        </Card>
+      )}
     </ScrollView>
   );
 }
@@ -229,5 +297,62 @@ const styles = StyleSheet.create({
   },
   durationText: {
     color: 'white',
+  },
+  adminButton: {
+    marginTop: 12,
+  },
+  chatButton: {
+    marginTop: 12,
+  },
+  locationStatus: {
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  locationChip: {
+    alignSelf: 'flex-start',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 4,
+  },
+  syncContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  section: {
+    backgroundColor: '#fff',
+    margin: 16,
+    padding: 16,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: '#333',
   },
 }); 

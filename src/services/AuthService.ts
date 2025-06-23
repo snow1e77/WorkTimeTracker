@@ -1,15 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthUser, LoginRequest, RegisterRequest, ResetPasswordRequest, SMSVerification } from '../types';
-import { DatabaseService } from './DatabaseService';
+import { ApiDatabaseService } from './ApiDatabaseService';
 import { TwilioService } from './TwilioService';
+import { API_CONFIG, getApiUrl } from '../config/api';
 
 export class AuthService {
   private static instance: AuthService;
-  private dbService: DatabaseService;
+  private dbService: ApiDatabaseService;
   private twilioService: TwilioService;
 
   private constructor() {
-    this.dbService = DatabaseService.getInstance();
+    this.dbService = ApiDatabaseService.getInstance();
     this.twilioService = TwilioService.getInstance();
   }
 
@@ -18,6 +19,32 @@ export class AuthService {
       AuthService.instance = new AuthService();
     }
     return AuthService.instance;
+  }
+
+  // Helper method for API calls
+  private async apiCall(endpoint: string, options: RequestInit = {}): Promise<any> {
+    const token = await this.getAuthToken();
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> || {}),
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(getApiUrl(endpoint), {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `API Error: ${response.status}`);
+    }
+
+    return await response.json();
   }
 
   // Generate 6-digit SMS code
@@ -49,8 +76,8 @@ export class AuthService {
   }
 
   // Сохранение токена аутентификации
-  private async saveAuthToken(userId: string): Promise<void> {
-    await AsyncStorage.setItem('authToken', userId);
+  private async saveAuthToken(token: string): Promise<void> {
+    await AsyncStorage.setItem('authToken', token);
   }
 
   // Получение токена аутентификации
@@ -79,117 +106,172 @@ export class AuthService {
     try {
       console.log('🔄 AuthService: Отправка кода входа для:', phoneNumber);
       
-      // Проверяем, существует ли пользователь
-      const { exists, user } = await this.checkUserExists(phoneNumber);
-      console.log('👤 Пользователь существует:', exists);
+      const response = await this.apiCall('/auth/send-code', {
+        method: 'POST',
+        body: JSON.stringify({ phoneNumber }),
+      });
 
-      const code = this.generateSMSCode();
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 минут
-
-      console.log('🔑 Сгенерированный код:', code);
-
-      const verification: SMSVerification = {
-        id: Date.now().toString(),
-        phoneNumber,
-        code,
-        type: exists ? 'login' : 'registration',
-        isUsed: false,
-        expiresAt,
-        createdAt: new Date()
+      return {
+        success: response.success,
+        userExists: response.userExists || false,
+        error: response.error
       };
-
-      console.log('💾 Сохранение кода в БД...');
-      await this.dbService.saveSMSVerification(verification);
-
-      console.log('📨 Отправка SMS...');
-      const smsResult = await this.sendSMS(phoneNumber, code, exists ? 'login' : 'registration');
-      
-      if (!smsResult) {
-        console.log('❌ Ошибка отправки SMS');
-        return { success: false, userExists: exists, error: 'Failed to send SMS' };
-      }
-
-      console.log('✅ Код отправлен успешно');
-      return { success: true, userExists: exists };
     } catch (error) {
       console.error('❌ Ошибка в sendLoginCode:', error);
-      return { success: false, userExists: false, error: 'Server error' };
+      return { success: false, userExists: false, error: error instanceof Error ? error.message : 'Server error' };
     }
   }
 
-  // Проверка SMS-кода
-  async verifyLoginCode(phoneNumber: string, code: string): Promise<{ success: boolean; user?: AuthUser; error?: string; needsProfile?: boolean }> {
+  // Проверка SMS-кода и вход/регистрация
+  async verifyLoginCode(phoneNumber: string, code: string): Promise<{ 
+    success: boolean; 
+    user?: AuthUser; 
+    error?: string; 
+    needsProfile?: boolean;
+    tokens?: { accessToken: string; refreshToken: string };
+  }> {
     try {
       console.log('🔄 Проверка SMS-кода для:', phoneNumber);
       
-      // Получаем SMS верификацию
-      const verification = await this.dbService.getSMSVerification(phoneNumber, 'login') 
-        || await this.dbService.getSMSVerification(phoneNumber, 'registration');
-      
-      if (!verification || verification.isUsed || verification.expiresAt < new Date()) {
-        return { success: false, error: 'Invalid or expired code' };
+      const response = await this.apiCall('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ phoneNumber, code }),
+      });
+
+      if (response.success && response.tokens) {
+        // Сохраняем access token
+        await this.saveAuthToken(response.tokens.accessToken);
+        // Сохраняем refresh token отдельно
+        await AsyncStorage.setItem('refreshToken', response.tokens.refreshToken);
+        
+        console.log('✅ Пользователь успешно вошел в систему');
+        return { 
+          success: true, 
+          user: response.user,
+          tokens: response.tokens
+        };
       }
 
-      if (verification.code !== code) {
-        return { success: false, error: 'Invalid code' };
-      }
-
-      // Отмечаем код как использованный
-      await this.dbService.markSMSVerificationAsUsed(verification.id);
-
-      // Проверяем, есть ли пользователь
-      const { exists, user } = await this.checkUserExists(phoneNumber);
-
-      if (exists && user) {
-        // Пользователь существует - обновляем его пароль новым SMS-кодом
-        const hashedCode = this.hashPassword(code);
-        await this.dbService.updateUserPassword(user.id, hashedCode);
-        await this.saveAuthToken(user.id);
-        console.log('✅ Существующий пользователь вошел в систему');
-        return { success: true, user };
-      } else {
-        // Новый пользователь - нужно будет создать профиль
-        console.log('👤 Новый пользователь - требуется создание профиля');
-        return { success: true, needsProfile: true };
-      }
+      return response;
     } catch (error) {
       console.error('Ошибка проверки кода:', error);
-      return { success: false, error: 'Server error' };
+      return { success: false, error: error instanceof Error ? error.message : 'Server error' };
     }
   }
 
   // Создание профиля после проверки SMS-кода (для новых пользователей)
-  async createUserProfile(phoneNumber: string, name: string, smsCode: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+  async createUserProfile(phoneNumber: string, name: string, smsCode: string): Promise<{ 
+    success: boolean; 
+    user?: AuthUser; 
+    error?: string;
+    tokens?: { accessToken: string; refreshToken: string };
+  }> {
     try {
       console.log('🔄 Создание профиля для нового пользователя:', phoneNumber);
       
-      // Проверяем, что пользователь с таким номером не существует
-      const existingUser = await this.dbService.getUserByPhone(phoneNumber);
-      if (existingUser) {
-        return { success: false, error: 'User with this phone number already exists' };
+      const response = await this.apiCall('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          phoneNumber,
+          name: name.trim(),
+          code: smsCode
+        }),
+      });
+
+      if (response.success && response.tokens) {
+        // Сохраняем access token
+        await this.saveAuthToken(response.tokens.accessToken);
+        // Сохраняем refresh token отдельно
+        await AsyncStorage.setItem('refreshToken', response.tokens.refreshToken);
+        
+        console.log('✅ Пользователь создан успешно');
+        return { 
+          success: true, 
+          user: response.user,
+          tokens: response.tokens
+        };
       }
 
-      // Создаем пользователя
-      const user: AuthUser = {
-        id: Date.now().toString(),
-        phoneNumber,
-        name: name.trim(),
-        role: 'worker',
-        isVerified: true,
-        isActive: true,
-        createdAt: new Date()
-      };
-
-      console.log('🔄 Хеширование SMS-кода как пароля и сохранение в БД...');
-      const hashedCode = this.hashPassword(smsCode);
-      await this.dbService.createUser(user, hashedCode);
-      console.log('✅ Пользователь создан успешно');
-      await this.saveAuthToken(user.id);
-
-      return { success: true, user };
+      return response;
     } catch (error) {
       console.error('Ошибка создания профиля:', error);
-      return { success: false, error: 'Server error' };
+      return { success: false, error: error instanceof Error ? error.message : 'Server error' };
+    }
+  }
+
+  // Получение текущего пользователя
+  async getCurrentUser(): Promise<AuthUser | null> {
+    try {
+      const token = await this.getAuthToken();
+      if (!token) return null;
+
+      const response = await this.apiCall('/auth/me');
+      return response.success ? response.user : null;
+    } catch (error) {
+      console.error('Ошибка получения текущего пользователя:', error);
+      return null;
+    }
+  }
+
+  // Обновление токена
+  async refreshToken(): Promise<{ success: boolean; tokens?: { accessToken: string; refreshToken: string }; error?: string }> {
+    try {
+      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        return { success: false, error: 'No refresh token available' };
+      }
+
+      const response = await fetch(getApiUrl('/auth/refresh'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Token refresh failed' }));
+        throw new Error(errorData.error || 'Token refresh failed');
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.tokens) {
+        // Сохраняем новые токены
+        await this.saveAuthToken(data.tokens.accessToken);
+        await AsyncStorage.setItem('refreshToken', data.tokens.refreshToken);
+        
+        return { success: true, tokens: data.tokens };
+      }
+
+      return { success: false, error: data.error || 'Token refresh failed' };
+    } catch (error) {
+      console.error('Ошибка обновления токена:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Token refresh failed' };
+    }
+  }
+
+  // Выход из системы
+  async logout(): Promise<void> {
+    try {
+      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      
+      if (refreshToken) {
+        // Уведомляем сервер о выходе
+        await this.apiCall('/auth/logout', {
+          method: 'POST',
+          body: JSON.stringify({ refreshToken }),
+        }).catch(() => {
+          // Игнорируем ошибки при выходе с сервера
+          console.warn('Failed to logout on server, continuing with local logout');
+        });
+      }
+    } catch (error) {
+      console.error('Ошибка при выходе:', error);
+    } finally {
+      // Всегда очищаем локальные токены
+      await this.removeAuthToken();
+      await AsyncStorage.removeItem('refreshToken');
     }
   }
 
@@ -224,28 +306,5 @@ export class AuthService {
   async resetPassword(data: ResetPasswordRequest): Promise<{ success: boolean; error?: string }> {
     console.warn('⚠️ resetPassword устарел, используйте sendLoginCode');
     return { success: false, error: 'Method deprecated' };
-  }
-
-  // Получение текущего пользователя
-  async getCurrentUser(): Promise<AuthUser | null> {
-    try {
-      const token = await this.getAuthToken();
-      if (!token) return null;
-
-      const user = await this.dbService.getUserById(token);
-      return user;
-    } catch (error) {
-      console.error('Ошибка получения текущего пользователя:', error);
-      return null;
-    }
-  }
-
-  // Выход из системы
-  async logout(): Promise<void> {
-    try {
-      await this.removeAuthToken();
-    } catch (error) {
-      console.error('Ошибка выхода:', error);
-    }
   }
 } 

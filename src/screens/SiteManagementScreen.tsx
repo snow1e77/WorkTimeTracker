@@ -69,9 +69,8 @@ const SiteManagementScreen: React.FC = () => {
     }
   };
 
-  const handleEditSite = () => {
-    setStatusMessage('Editing feature will be available in the next version');
-    setStatusType('info');
+  const handleEditSite = (siteId: string) => {
+    navigation.navigate('EditSite', { siteId });
   };
 
   return (
@@ -147,7 +146,7 @@ const SiteManagementScreen: React.FC = () => {
               <View style={styles.siteActions}>
                 <TouchableOpacity 
                   style={[styles.actionButton, styles.editButton]}
-                  onPress={handleEditSite}
+                  onPress={() => handleEditSite(site.id)}
                 >
                   <Text style={styles.actionButtonText}>Edit</Text>
                 </TouchableOpacity>

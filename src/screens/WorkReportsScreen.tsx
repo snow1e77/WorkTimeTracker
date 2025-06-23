@@ -7,10 +7,12 @@ import {
   ScrollView,
   SafeAreaView,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { WorkReport } from '../types';
 import { DatabaseService } from '../services/DatabaseService';
+import { exportToCSV, exportToPDF, generateReportSummary } from '../utils/exportUtils';
 
 const WorkReportsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -61,22 +63,34 @@ const WorkReportsScreen: React.FC = () => {
     return { totalHours, totalWorkers, totalViolations };
   };
 
-  const exportToExcel = async () => {
+  const handleExportToCSV = async () => {
     try {
-      setStatusMessage('Excel export feature will be available in the next version');
-      setStatusType('info');
+      if (Platform.OS === 'web') {
+        exportToCSV(reports, selectedPeriod);
+        setStatusMessage('Report exported to CSV successfully');
+        setStatusType('info');
+      } else {
+        setStatusMessage('CSV export is only available on web platform');
+        setStatusType('info');
+      }
     } catch (error) {
-      setStatusMessage('Failed to export report');
+      setStatusMessage('Failed to export report to CSV');
       setStatusType('error');
     }
   };
 
-  const exportToPDF = async () => {
+  const handleExportToPDF = async () => {
     try {
-      setStatusMessage('PDF export feature will be available in the next version');
-      setStatusType('info');
+      if (Platform.OS === 'web') {
+        exportToPDF(reports, selectedPeriod);
+        setStatusMessage('Opening print dialog for PDF export...');
+        setStatusType('info');
+      } else {
+        setStatusMessage('PDF export is only available on web platform');
+        setStatusType('info');
+      }
     } catch (error) {
-      setStatusMessage('Failed to export report');
+      setStatusMessage('Failed to export report to PDF');
       setStatusType('error');
     }
   };
@@ -106,13 +120,13 @@ const WorkReportsScreen: React.FC = () => {
         <View style={styles.exportButtons}>
           <TouchableOpacity
             style={styles.exportButton}
-            onPress={exportToExcel}
+            onPress={handleExportToCSV}
           >
-            <Text style={styles.exportButtonText}>📊 Excel</Text>
+            <Text style={styles.exportButtonText}>📊 CSV</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.exportButton}
-            onPress={exportToPDF}
+            onPress={handleExportToPDF}
           >
             <Text style={styles.exportButtonText}>📄 PDF</Text>
           </TouchableOpacity>

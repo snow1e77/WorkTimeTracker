@@ -123,6 +123,9 @@ export const APP_CONFIG = {
     HIGH_ACCURACY: true
   },
   
+  // Expo Project ID для push уведомлений
+  EXPO_PROJECT_ID: process.env.EXPO_PROJECT_ID || 'your-project-id',
+
   // Уведомления
   NOTIFICATION_CONFIG: {
     ENABLED: true,
@@ -131,7 +134,13 @@ export const APP_CONFIG = {
     SHIFT_REMINDERS: true,
     BREAK_REMINDERS: true,
     OVERTIME_ALERTS: true,
-    MULTILINGUAL_SUPPORT: true
+    MULTILINGUAL_SUPPORT: true,
+    CHANNELS: {
+      SHIFT_REMINDERS: 'shift_reminders',
+      GPS_EVENTS: 'gps_events',
+      VIOLATIONS: 'violations',
+      GENERAL: 'general'
+    }
   },
   
   // API настройки

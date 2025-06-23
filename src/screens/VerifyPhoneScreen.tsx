@@ -26,6 +26,7 @@ export default function VerifyPhoneScreen() {
   const [statusMessage, setStatusMessage] = useState('');
   const [statusType, setStatusType] = useState<'error' | 'info'>('info');
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     startTimer();
@@ -33,6 +34,9 @@ export default function VerifyPhoneScreen() {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+      }
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
       }
     };
   }, []);
@@ -74,12 +78,18 @@ export default function VerifyPhoneScreen() {
           // Пользователь существовал и вошел
           setStatusMessage('Welcome!');
           setStatusType('info');
-          setTimeout(() => navigation.navigate('Home'), 1000);
+          navigationTimeoutRef.current = setTimeout(() => {
+            navigationTimeoutRef.current = null;
+            navigation.navigate('Home');
+          }, 1000);
         } else if (result.needsProfile) {
           // Новый пользователь - перенаправляем на создание профиля
           setStatusMessage('Verified! Now create your profile');
           setStatusType('info');
-          setTimeout(() => navigation.navigate('Login'), 1000);
+          navigationTimeoutRef.current = setTimeout(() => {
+            navigationTimeoutRef.current = null;
+            navigation.navigate('Login');
+          }, 1000);
         }
       } else {
         setStatusMessage(result.error || 'Invalid or expired verification code');

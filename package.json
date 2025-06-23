@@ -6,7 +6,15 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web --clear"
+    "web": "expo start --web --clear",
+    "build:web": "expo export --platform web",
+    "build:android": "expo build:android",
+    "build:ios": "expo build:ios",
+    "server:dev": "cd server && npm run dev",
+    "server:build": "cd server && npm run build",
+    "server:start": "cd server && npm run start:prod",
+    "deploy:prod": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy-production.ps1",
+    "setup:prod": "cd server && npm ci --production"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
@@ -14,9 +22,10 @@
     "@react-navigation/native": "^7.1.11",
     "@react-navigation/native-stack": "^7.3.16",
     "expo": "~53.0.11",
+    "expo-device": "^7.1.4",
+    "expo-image-picker": "~16.1.4",
     "expo-location": "~18.1.5",
     "expo-notifications": "~0.31.3",
-    "expo-sqlite": "~15.0.3",
     "expo-status-bar": "~2.2.3",
     "expo-task-manager": "~13.1.5",
     "leaflet": "^1.9.4",
@@ -30,7 +39,8 @@
     "react-native-paper": "^5.14.5",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
-    "react-native-web": "~0.20.0"
+    "react-native-web": "~0.20.0",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -39,6 +49,10 @@
     "@types/react": "~19.0.10",
     "@types/react-native": "^0.72.8",
     "typescript": "~5.8.3"
+  },
+  "resolutions": {
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
   },
   "private": true
 }

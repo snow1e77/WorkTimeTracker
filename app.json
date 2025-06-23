@@ -1,26 +1,23 @@
 {
   "expo": {
     "name": "WorkTimeTracker",
-    "slug": "WorkTimeTracker",
+    "slug": "worktimetracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.snow1e77.WorkTimeTracker"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
       "package": "com.snow1e77.WorkTimeTracker"
     },
     "web": {
@@ -28,15 +25,9 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-sqlite",
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "This app needs access to location for auto-detecting your country and setting the appropriate phone number format.",
-          "isIosBackgroundLocationEnabled": false,
-          "isAndroidBackgroundLocationEnabled": false
-        }
-      ]
+      "expo-task-manager",
+      "expo-location",
+      "expo-notifications"
     ]
   }
 }

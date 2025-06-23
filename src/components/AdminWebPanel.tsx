@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { WebDatabaseService } from '../services/WebDatabaseService';
-import { AuthUser, ConstructionSite, WorkReport, UserSiteAssignment } from '../types';
+import { WebSyncService } from '../services/WebSyncService';
+import { AuthUser, ConstructionSite, WorkReport, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation } from '../types';
+import AssignmentsTab from './AssignmentsTab';
+import SyncTab from './SyncTab';
+import SyncStatusPanel from './SyncStatusPanel';
+import ChatManagementPanel from './ChatManagementPanel';
 
 // Импорты для карты (только для веб-платформы)
 let MapContainer: any, TileLayer: any, Marker: any, useMapEvents: any;
@@ -21,124 +26,6 @@ if (Platform.OS === 'web') {
   }
 }
 
-// Компонент для обработки кликов по карте
-const MapClickHandler: React.FC<{ onMapClick: (lat: number, lng: number) => void }> = ({ onMapClick }) => {
-  if (!useMapEvents) {
-    return null;
-  }
-  
-  try {
-    useMapEvents({
-      click: (e: any) => {
-        console.log('MapClickHandler: click event', e);
-        if (e && e.latlng) {
-          onMapClick(e.latlng.lat, e.latlng.lng);
-        }
-      },
-    });
-  } catch (error) {
-    console.error('MapClickHandler error:', error);
-  }
-  
-  return null;
-};
-
-// Компонент интерактивной карты
-const InteractiveMap: React.FC<{
-  center: [number, number];
-  zoom?: number;
-  onMapClick?: (lat: number, lng: number) => void;
-  markers?: Array<{ position: [number, number]; title?: string }>;
-  style?: React.CSSProperties;
-}> = ({ center, zoom = 13, onMapClick, markers = [], style }) => {
-  // Если Leaflet не загружен, показываем заглушку
-  if (!MapContainer || !TileLayer || !Marker) {
-    return (
-      <div style={{
-        ...style,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#f8f9fa',
-        border: '2px dashed #dee2e6',
-        borderRadius: '8px'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ color: '#6c757d', margin: 0 }}>🗺️ Map not loaded</p>
-          <p style={{ color: '#6c757d', fontSize: '12px', margin: '4px 0 0 0' }}>
-            Run: npm install leaflet react-leaflet @types/leaflet
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  try {
-    return (
-      <MapContainer
-        center={center}
-        zoom={zoom}
-        style={style}
-        scrollWheelZoom={false} // Отключаем скролл по умолчанию
-        doubleClickZoom={true}  // Оставляем зум по двойному клику
-        dragging={true}         // Оставляем перетаскивание
-        zoomControl={true}      // Показываем кнопки зума
-        touchZoom={true}        // Зум на мобильных устройствах
-        key={`${center[0]}-${center[1]}`} // Force re-render when center changes
-        whenCreated={(mapInstance: any) => {
-          // Включаем скролл зум только когда карта в фокусе
-          mapInstance.on('focus', () => {
-            mapInstance.scrollWheelZoom.enable();
-          });
-          mapInstance.on('blur', () => {
-            mapInstance.scrollWheelZoom.disable();
-          });
-          // Включаем скролл зум при клике по карте
-          mapInstance.on('click', () => {
-            mapInstance.scrollWheelZoom.enable();
-            setTimeout(() => {
-              mapInstance.scrollWheelZoom.disable();
-            }, 5000); // Отключаем через 5 секунд
-          });
-        }}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        
-        {onMapClick && <MapClickHandler onMapClick={onMapClick} />}
-        
-        {markers.map((marker, index) => (
-          <Marker key={`marker-${index}-${marker.position[0]}-${marker.position[1]}`} position={marker.position}>
-            {/* Можно добавить Popup с информацией */}
-          </Marker>
-        ))}
-      </MapContainer>
-    );
-  } catch (error) {
-    console.error('Map rendering error:', error);
-    return (
-      <div style={{
-        ...style,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#ffe6e6',
-        border: '2px solid #ff9999',
-        borderRadius: '8px'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ color: '#cc0000', margin: 0 }}>❌ Map Error</p>
-          <p style={{ color: '#cc0000', fontSize: '12px', margin: '4px 0 0 0' }}>
-            Check console for details
-          </p>
-        </div>
-      </div>
-    );
-  }
-};
-
 interface WebAdminPanelProps {
   onLogout?: () => void;
 }
@@ -147,783 +34,447 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [sites, setSites] = useState<ConstructionSite[]>([]);
   const [reports, setReports] = useState<WorkReport[]>([]);
+  const [photoReports, setPhotoReports] = useState<PhotoReport[]>([]);
+  const [workersLocations, setWorkersLocations] = useState<WorkerLocation[]>([]);
+  const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
   const [assignments, setAssignments] = useState<UserSiteAssignment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState<'users' | 'reports' | 'sites' | 'assignments'>('users');
+  const [selectedTab, setSelectedTab] = useState<'workers' | 'schedule' | 'reports' | 'users' | 'assignments' | 'sync' | 'chat'>('workers');
   const [searchTerm, setSearchTerm] = useState('');
-  const [reportPeriod, setReportPeriod] = useState<'today' | 'week' | 'month'>('week');
-  const [showSiteForm, setShowSiteForm] = useState(false);
-  const [editingSite, setEditingSite] = useState<ConstructionSite | null>(null);
-  const [showMap, setShowMap] = useState(false);
-  const [siteFormData, setSiteFormData] = useState({
-    name: '',
-    address: '',
-    latitude: 55.7558,
-    longitude: 37.6176,
-    radius: 100,
-  });
-  const [newAssignment, setNewAssignment] = useState({
-    userId: '',
-    siteId: '',
-    notes: ''
-  });
+  const [selectedUser, setSelectedUser] = useState<AuthUser | null>(null);
+  const [syncStatus, setSyncStatus] = useState<any>(null);
+  const [syncHistory, setSyncHistory] = useState<any[]>([]);
+  const [chatPanelVisible, setChatPanelVisible] = useState(false);
 
   const dbService = WebDatabaseService.getInstance();
-
-  // Загружаем CSS для Leaflet при монтировании компонента
-  useEffect(() => {
-    if (Platform.OS === 'web' && typeof document !== 'undefined' && L) {
-      // Добавляем CSS для Leaflet
-      const leafletCSS = document.createElement('link');
-      leafletCSS.rel = 'stylesheet';
-      leafletCSS.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      leafletCSS.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
-      leafletCSS.crossOrigin = '';
-      document.head.appendChild(leafletCSS);
-
-      // Исправляем проблему с иконками маркеров в Leaflet
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-      });
-
-      return () => {
-        // Убираем CSS при размонтировании
-        if (document.head.contains(leafletCSS)) {
-          document.head.removeChild(leafletCSS);
-        }
-      };
-    }
-  }, []);
+  const syncService = WebSyncService.getInstance();
 
   useEffect(() => {
     loadData();
+    loadSyncData();
+    // Обновляем данные каждые 30 секунд
+    const interval = setInterval(() => {
+      loadData();
+      loadSyncData();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (selectedTab === 'reports') {
-      loadReports();
-    }
-  }, [selectedTab, reportPeriod]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      await dbService.initDatabase();
-      const allUsers = await dbService.getAllUsers();
-      const allSites = await dbService.getConstructionSites();
-      const allAssignments = await dbService.getAllAssignments();
-      setUsers(allUsers);
-      setSites(allSites);
-      setAssignments(allAssignments);
+      const [usersData, sitesData, reportsData, photoReportsData, locationsData, schedulesData, assignmentsData] = await Promise.all([
+        dbService.getAllUsers(),
+        dbService.getConstructionSites(),
+        dbService.getWorkReports('week'),
+        dbService.getPhotoReports(),
+        dbService.getWorkersLocations(),
+        dbService.getWorkSchedules(),
+        dbService.getAllAssignments()
+      ]);
+      
+      setUsers(usersData);
+      setSites(sitesData);
+      setReports(reportsData);
+      setPhotoReports(photoReportsData);
+      setWorkersLocations(locationsData);
+      setSchedules(schedulesData);
+      setAssignments(assignmentsData);
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Ошибка загрузки данных:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadUsers = async () => {
+  const loadSyncData = async () => {
     try {
-      await dbService.initDatabase();
-      const allUsers = await dbService.getAllUsers();
-      setUsers(allUsers);
-    } catch (error) {
-      console.error('Error loading users:', error);
-    }
-  };
-
-  const loadSites = async () => {
-    try {
-      const allSites = await dbService.getConstructionSites();
-      setSites(allSites);
-    } catch (error) {
-      console.error('Error loading sites:', error);
-    }
-  };
-
-  const loadReports = async () => {
-    try {
-      const workReports = await dbService.getWorkReports(reportPeriod);
-      setReports(workReports);
-    } catch (error) {
-      console.error('Error loading reports:', error);
-    }
-  };
-
-  const handleRoleChange = async (userId: string, newRole: 'worker' | 'admin') => {
-    try {
-      await dbService.updateUserRole(userId, newRole);
-      loadUsers();
-      console.log(`User role updated to ${newRole === 'admin' ? 'Admin' : 'Worker'}`);
-    } catch (error) {
-      console.error('Error updating user role:', error);
-    }
-  };
-
-  const handleStatusToggle = async (userId: string, currentStatus: boolean) => {
-    try {
-      await dbService.updateUserStatus(userId, !currentStatus);
-      loadUsers();
-      console.log(`User ${!currentStatus ? 'activated' : 'deactivated'}`);
-    } catch (error) {
-      console.error('Error updating user status:', error);
-    }
-  };
-
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    try {
-      await dbService.deleteUser(userId);
-      loadUsers();
-      console.log('User deleted successfully');
-    } catch (error) {
-      console.error('Error deleting user:', error);
-    }
-  };
-
-  // Site management functions
-  const handleSiteStatusToggle = async (siteId: string, currentStatus: boolean) => {
-    try {
-      await dbService.updateSiteStatus(siteId, !currentStatus);
-      loadSites();
-      console.log(`Site ${!currentStatus ? 'activated' : 'deactivated'}`);
-    } catch (error) {
-      console.error('Error updating site status:', error);
-    }
-  };
-
-  const handleDeleteSite = async (siteId: string, siteName: string) => {
-    try {
-      await dbService.deleteConstructionSite(siteId);
-      loadSites();
-      console.log('Site deleted successfully');
-    } catch (error) {
-      console.error('Error deleting site:', error);
-    }
-  };
-
-  const handleSiteFormSubmit = async () => {
-          if (!siteFormData.name.trim() || !siteFormData.address.trim()) {
-        console.log('Please fill in all required fields');
-        return;
-      }
-
-    try {
-      const newSite: ConstructionSite = {
-        id: editingSite ? editingSite.id : 'site-' + Date.now(),
-        name: siteFormData.name,
-        address: siteFormData.address,
-        latitude: siteFormData.latitude,
-        longitude: siteFormData.longitude,
-        radius: siteFormData.radius,
-        companyId: 'default-company',
-        isActive: true,
-        createdAt: new Date(),
-      };
-
-      // В реальном приложении здесь был бы API call для создания/обновления объекта
-      const currentSites = await dbService.getConstructionSites();
-      if (editingSite) {
-        const updatedSites = currentSites.map(site => 
-          site.id === editingSite.id ? newSite : site
-        );
-        localStorage.setItem('worktime_sites', JSON.stringify(updatedSites));
-      } else {
-        currentSites.push(newSite);
-        localStorage.setItem('worktime_sites', JSON.stringify(currentSites));
-      }
-
-      setShowSiteForm(false);
-      setEditingSite(null);
-      setSiteFormData({
-        name: '',
-        address: '',
-        latitude: 55.7558,
-        longitude: 37.6176,
-        radius: 100,
-      });
-      loadSites();
-      console.log(`Site ${editingSite ? 'updated' : 'created'} successfully`);
-    } catch (error) {
-      console.error('Error saving site:', error);
-    }
-  };
-
-  const handleEditSite = (site: ConstructionSite) => {
-    setEditingSite(site);
-    setSiteFormData({
-      name: site.name,
-      address: site.address,
-      latitude: site.latitude,
-      longitude: site.longitude,
-      radius: site.radius,
-    });
-    setShowSiteForm(true);
-  };
-
-  const handleMapClick = (lat: number, lng: number) => {
-    console.log('Map clicked at:', lat, lng);
-    setSiteFormData({
-      ...siteFormData,
-      latitude: lat,
-      longitude: lng,
-    });
-  };
-
-  const centerMapOnCoordinates = () => {
-    // Функция для центрирования карты по введенным координатам
-    // Карта автоматически обновится через center prop
-  };
-
-  const handleExportReports = () => {
-    try {
-      const csvContent = "data:text/csv;charset=utf-8," 
-        + "Employee,Site,Hours,Minutes,Shifts,Violations,Date\n"
-        + reports.map(report => 
-            `${report.userName},${report.siteName},${report.totalHours},${report.totalMinutes},${report.shiftsCount},${report.violations},${report.date}`
-          ).join("\n");
+      const status = syncService.getSyncStatus();
+      const history = await syncService.getSyncHistory();
       
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `work_reports_${reportPeriod}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      setSyncStatus(status);
+      setSyncHistory(history);
     } catch (error) {
-      console.error('Error exporting reports:', error);
+      console.error('Ошибка загрузки данных синхронизации:', error);
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.phoneNumber.includes(searchTerm)
-  );
-
-  // Функция для отображения вкладки назначений
-  const renderAssignments = () => {
-    const handleCreateAssignment = async () => {
-      if (!newAssignment.userId || !newAssignment.siteId) {
-        console.log('Please select both user and site');
-        return;
-      }
-
-      try {
-        const assignment: UserSiteAssignment = {
-          id: `assignment-${Date.now()}`,
-          userId: newAssignment.userId,
-          siteId: newAssignment.siteId,
-          assignedBy: 'admin-1',
-          isActive: true,
-          assignedAt: new Date(),
-          notes: newAssignment.notes
-        };
-
-        await dbService.createAssignment(assignment);
-        setAssignments([...assignments, assignment]);
-        setNewAssignment({ userId: '', siteId: '', notes: '' });
-        console.log('Assignment created successfully');
-      } catch (error) {
-        console.error('Error creating assignment:', error);
-      }
-    };
-
-    const handleToggleAssignment = async (assignmentId: string, isActive: boolean) => {
-      try {
-        await dbService.updateAssignment(assignmentId, { isActive: !isActive });
-        setAssignments(assignments.map(assignment => 
-          assignment.id === assignmentId 
-            ? { ...assignment, isActive: !isActive }
-            : assignment
-        ));
-      } catch (error) {
-        console.error('Error updating assignment:', error);
-      }
-    };
-
-    const handleDeleteAssignment = async (assignmentId: string) => {
-      try {
-        await dbService.deleteAssignment(assignmentId);
-        setAssignments(assignments.filter(assignment => assignment.id !== assignmentId));
-        console.log('Assignment deleted successfully');
-      } catch (error) {
-        console.error('Error deleting assignment:', error);
-      }
-    };
-
-    const getUserName = (userId: string) => {
-      const user = users.find(u => u.id === userId);
-      return user ? user.name : 'Unknown User';
-    };
-
-    const getSiteName = (siteId: string) => {
-      const site = sites.find(s => s.id === siteId);
-      return site ? site.name : 'Unknown Site';
-    };
-
-    return (
-      <div style={webStyles.content}>
-        <h2>Worker Site Assignments</h2>
-        
-        <div style={webStyles.siteForm}>
-          <h3>Create New Assignment</h3>
-          <div style={webStyles.formRow}>
-            <select
-              value={newAssignment.userId}
-              onChange={(e) => setNewAssignment({...newAssignment, userId: e.target.value})}
-              style={webStyles.formInput}
-            >
-              <option value="">Select Worker</option>
-              {users.filter(user => user.role === 'worker').map(user => (
-                <option key={user.id} value={user.id}>{user.name}</option>
-              ))}
-            </select>
-            
-            <select
-              value={newAssignment.siteId}
-              onChange={(e) => setNewAssignment({...newAssignment, siteId: e.target.value})}
-              style={webStyles.formInput}
-            >
-              <option value="">Select Site</option>
-              {sites.filter(site => site.isActive).map(site => (
-                <option key={site.id} value={site.id}>{site.name}</option>
-              ))}
-            </select>
-          </div>
-          
-          <textarea
-            placeholder="Notes (optional)"
-            value={newAssignment.notes}
-            onChange={(e) => setNewAssignment({...newAssignment, notes: e.target.value})}
-            style={{...webStyles.formInput, height: '80px', resize: 'vertical'}}
-          />
-          
-          <button onClick={handleCreateAssignment} style={webStyles.saveButton}>
-            Create Assignment
-          </button>
-        </div>
-
-        <div style={webStyles.tableContainer}>
-          <table style={webStyles.table}>
-            <thead>
-              <tr style={webStyles.tableHeader}>
-                <th style={webStyles.th}>Worker</th>
-                <th style={webStyles.th}>Site</th>
-                <th style={webStyles.th}>Status</th>
-                <th style={webStyles.th}>Assigned Date</th>
-                <th style={webStyles.th}>Notes</th>
-                <th style={webStyles.th}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assignments.map(assignment => (
-                <tr key={assignment.id} style={webStyles.tableRow}>
-                  <td style={webStyles.td}>{getUserName(assignment.userId)}</td>
-                  <td style={webStyles.td}>{getSiteName(assignment.siteId)}</td>
-                  <td style={webStyles.td}>
-                    <span style={{
-                      ...webStyles.badge,
-                      backgroundColor: assignment.isActive ? '#2ecc71' : '#e74c3c'
-                    }}>
-                      {assignment.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td style={webStyles.td}>
-                    {assignment.assignedAt.toLocaleDateString()}
-                  </td>
-                  <td style={webStyles.td}>{assignment.notes || '-'}</td>
-                  <td style={webStyles.td}>
-                    <div style={webStyles.actionButtons}>
-                      <button
-                        onClick={() => handleToggleAssignment(assignment.id, assignment.isActive)}
-                        style={{
-                          ...webStyles.button,
-                          backgroundColor: assignment.isActive ? '#f39c12' : '#2ecc71'
-                        }}
-                      >
-                        {assignment.isActive ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteAssignment(assignment.id)}
-                        style={{
-                          ...webStyles.button,
-                          backgroundColor: '#e74c3c'
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
+  const formatTime = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
   };
 
-  const renderUserManagement = () => (
-    <div style={webStyles.content}>
-      <div style={webStyles.searchContainer}>
-        <input
-          type="text"
-          placeholder="Search users by name or phone..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={webStyles.searchInput}
-        />
+  const formatTimestamp = (timestamp: Date): string => {
+    return new Intl.DateTimeFormat('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(timestamp);
+  };
+
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'working': return '#4CAF50';
+      case 'lunch': return '#FF9800';
+      case 'left_site': return '#f44336';
+      case 'offline': return '#9E9E9E';
+      default: return '#9E9E9E';
+    }
+  };
+
+  const getStatusText = (status: string): string => {
+    switch (status) {
+      case 'working': return 'Working';
+      case 'lunch': return 'Lunch';
+      case 'left_site': return 'Left site';
+      case 'offline': return 'Offline';
+      default: return 'Unknown';
+    }
+  };
+
+  // Рендер вкладки "Рабочие"
+  const renderWorkersTab = () => (
+    <div style={styles.tabContent}>
+      <div style={styles.header}>
+        <h2 style={styles.title}>Worker Tracking</h2>
+        <p style={styles.subtitle}>Current location and status of workers</p>
       </div>
 
-      <div style={webStyles.tableContainer}>
-        <table style={webStyles.table}>
-          <thead>
-            <tr style={webStyles.tableHeader}>
-              <th style={webStyles.th}>Name</th>
-              <th style={webStyles.th}>Phone</th>
-              <th style={webStyles.th}>Role</th>
-              <th style={webStyles.th}>Status</th>
-              <th style={webStyles.th}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((user) => (
-              <tr key={user.id} style={webStyles.tableRow}>
-                <td style={webStyles.td}>{user.name}</td>
-                <td style={webStyles.td}>{user.phoneNumber}</td>
-                <td style={webStyles.td}>
-                  <span style={{
-                    ...webStyles.badge,
-                    backgroundColor: user.role === 'admin' ? '#3498db' : '#95a5a6'
-                  }}>
-                    {user.role === 'admin' ? 'Admin' : 'Worker'}
-                  </span>
-                </td>
-                <td style={webStyles.td}>
-                  <span style={{
-                    ...webStyles.badge,
-                    backgroundColor: user.isActive ? '#27ae60' : '#e74c3c'
-                  }}>
-                    {user.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td style={webStyles.td}>
-                  <div style={webStyles.actionButtons}>
-                    <select
-                      value={user.role}
-                      onChange={(e) => handleRoleChange(user.id, e.target.value as 'worker' | 'admin')}
-                      style={webStyles.selectButton}
-                    >
-                      <option value="worker">Worker</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                    <button
-                      onClick={() => handleStatusToggle(user.id, user.isActive)}
-                      style={{
-                        ...webStyles.button,
-                        backgroundColor: user.isActive ? '#e74c3c' : '#27ae60'
-                      }}
-                    >
-                      {user.isActive ? 'Deactivate' : 'Activate'}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(user.id, user.name)}
-                      style={{
-                        ...webStyles.button,
-                        backgroundColor: '#e74c3c'
-                      }}
-                    >
-                      Delete
-                    </button>
+      <div style={styles.workersGrid}>
+        {workersLocations.map((worker) => (
+          <div key={worker.userId} style={styles.workerCard}>
+            <div style={styles.workerHeader}>
+              <div style={styles.workerAvatar}>
+                {worker.userAvatar ? (
+                  <img src={worker.userAvatar} alt={worker.userName} style={styles.avatarImage} />
+                ) : (
+                  <div style={styles.avatarPlaceholder}>
+                    {worker.userName.split(' ').map(n => n[0]).join('')}
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                )}
+              </div>
+              <div style={styles.workerInfo}>
+                <h3 style={styles.workerName}>{worker.userName}</h3>
+                <div style={styles.statusBadge}>
+                  <span 
+                    style={{
+                      ...styles.statusDot,
+                      backgroundColor: getStatusColor(worker.status)
+                    }}
+                  />
+                  {getStatusText(worker.status)}
+                </div>
+              </div>
+            </div>
+
+            {worker.currentSiteName && (
+              <div style={styles.siteInfo}>
+                <strong>Site:</strong> {worker.currentSiteName}
+              </div>
+            )}
+
+            {worker.shiftStartTime && (
+              <div style={styles.timeInfo}>
+                <div><strong>Shift started:</strong> {formatTimestamp(worker.shiftStartTime)}</div>
+                {worker.timeOnSite && worker.timeOnSite > 0 && (
+                  <div><strong>Time on site:</strong> {formatTime(worker.timeOnSite)}</div>
+                )}
+              </div>
+            )}
+
+            {worker.lastPhotoReportTime && (
+              <div style={styles.photoInfo}>
+                <strong>Last photo report:</strong> {formatTimestamp(worker.lastPhotoReportTime)}
+                {(Date.now() - worker.lastPhotoReportTime.getTime()) > 60 * 60 * 1000 && (
+                  <span style={styles.warningText}> (over an hour ago!)</span>
+                )}
+              </div>
+            )}
+
+            <div style={styles.locationInfo}>
+              <strong>Last update:</strong> {formatTimestamp(worker.timestamp)}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 
-  const renderReports = () => (
-    <div style={webStyles.content}>
-      <div style={webStyles.reportsHeader}>
-        <h2 style={webStyles.sectionTitle}>Work Reports</h2>
-        <div style={webStyles.reportsControls}>
-          <select
-            value={reportPeriod}
-            onChange={(e) => setReportPeriod(e.target.value as 'today' | 'week' | 'month')}
-            style={webStyles.periodSelect}
-          >
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-          </select>
-          <button onClick={handleExportReports} style={webStyles.exportButton}>
-            📊 Export CSV
-          </button>
+  // Рендер вкладки "Расписание"
+  const renderScheduleTab = () => (
+    <div style={styles.tabContent}>
+      <div style={styles.header}>
+        <h2 style={styles.title}>Work Schedule</h2>
+        <p style={styles.subtitle}>Manage schedules by sites</p>
+      </div>
+
+      <div style={styles.scheduleGrid}>
+        {sites.filter(site => site.isActive).map((site) => {
+          const siteSchedules = schedules.filter(schedule => schedule.siteId === site.id);
+          
+          return (
+            <div key={site.id} style={styles.scheduleCard}>
+              <h3 style={styles.siteName}>{site.name}</h3>
+              <p style={styles.siteAddress}>{site.address}</p>
+              
+              <div style={styles.weekSchedule}>
+                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day, index) => {
+                  const daySchedule = siteSchedules.find(s => s.dayOfWeek === (index + 1) % 7);
+                  
+                  return (
+                    <div key={index} style={styles.daySchedule}>
+                      <strong>{day}:</strong>
+                      {daySchedule ? (
+                        <div style={styles.scheduleTime}>
+                          <span>{daySchedule.startTime} - {daySchedule.endTime}</span>
+                          {daySchedule.lunchStart && daySchedule.lunchEnd && (
+                            <span style={styles.lunchTime}>
+                              (lunch: {daySchedule.lunchStart} - {daySchedule.lunchEnd})
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={styles.noSchedule}>Day off</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <button 
+                style={styles.editButton}
+                onClick={() => {
+                  alert(`Edit schedule for ${site.name}`);
+                }}
+              >
+                Edit Schedule
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // Рендер вкладки "Отчёты"
+  const renderReportsTab = () => (
+    <div style={styles.tabContent}>
+      <div style={styles.header}>
+        <h2 style={styles.title}>Work Reports</h2>
+        <p style={styles.subtitle}>Work reports and photo reports</p>
+      </div>
+
+      {/* Фотоотчёты */}
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>Worker Photo Reports</h3>
+        <div style={styles.photoGrid}>
+          {photoReports.map((report) => {
+            const user = users.find(u => u.id === report.userId);
+            const site = sites.find(s => s.id === report.siteId);
+            
+            return (
+              <div key={report.id} style={styles.photoReportCard}>
+                <img 
+                  src={report.photoUri} 
+                  alt="Photo Report" 
+                  style={styles.reportPhoto}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiNmNWY1ZjUiLz4KICA8dGV4dCB4PSIxMDAiIHk9Ijc1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTk5IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiPlBob3RvPC90ZXh0Pgo8L3N2Zz4=';
+                  }}
+                />
+                <div style={styles.reportPhotoInfo}>
+                  <strong>{user?.name || 'Unknown'}</strong>
+                  <div>{site?.name || 'Unknown site'}</div>
+                  <div style={styles.timestamp}>{formatTimestamp(report.timestamp)}</div>
+                  <div style={styles.validation}>
+                    {report.isValidated ? (
+                      <span style={styles.validated}>✅ Validated</span>
+                    ) : (
+                      <span style={styles.notValidated}>⏳ Pending review</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {reports.length === 0 ? (
-        <p style={webStyles.placeholder}>
-          No reports available for the selected period
-        </p>
-      ) : (
-        <div style={webStyles.tableContainer}>
-          <table style={webStyles.table}>
+      {/* Отчёты по времени работы */}
+      <div style={styles.section}>
+        <h3 style={styles.sectionTitle}>Time Reports</h3>
+        <div style={styles.reportsTable}>
+          <table style={styles.table}>
             <thead>
-              <tr style={webStyles.tableHeader}>
-                <th style={webStyles.th}>Employee</th>
-                <th style={webStyles.th}>Site</th>
-                <th style={webStyles.th}>Hours</th>
-                <th style={webStyles.th}>Shifts</th>
-                <th style={webStyles.th}>Violations</th>
-                <th style={webStyles.th}>Date</th>
+              <tr>
+                <th>Worker</th>
+                <th>Site</th>
+                <th>Working Hours</th>
+                <th>Shifts Count</th>
+                <th>Violations</th>
               </tr>
             </thead>
             <tbody>
               {reports.map((report, index) => (
-                <tr key={index} style={webStyles.tableRow}>
-                  <td style={webStyles.td}>{report.userName}</td>
-                  <td style={webStyles.td}>{report.siteName}</td>
-                  <td style={webStyles.td}>
-                    <span style={{
-                      ...webStyles.badge,
-                      backgroundColor: report.totalHours >= 8 ? '#27ae60' : '#f39c12'
-                    }}>
-                      {report.totalHours.toFixed(1)}h
-                    </span>
+                <tr key={index} style={index % 2 === 0 ? styles.evenRow : styles.oddRow}>
+                  <td>{report.userName}</td>
+                  <td>{report.siteName}</td>
+                  <td>{report.totalHours}h {report.totalMinutes}m</td>
+                  <td>{report.shiftsCount}</td>
+                  <td style={report.violations > 0 ? styles.violations : {}}>
+                    {report.violations}
                   </td>
-                  <td style={webStyles.td}>{report.shiftsCount}</td>
-                  <td style={webStyles.td}>
-                    {report.violations > 0 ? (
-                      <span style={{
-                        ...webStyles.badge,
-                        backgroundColor: '#e74c3c'
-                      }}>
-                        {report.violations}
-                      </span>
-                    ) : (
-                      <span style={{
-                        ...webStyles.badge,
-                        backgroundColor: '#95a5a6'
-                      }}>
-                        0
-                      </span>
-                    )}
-                  </td>
-                  <td style={webStyles.td}>{new Date(report.date).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
+      </div>
     </div>
   );
 
-  const renderSites = () => (
-    <div style={webStyles.content}>
-      <div style={webStyles.sitesHeader}>
-        <h2 style={webStyles.sectionTitle}>Construction Sites</h2>
-        <button 
-          onClick={() => {
-            setEditingSite(null);
-            setSiteFormData({
-              name: '',
-              address: '',
-              latitude: 55.7558,
-              longitude: 37.6176,
-              radius: 100,
-            });
-            setShowSiteForm(true);
-          }}
-          style={webStyles.addButton}
-        >
-          ➕ Add Site
-        </button>
+  // Рендер вкладки "Список рабочих"
+  const renderUsersTab = () => (
+    <div style={styles.tabContent}>
+      <div style={styles.header}>
+        <h2 style={styles.title}>Worker Management</h2>
+        <p style={styles.subtitle}>Worker information and site assignments</p>
       </div>
 
-      {showSiteForm && (
-        <div style={webStyles.siteForm}>
-          <h3 style={webStyles.formTitle}>
-            {editingSite ? 'Edit Site' : 'Create New Site'}
-          </h3>
-          <div style={webStyles.formRow}>
-            <input
-              type="text"
-              placeholder="Site name *"
-              value={siteFormData.name}
-              onChange={(e) => setSiteFormData({...siteFormData, name: e.target.value})}
-              style={webStyles.formInput}
-            />
-            <input
-              type="text"
-              placeholder="Address *"
-              value={siteFormData.address}
-              onChange={(e) => setSiteFormData({...siteFormData, address: e.target.value})}
-              style={webStyles.formInput}
-            />
-          </div>
-          <div style={webStyles.formRow}>
-            <input
-              type="number"
-              placeholder="Latitude"
-              value={siteFormData.latitude.toFixed(6)}
-              onChange={(e) => setSiteFormData({...siteFormData, latitude: parseFloat(e.target.value) || 0})}
-              style={webStyles.formInput}
-              step="0.000001"
-            />
-            <input
-              type="number"
-              placeholder="Longitude"
-              value={siteFormData.longitude.toFixed(6)}
-              onChange={(e) => setSiteFormData({...siteFormData, longitude: parseFloat(e.target.value) || 0})}
-              style={webStyles.formInput}
-              step="0.000001"
-            />
-          </div>
-          <div style={webStyles.formRow}>
-            <input
-              type="number"
-              placeholder="Radius (m)"
-              value={siteFormData.radius}
-              onChange={(e) => setSiteFormData({...siteFormData, radius: parseInt(e.target.value) || 0})}
-              style={webStyles.formInput}
-              min="10"
-              max="1000"
-            />
-            <button 
-              type="button"
-              onClick={() => setShowMap(!showMap)}
-              style={webStyles.mapToggleButton}
-            >
-              {showMap ? '🗺️ Hide Map' : '🗺️ Show Map'}
-            </button>
-          </div>
-          
-          {showMap && (
-            <div style={webStyles.mapSection}>
-              <p style={webStyles.mapHint}>
-                💡 Click on the map to select the object location
-              </p>
-              <p style={webStyles.mapInstructions}>
-                🖱️ Click on map to enable zoom with mouse wheel (auto-disables after 5 seconds) | 
-                🖱️ Double-click to zoom | 🤏 Use zoom controls (+/-) on the right
-              </p>
-              <InteractiveMap
-                center={[siteFormData.latitude, siteFormData.longitude]}
-                zoom={15}
-                onMapClick={handleMapClick}
-                markers={[{
-                  position: [siteFormData.latitude, siteFormData.longitude],
-                  title: siteFormData.name || 'New Site'
-                }]}
-                style={webStyles.mapContainer}
-              />
-              <div style={webStyles.mapControls}>
-                <p style={webStyles.coordinatesDisplay}>
-                  📍 Selected coordinates: {siteFormData.latitude.toFixed(6)}, {siteFormData.longitude.toFixed(6)}
-                </p>
-                <button 
-                  type="button"
-                  onClick={centerMapOnCoordinates}
-                  style={webStyles.centerButton}
-                >
-                  🎯 Center Map
-                </button>
+      <div style={styles.searchSection}>
+        <input
+          type="text"
+          placeholder="Search workers..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={styles.searchInput}
+        />
+      </div>
+
+      <div style={styles.usersGrid}>
+        {users
+          .filter(user => user.role === 'worker')
+          .filter(user => 
+            user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.phoneNumber.includes(searchTerm)
+          )
+          .map((user) => {
+            const userAssignments = assignments.filter(a => a.userId === user.id && a.isActive);
+            const workerLocation = workersLocations.find(loc => loc.userId === user.id);
+            
+            return (
+              <div key={user.id} style={styles.userCard}>
+                <div style={styles.userHeader}>
+                  <div style={styles.userAvatar}>
+                    <div style={styles.avatarPlaceholder}>
+                      {user.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                  </div>
+                  <div style={styles.userInfo}>
+                    <h3 style={styles.userName}>{user.name}</h3>
+                    <p style={styles.userPhone}>{user.phoneNumber}</p>
+                    <div style={styles.userStatus}>
+                      <span 
+                        style={{
+                          ...styles.statusDot,
+                          backgroundColor: user.isActive ? '#4CAF50' : '#f44336'
+                        }}
+                      />
+                      {user.isActive ? 'Active' : 'Inactive'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Назначенные объекты */}
+                <div style={styles.assignments}>
+                  <strong>Assigned sites:</strong>
+                  {userAssignments.length > 0 ? (
+                    <ul>
+                      {userAssignments.map((assignment) => {
+                        const site = sites.find(s => s.id === assignment.siteId);
+                        return (
+                          <li key={assignment.id}>
+                            {site?.name || 'Unknown site'}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p style={styles.noAssignments}>No assignments</p>
+                  )}
+                </div>
+
+                {/* Текущий статус */}
+                {workerLocation && (
+                  <div style={styles.currentStatus}>
+                    <strong>Current status:</strong>
+                    <div style={styles.statusInfo}>
+                      <span 
+                        style={{
+                          ...styles.statusDot,
+                          backgroundColor: getStatusColor(workerLocation.status)
+                        }}
+                      />
+                      {getStatusText(workerLocation.status)}
+                      {workerLocation.currentSiteName && (
+                        <span> at site "{workerLocation.currentSiteName}"</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div style={styles.userActions}>
+                  <button 
+                    style={styles.detailButton}
+                    onClick={() => setSelectedUser(user)}
+                  >
+                    Details
+                  </button>
+                  <button 
+                    style={styles.assignButton}
+                    onClick={() => {
+                      alert(`Assign worker ${user.name} to site`);
+                    }}
+                  >
+                    Assign to Site
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+      </div>
+
+      {/* Детальная информация о выбранном рабочем */}
+      {selectedUser && (
+        <div style={styles.modal}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalHeader}>
+              <h3>Details: {selectedUser.name}</h3>
+              <button 
+                style={styles.closeButton}
+                onClick={() => setSelectedUser(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div style={styles.modalBody}>
+              <p><strong>Phone:</strong> {selectedUser.phoneNumber}</p>
+              <p><strong>Status:</strong> {selectedUser.isActive ? 'Active' : 'Inactive'}</p>
+              <p><strong>Registration date:</strong> {formatTimestamp(selectedUser.createdAt)}</p>
+              
+              <div style={styles.detailSection}>
+                <h4>Shift History</h4>
+                <p>Feature in development...</p>
+              </div>
+              
+              <div style={styles.detailSection}>
+                <h4>Violations</h4>
+                <p>Feature in development...</p>
               </div>
             </div>
-          )}
-          <div style={webStyles.formActions}>
-            <button onClick={handleSiteFormSubmit} style={webStyles.saveButton}>
-              💾 {editingSite ? 'Update' : 'Create'}
-            </button>
-            <button 
-              onClick={() => {
-                setShowSiteForm(false);
-                setEditingSite(null);
-              }}
-              style={webStyles.cancelButton}
-            >
-              ❌ Cancel
-            </button>
           </div>
-        </div>
-      )}
-
-      {sites.length === 0 ? (
-        <p style={webStyles.placeholder}>
-          No construction sites found. Create your first site to get started.
-        </p>
-      ) : (
-        <div style={webStyles.tableContainer}>
-          <table style={webStyles.table}>
-            <thead>
-              <tr style={webStyles.tableHeader}>
-                <th style={webStyles.th}>Name</th>
-                <th style={webStyles.th}>Address</th>
-                <th style={webStyles.th}>Coordinates</th>
-                <th style={webStyles.th}>Radius</th>
-                <th style={webStyles.th}>Status</th>
-                <th style={webStyles.th}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sites.map((site) => (
-                <tr key={site.id} style={webStyles.tableRow}>
-                  <td style={webStyles.td}>{site.name}</td>
-                  <td style={webStyles.td}>{site.address}</td>
-                  <td style={webStyles.td}>
-                    {site.latitude.toFixed(4)}, {site.longitude.toFixed(4)}
-                  </td>
-                  <td style={webStyles.td}>{site.radius}m</td>
-                  <td style={webStyles.td}>
-                    <span style={{
-                      ...webStyles.badge,
-                      backgroundColor: site.isActive ? '#27ae60' : '#e74c3c'
-                    }}>
-                      {site.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td style={webStyles.td}>
-                    <div style={webStyles.actionButtons}>
-                      <button
-                        onClick={() => handleEditSite(site)}
-                        style={{
-                          ...webStyles.button,
-                          backgroundColor: '#3498db'
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleSiteStatusToggle(site.id, site.isActive)}
-                        style={{
-                          ...webStyles.button,
-                          backgroundColor: site.isActive ? '#e74c3c' : '#27ae60'
-                        }}
-                      >
-                        {site.isActive ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSite(site.id, site.name)}
-                        style={{
-                          ...webStyles.button,
-                          backgroundColor: '#e74c3c'
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
     </div>
@@ -931,425 +482,665 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <div style={webStyles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading admin panel...</Text>
-        </div>
-      </View>
+      <div style={styles.loading}>
+        <div style={styles.loadingText}>Loading data...</div>
+      </div>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <div style={webStyles.adminPanel}>
-        <div style={webStyles.header}>
-          <h1 style={webStyles.title}>WorkTime Admin Panel</h1>
+    <div style={styles.container}>
+      {/* Навигационные вкладки */}
+      <div style={styles.tabs}>
+        <button
+          style={{
+            ...styles.tab,
+            ...(selectedTab === 'workers' ? styles.activeTab : {})
+          }}
+          onClick={() => setSelectedTab('workers')}
+        >
+          👷 Workers
+        </button>
+        <button
+          style={{
+            ...styles.tab,
+            ...(selectedTab === 'schedule' ? styles.activeTab : {})
+          }}
+          onClick={() => setSelectedTab('schedule')}
+        >
+          📅 Schedule
+        </button>
+        <button
+          style={{
+            ...styles.tab,
+            ...(selectedTab === 'reports' ? styles.activeTab : {})
+          }}
+          onClick={() => setSelectedTab('reports')}
+        >
+          📊 Reports
+        </button>
+        <button
+          style={{
+            ...styles.tab,
+            ...(selectedTab === 'users' ? styles.activeTab : {})
+          }}
+          onClick={() => setSelectedTab('users')}
+        >
+          👥 Workers List
+        </button>
+        <button
+          style={{
+            ...styles.tab,
+            ...(selectedTab === 'assignments' ? styles.activeTab : {})
+          }}
+          onClick={() => setSelectedTab('assignments')}
+        >
+          📋 Assignments
+        </button>
+        <button
+          style={{
+            ...styles.tab,
+            ...(selectedTab === 'sync' ? styles.activeTab : {})
+          }}
+          onClick={() => setSelectedTab('sync')}
+        >
+          🔄 Sync
+        </button>
+        <button
+          style={{
+            ...styles.tab,
+            ...(selectedTab === 'chat' ? styles.activeTab : {})
+          }}
+          onClick={() => setSelectedTab('chat')}
+        >
+          💬 Chat
+        </button>
+        
+        <div style={styles.tabActions}>
+          <button style={styles.refreshButton} onClick={loadData}>
+            🔄 Refresh
+          </button>
           {onLogout && (
-            <button onClick={onLogout} style={webStyles.logoutButton}>
+            <button style={styles.logoutButton} onClick={onLogout}>
               Logout
             </button>
           )}
         </div>
-
-        <div style={webStyles.tabs}>
-          <button
-            onClick={() => setSelectedTab('users')}
-            style={{
-              ...webStyles.tab,
-              backgroundColor: selectedTab === 'users' ? '#3498db' : '#ecf0f1'
-            }}
-          >
-            Users ({users.length})
-          </button>
-          <button
-            onClick={() => setSelectedTab('reports')}
-            style={{
-              ...webStyles.tab,
-              backgroundColor: selectedTab === 'reports' ? '#3498db' : '#ecf0f1'
-            }}
-          >
-            Reports ({reports.length})
-          </button>
-          <button
-            onClick={() => setSelectedTab('sites')}
-            style={{
-              ...webStyles.tab,
-              backgroundColor: selectedTab === 'sites' ? '#3498db' : '#ecf0f1'
-            }}
-          >
-            Sites ({sites.length})
-          </button>
-          <button
-            onClick={() => setSelectedTab('assignments')}
-            style={{
-              ...webStyles.tab,
-              backgroundColor: selectedTab === 'assignments' ? '#3498db' : '#ecf0f1'
-            }}
-          >
-            Assignments ({assignments.length})
-          </button>
-        </div>
-
-        {selectedTab === 'users' && renderUserManagement()}
-        {selectedTab === 'reports' && renderReports()}
-        {selectedTab === 'sites' && renderSites()}
-        {selectedTab === 'assignments' && renderAssignments()}
       </div>
-    </View>
+
+      {/* Содержимое вкладок */}
+      {selectedTab === 'workers' && renderWorkersTab()}
+      {selectedTab === 'schedule' && renderScheduleTab()}
+      {selectedTab === 'reports' && renderReportsTab()}
+      {selectedTab === 'users' && renderUsersTab()}
+      {selectedTab === 'assignments' && (
+        <AssignmentsTab
+          users={users}
+          sites={sites}
+          assignments={assignments}
+          onAssignmentsChange={loadData}
+        />
+      )}
+      {selectedTab === 'sync' && (
+        <SyncStatusPanel />
+      )}
+      {selectedTab === 'chat' && (
+        <div style={styles.tabContent}>
+          <div style={styles.header}>
+            <h2 style={styles.title}>Chat Management</h2>
+            <p style={styles.subtitle}>Manage worker communications and daily tasks</p>
+          </div>
+          <div style={styles.chatSection}>
+            <button
+              style={styles.openChatButton}
+              onClick={() => setChatPanelVisible(true)}
+            >
+              💬 Open Chat Panel
+            </button>
+            <p style={styles.chatDescription}>
+              View and manage conversations with workers, assign daily tasks, and monitor photo reports.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Management Panel */}
+      <ChatManagementPanel 
+        visible={chatPanelVisible}
+        onClose={() => setChatPanelVisible(false)}
+      />
+    </div>
   );
-
-
 };
 
-const styles = StyleSheet.create({
+// Стили компонента
+const styles = {
   container: {
-    flex: 1,
+    minHeight: '100vh',
     backgroundColor: '#f5f5f5',
-  },
-  loadingText: {
-    fontSize: 18,
-    color: '#666',
-  },
-});
+    fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
+  } as React.CSSProperties,
 
-// Web-specific styles
-const webStyles = {
-  adminPanel: {
+  loading: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    backgroundColor: '#f5f5f5',
+  } as React.CSSProperties,
+
+  loadingText: {
+    fontSize: '18px',
+    color: '#666',
+  } as React.CSSProperties,
+
+  tabs: {
+    display: 'flex',
+    backgroundColor: 'white',
+    borderBottom: '1px solid #ddd',
+    padding: '0 20px',
+    alignItems: 'center',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+  } as React.CSSProperties,
+
+  tab: {
+    padding: '15px 20px',
+    border: 'none',
+    backgroundColor: 'transparent',
+    cursor: 'pointer',
+    fontSize: '16px',
+    fontWeight: '500',
+    color: '#666',
+    borderBottom: '3px solid transparent',
+    transition: 'all 0.3s ease',
+  } as React.CSSProperties,
+
+  activeTab: {
+    color: '#2196F3',
+    borderBottomColor: '#2196F3',
+  } as React.CSSProperties,
+
+  tabActions: {
+    marginLeft: 'auto',
+    display: 'flex',
+    gap: '10px',
+  } as React.CSSProperties,
+
+  refreshButton: {
+    padding: '8px 16px',
+    backgroundColor: '#4CAF50',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
+  } as React.CSSProperties,
+
+  logoutButton: {
+    padding: '8px 16px',
+    backgroundColor: '#f44336',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
+  } as React.CSSProperties,
+
+  tabContent: {
+    padding: '20px',
     maxWidth: '1200px',
     margin: '0 auto',
-    padding: '20px',
-    backgroundColor: '#ffffff',
-    minHeight: '100vh',
   } as React.CSSProperties,
-  
+
   header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottom: '2px solid #ecf0f1',
-    paddingBottom: '20px',
     marginBottom: '30px',
+    textAlign: 'center' as const,
   } as React.CSSProperties,
 
   title: {
     fontSize: '28px',
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: '#333',
+    marginBottom: '8px',
+  } as React.CSSProperties,
+
+  subtitle: {
+    fontSize: '16px',
+    color: '#666',
     margin: 0,
   } as React.CSSProperties,
 
-  logoutButton: {
-    padding: '10px 20px',
-    backgroundColor: '#e74c3c',
+  // Стили для вкладки "Рабочие"
+  workersGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: '20px',
+    marginBottom: '30px',
+  } as React.CSSProperties,
+
+  workerCard: {
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    padding: '20px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  } as React.CSSProperties,
+
+  workerHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: '15px',
+  } as React.CSSProperties,
+
+  workerAvatar: {
+    marginRight: '15px',
+  } as React.CSSProperties,
+
+  avatarImage: {
+    width: '50px',
+    height: '50px',
+    borderRadius: '50%',
+    objectFit: 'cover' as const,
+  } as React.CSSProperties,
+
+  avatarPlaceholder: {
+    width: '50px',
+    height: '50px',
+    borderRadius: '50%',
+    backgroundColor: '#2196F3',
     color: 'white',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '16px',
+    fontWeight: 'bold',
+  } as React.CSSProperties,
+
+  workerInfo: {
+    flex: 1,
+  } as React.CSSProperties,
+
+  workerName: {
+    margin: 0,
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#333',
+  } as React.CSSProperties,
+
+  statusBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    fontSize: '14px',
+    color: '#666',
+    marginTop: '5px',
+  } as React.CSSProperties,
+
+  statusDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    marginRight: '8px',
+  } as React.CSSProperties,
+
+  siteInfo: {
+    marginBottom: '10px',
+    fontSize: '14px',
+    color: '#333',
+  } as React.CSSProperties,
+
+  timeInfo: {
+    marginBottom: '10px',
+    fontSize: '14px',
+    color: '#333',
+    lineHeight: '1.4',
+  } as React.CSSProperties,
+
+  photoInfo: {
+    marginBottom: '10px',
+    fontSize: '14px',
+    color: '#333',
+  } as React.CSSProperties,
+
+  warningText: {
+    color: '#f44336',
+    fontWeight: '500',
+  } as React.CSSProperties,
+
+  locationInfo: {
+    fontSize: '12px',
+    color: '#666',
+  } as React.CSSProperties,
+
+  // Стили для вкладки "Расписание"
+  scheduleGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
+    gap: '20px',
+  } as React.CSSProperties,
+
+  scheduleCard: {
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    padding: '20px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  } as React.CSSProperties,
+
+  siteName: {
+    margin: '0 0 5px 0',
+    fontSize: '20px',
+    fontWeight: '600',
+    color: '#333',
+  } as React.CSSProperties,
+
+  siteAddress: {
+    margin: '0 0 20px 0',
+    fontSize: '14px',
+    color: '#666',
+  } as React.CSSProperties,
+
+  weekSchedule: {
+    marginBottom: '20px',
+  } as React.CSSProperties,
+
+  daySchedule: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '8px 0',
+    borderBottom: '1px solid #eee',
     fontSize: '14px',
   } as React.CSSProperties,
 
-  tabs: {
+  scheduleTime: {
     display: 'flex',
-    marginBottom: '30px',
-    borderBottom: '1px solid #ddd',
+    flexDirection: 'column' as const,
+    alignItems: 'flex-end' as const,
   } as React.CSSProperties,
 
-  tab: {
-    padding: '12px 24px',
+  lunchTime: {
+    fontSize: '12px',
+    color: '#666',
+    fontStyle: 'italic' as const,
+  } as React.CSSProperties,
+
+  noSchedule: {
+    color: '#999',
+    fontStyle: 'italic' as const,
+  } as React.CSSProperties,
+
+  editButton: {
+    width: '100%',
+    padding: '10px',
+    backgroundColor: '#2196F3',
+    color: 'white',
     border: 'none',
-    backgroundColor: '#ecf0f1',
+    borderRadius: '4px',
     cursor: 'pointer',
-    fontSize: '16px',
+    fontSize: '14px',
     fontWeight: '500',
-    marginRight: '5px',
-    borderRadius: '5px 5px 0 0',
   } as React.CSSProperties,
 
-  content: {
-    padding: '20px 0',
+  // Стили для вкладки "Отчёты"
+  section: {
+    marginBottom: '40px',
   } as React.CSSProperties,
 
-  searchContainer: {
+  sectionTitle: {
+    fontSize: '20px',
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: '20px',
+  } as React.CSSProperties,
+
+  photoGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+    gap: '20px',
+  } as React.CSSProperties,
+
+  photoReportCard: {
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  } as React.CSSProperties,
+
+  reportPhoto: {
+    width: '100%',
+    height: '150px',
+    objectFit: 'cover' as const,
+  } as React.CSSProperties,
+
+  reportPhotoInfo: {
+    padding: '15px',
+  } as React.CSSProperties,
+
+  timestamp: {
+    fontSize: '12px',
+    color: '#666',
+    marginTop: '5px',
+  } as React.CSSProperties,
+
+  validation: {
+    marginTop: '10px',
+  } as React.CSSProperties,
+
+  validated: {
+    color: '#4CAF50',
+    fontSize: '14px',
+    fontWeight: '500',
+  } as React.CSSProperties,
+
+  notValidated: {
+    color: '#FF9800',
+    fontSize: '14px',
+    fontWeight: '500',
+  } as React.CSSProperties,
+
+  reportsTable: {
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  } as React.CSSProperties,
+
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse' as const,
+  } as React.CSSProperties,
+
+  evenRow: {
+    backgroundColor: '#f9f9f9',
+  } as React.CSSProperties,
+
+  oddRow: {
+    backgroundColor: 'white',
+  } as React.CSSProperties,
+
+  violations: {
+    color: '#f44336',
+    fontWeight: '500',
+  } as React.CSSProperties,
+
+  // Стили для вкладки "Список рабочих"
+  searchSection: {
     marginBottom: '20px',
   } as React.CSSProperties,
 
   searchInput: {
     width: '100%',
-    padding: '12px',
+    maxWidth: '400px',
+    padding: '10px 15px',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
     fontSize: '16px',
-    border: '1px solid #ddd',
-    borderRadius: '5px',
-    boxSizing: 'border-box',
   } as React.CSSProperties,
 
-  tableContainer: {
-    overflowX: 'auto',
-    border: '1px solid #ddd',
-    borderRadius: '5px',
+  usersGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+    gap: '20px',
   } as React.CSSProperties,
 
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
+  userCard: {
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    padding: '20px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
   } as React.CSSProperties,
 
-  tableHeader: {
-    backgroundColor: '#f8f9fa',
-  } as React.CSSProperties,
-
-  tableRow: {
-    borderBottom: '1px solid #ddd',
-  } as React.CSSProperties,
-
-  th: {
-    padding: '15px',
-    textAlign: 'left',
-    fontWeight: '600',
-    color: '#2c3e50',
-  } as React.CSSProperties,
-
-  td: {
-    padding: '15px',
-    verticalAlign: 'middle',
-  } as React.CSSProperties,
-
-  badge: {
-    padding: '4px 8px',
-    borderRadius: '12px',
-    fontSize: '12px',
-    fontWeight: '500',
-    color: 'white',
-  } as React.CSSProperties,
-
-  actionButtons: {
+  userHeader: {
     display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginBottom: '15px',
   } as React.CSSProperties,
 
-  button: {
-    padding: '6px 12px',
+  userAvatar: {
+    marginRight: '15px',
+  } as React.CSSProperties,
+
+  userInfo: {
+    flex: 1,
+  } as React.CSSProperties,
+
+  userName: {
+    margin: 0,
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#333',
+  } as React.CSSProperties,
+
+  userPhone: {
+    margin: '5px 0',
+    fontSize: '14px',
+    color: '#666',
+  } as React.CSSProperties,
+
+  userStatus: {
+    display: 'flex',
+    alignItems: 'center',
+    fontSize: '14px',
+    color: '#666',
+  } as React.CSSProperties,
+
+  assignments: {
+    marginBottom: '15px',
+    fontSize: '14px',
+    color: '#333',
+  } as React.CSSProperties,
+
+  noAssignments: {
+    color: '#999',
+    fontStyle: 'italic' as const,
+    margin: '5px 0',
+  } as React.CSSProperties,
+
+  currentStatus: {
+    marginBottom: '15px',
+    fontSize: '14px',
+    color: '#333',
+  } as React.CSSProperties,
+
+  statusInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    marginTop: '5px',
+  } as React.CSSProperties,
+
+  userActions: {
+    display: 'flex',
+    gap: '10px',
+  } as React.CSSProperties,
+
+  detailButton: {
+    flex: 1,
+    padding: '8px 16px',
+    backgroundColor: '#2196F3',
+    color: 'white',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
-    fontSize: '12px',
-    fontWeight: '500',
-    color: 'white',
+    fontSize: '14px',
   } as React.CSSProperties,
 
-  selectButton: {
-    padding: '6px 12px',
-    border: '1px solid #ddd',
+  assignButton: {
+    flex: 1,
+    padding: '8px 16px',
+    backgroundColor: '#4CAF50',
+    color: 'white',
+    border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
-    fontSize: '12px',
-    backgroundColor: 'white',
+    fontSize: '14px',
   } as React.CSSProperties,
 
-  sectionTitle: {
-    fontSize: '24px',
-    fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: '20px',
-  } as React.CSSProperties,
-
-  placeholder: {
-    fontSize: '16px',
-    color: '#7f8c8d',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    padding: '40px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '5px',
-  } as React.CSSProperties,
-
-  loadingContainer: {
+  // Модальное окно
+  modal: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    height: '100vh',
+    zIndex: 1000,
   } as React.CSSProperties,
 
-  // Reports styles
-  reportsHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '20px',
-  } as React.CSSProperties,
-
-  reportsControls: {
-    display: 'flex',
-    gap: '10px',
-    alignItems: 'center',
-  } as React.CSSProperties,
-
-  periodSelect: {
-    padding: '8px 12px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '14px',
+  modalContent: {
     backgroundColor: 'white',
+    borderRadius: '8px',
+    width: '90%',
+    maxWidth: '600px',
+    maxHeight: '80%',
+    overflow: 'auto',
   } as React.CSSProperties,
 
-  exportButton: {
-    padding: '8px 16px',
-    backgroundColor: '#27ae60',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-  } as React.CSSProperties,
-
-  // Sites styles
-  sitesHeader: {
+  modalHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '20px',
-  } as React.CSSProperties,
-
-  addButton: {
-    padding: '10px 20px',
-    backgroundColor: '#27ae60',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '600',
-  } as React.CSSProperties,
-
-  siteForm: {
-    backgroundColor: '#f8f9fa',
     padding: '20px',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    border: '1px solid #dee2e6',
+    borderBottom: '1px solid #eee',
   } as React.CSSProperties,
 
-  formTitle: {
-    fontSize: '18px',
-    fontWeight: '600',
-    color: '#2c3e50',
-    marginBottom: '15px',
-  } as React.CSSProperties,
-
-  formRow: {
-    display: 'flex',
-    gap: '12px',
-    marginBottom: '12px',
-  } as React.CSSProperties,
-
-  formInput: {
-    flex: 1,
-    padding: '10px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '14px',
-  } as React.CSSProperties,
-
-  formActions: {
-    display: 'flex',
-    gap: '10px',
-    marginTop: '15px',
-  } as React.CSSProperties,
-
-  saveButton: {
-    padding: '10px 20px',
-    backgroundColor: '#3498db',
-    color: 'white',
+  closeButton: {
+    background: 'none',
     border: 'none',
-    borderRadius: '4px',
+    fontSize: '24px',
     cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
+    color: '#666',
   } as React.CSSProperties,
 
-  cancelButton: {
-    padding: '10px 20px',
-    backgroundColor: '#95a5a6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
+  modalBody: {
+    padding: '20px',
   } as React.CSSProperties,
 
-  // Стили для карты
-  mapToggleButton: {
-    padding: '10px 15px',
-    backgroundColor: '#3498db',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-    whiteSpace: 'nowrap',
-  } as React.CSSProperties,
-
-  mapSection: {
-    marginTop: '15px',
+  detailSection: {
+    marginTop: '20px',
     padding: '15px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '8px',
-    border: '1px solid #dee2e6',
+    backgroundColor: '#f9f9f9',
+    borderRadius: '4px',
   } as React.CSSProperties,
 
-  mapHint: {
-    fontSize: '14px',
-    color: '#495057',
-    margin: '0 0 10px 0',
-    textAlign: 'center',
-    fontStyle: 'italic',
+  chatSection: {
+    marginBottom: '20px',
   } as React.CSSProperties,
 
-  mapInstructions: {
-    fontSize: '12px',
-    color: '#6c757d',
-    margin: '0 0 15px 0',
-    textAlign: 'center',
-    lineHeight: '1.4',
-  } as React.CSSProperties,
-
-  mapContainer: {
-    height: '400px',
-    width: '100%',
-    borderRadius: '6px',
-    border: '1px solid #ddd',
-    marginBottom: '15px',
-  } as React.CSSProperties,
-
-  mapControls: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '10px',
-    backgroundColor: 'white',
-    borderRadius: '6px',
-    border: '1px solid #ddd',
-  } as React.CSSProperties,
-
-  coordinatesDisplay: {
-    fontSize: '12px',
-    color: '#495057',
-    margin: 0,
-    fontFamily: 'monospace',
-  } as React.CSSProperties,
-
-  centerButton: {
-    padding: '6px 12px',
-    backgroundColor: '#17a2b8',
+  openChatButton: {
+    padding: '10px 20px',
+    backgroundColor: '#2196F3',
     color: 'white',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
-    fontSize: '12px',
-    fontWeight: '500',
+    fontSize: '14px',
+  } as React.CSSProperties,
+
+  chatDescription: {
+    marginTop: '10px',
+    fontSize: '14px',
+    color: '#666',
   } as React.CSSProperties,
 };
 

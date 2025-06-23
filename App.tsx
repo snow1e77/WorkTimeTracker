@@ -1,13 +1,17 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import WebApp from './src/components/WebApp';
+import { notificationService } from './src/services/NotificationService';
 
 import { RootStackParamList } from './src/types';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+
+// Onboarding screens moved to web components
 
 // Authentication screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -20,6 +24,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import TimeTrackingScreen from './src/screens/TimeTrackingScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import ChatScreen from './src/screens/ChatScreen';
 
 // Admin screens
 import AdminScreen from './src/screens/AdminScreen';
@@ -36,6 +41,22 @@ const AppNavigator = () => {
 
   // Отладочная информация
   console.log('🔍 AppNavigator - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
+
+  // Инициализация NotificationService
+  useEffect(() => {
+    const initNotifications = async () => {
+      try {
+        await notificationService.initialize();
+        console.log('✅ NotificationService инициализирован');
+      } catch (error) {
+        console.error('❌ Ошибка инициализации NotificationService:', error);
+      }
+    };
+
+    if (Platform.OS !== 'web') {
+      initNotifications();
+    }
+  }, []);
 
   // Автоматическая навигация к Home после аутентификации
   useEffect(() => {
@@ -117,6 +138,11 @@ const AppNavigator = () => {
               name="Settings" 
               component={SettingsScreen} 
               options={{ title: 'Settings' }}
+            />
+            <Stack.Screen 
+              name="Chat" 
+              component={ChatScreen} 
+              options={{ title: 'Chat with Foreman' }}
             />
             <Stack.Screen 
               name="Admin" 

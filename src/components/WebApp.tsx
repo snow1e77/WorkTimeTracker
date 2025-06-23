@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { WebAuthProvider, useWebAuth } from '../contexts/WebAuthContext';
-import AdminWebPanel from './AdminWebPanel';
+import WebWelcomeScreen from './WebWelcomeScreen';
+import WebPrivacyAgreementScreen from './WebPrivacyAgreementScreen';
+import AdminWebPanel from '../components/AdminWebPanel';
 
 const WebLoginForm: React.FC<{ onLogin: (phone: string, password: string) => Promise<void> }> = ({ onLogin }) => {
   const [phone, setPhone] = useState('');
@@ -61,6 +63,15 @@ const WebLoginForm: React.FC<{ onLogin: (phone: string, password: string) => Pro
 
 const WebAppContent: React.FC = () => {
   const { isAuthenticated, user, login, logout } = useWebAuth();
+  const [onboardingStep, setOnboardingStep] = useState<'welcome' | 'privacy' | 'completed'>('welcome');
+
+  // Проверяем статус онбординга при загрузке
+  useEffect(() => {
+    const hasCompletedOnboarding = localStorage.getItem('hasCompletedOnboarding');
+    if (hasCompletedOnboarding === 'true') {
+      setOnboardingStep('completed');
+    }
+  }, []);
 
   const handleLogin = async (phone: string, password: string) => {
     await login(phone, password);
@@ -69,6 +80,34 @@ const WebAppContent: React.FC = () => {
   const handleLogout = () => {
     logout();
   };
+
+  const handleOnboardingNext = () => {
+    setOnboardingStep('privacy');
+  };
+
+  const handleOnboardingAccept = () => {
+    localStorage.setItem('hasCompletedOnboarding', 'true');
+    setOnboardingStep('completed');
+  };
+
+  const handleOnboardingSkip = () => {
+    localStorage.setItem('hasCompletedOnboarding', 'true');
+    setOnboardingStep('completed');
+  };
+
+  // Показываем приветственные экраны, если пользователь не прошел онбординг
+  if (onboardingStep === 'welcome') {
+    return <WebWelcomeScreen onNext={handleOnboardingNext} />;
+  }
+
+  if (onboardingStep === 'privacy') {
+    return (
+      <WebPrivacyAgreementScreen 
+        onAccept={handleOnboardingAccept}
+        onSkip={handleOnboardingSkip}
+      />
+    );
+  }
 
   if (!isAuthenticated) {
     return <WebLoginForm onLogin={handleLogin} />;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { 
   Card, 
@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { formatInternationalPhoneNumber } from '../utils/phoneUtils';
 import { formatDateUS } from '../utils/dateUtils';
+import { notificationService } from '../services/NotificationService';
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
@@ -29,6 +30,9 @@ export default function SettingsScreen() {
   const [violationAlerts, setViolationAlerts] = useState(true);
   const [shiftReminders, setShiftReminders] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [gpsEvents, setGpsEvents] = useState(true);
+  const [breakReminders, setBreakReminders] = useState(true);
+  const [vibrationEnabled, setVibrationEnabled] = useState(true);
 
   // Privacy Settings
   const [privacyMode, setPrivacyMode] = useState(false);
@@ -38,6 +42,26 @@ export default function SettingsScreen() {
   // Status messages
   const [statusMessage, setStatusMessage] = useState('');
   const [isEditing, setIsEditing] = useState<'start' | 'end' | null>(null);
+
+  // Загрузка настроек уведомлений при инициализации
+  useEffect(() => {
+    const loadNotificationSettings = async () => {
+      try {
+        const settings = await notificationService.getNotificationSettings();
+        setNotificationsEnabled(settings.enabled);
+        setSoundEnabled(settings.sound);
+        setVibrationEnabled(settings.vibration);
+        setShiftReminders(settings.shiftReminders);
+        setBreakReminders(settings.breakReminders);
+        setGpsEvents(settings.gpsEvents);
+        setViolationAlerts(settings.violations);
+      } catch (error) {
+        console.error('Ошибка загрузки настроек уведомлений:', error);
+      }
+    };
+
+    loadNotificationSettings();
+  }, []);
 
   const handleGpsToggle = (value: boolean) => {
     setGpsEnabled(value);
@@ -96,8 +120,34 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleSaveSettings = () => {
-    setStatusMessage('Settings saved successfully');
+  const handleSaveSettings = async () => {
+    try {
+      // Сохраняем настройки уведомлений
+      await notificationService.saveNotificationSettings({
+        enabled: notificationsEnabled,
+        sound: soundEnabled,
+        vibration: vibrationEnabled,
+        shiftReminders,
+        breakReminders,
+        gpsEvents,
+        violations: violationAlerts,
+      });
+      
+      setStatusMessage('Settings saved successfully');
+    } catch (error) {
+      console.error('Ошибка сохранения настроек:', error);
+      setStatusMessage('Failed to save settings');
+    }
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      await notificationService.sendTestNotification();
+      setStatusMessage('Test notification sent');
+    } catch (error) {
+      console.error('Ошибка отправки тестового уведомления:', error);
+      setStatusMessage('Failed to send test notification');
+    }
   };
 
   return (
@@ -256,6 +306,55 @@ export default function SettingsScreen() {
               />
             )}
           />
+
+          <List.Item
+            title="Vibration"
+            description="Vibrate on notifications"
+            left={() => <List.Icon icon="vibrate" />}
+            right={() => (
+              <Switch
+                value={vibrationEnabled}
+                onValueChange={setVibrationEnabled}
+                disabled={!notificationsEnabled}
+              />
+            )}
+          />
+
+          <List.Item
+            title="GPS events"
+            description="Site entry/exit notifications"
+            left={() => <List.Icon icon="map-marker" />}
+            right={() => (
+              <Switch
+                value={gpsEvents}
+                onValueChange={setGpsEvents}
+                disabled={!notificationsEnabled}
+              />
+            )}
+          />
+
+          <List.Item
+            title="Break reminders"
+            description="Notifications for break time"
+            left={() => <List.Icon icon="coffee" />}
+            right={() => (
+              <Switch
+                value={breakReminders}
+                onValueChange={setBreakReminders}
+                disabled={!notificationsEnabled}
+              />
+            )}
+          />
+
+          <Button
+            mode="outlined"
+            onPress={handleTestNotification}
+            style={styles.actionButton}
+            icon="bell-ring"
+            disabled={!notificationsEnabled}
+          >
+            Test Notification
+          </Button>
         </Card.Content>
       </Card>
 

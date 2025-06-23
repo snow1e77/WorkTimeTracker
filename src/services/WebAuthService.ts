@@ -1,5 +1,6 @@
 import { AuthUser, LoginRequest } from '../types';
 import { WebDatabaseService } from './WebDatabaseService';
+import logger from '../utils/logger';
 
 export class WebAuthService {
   private static instance: WebAuthService;
@@ -39,7 +40,7 @@ export class WebAuthService {
   // Простой логин для веб админ панели
   async login(phoneNumber: string, password: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
     try {
-      console.log('🔄 WebAuthService: Авторизация для:', phoneNumber);
+      logger.auth('WebAuthService: Авторизация для пользователя', { phoneNumber });
       
       // Инициализируем базу данных если нужно
       await this.dbService.initDatabase();
@@ -66,10 +67,13 @@ export class WebAuthService {
       // Сохраняем токен
       await this.saveAuthToken(user.id);
       
-      console.log('✅ Успешная авторизация:', user.name);
+      logger.auth('Успешная авторизация', { userName: user.name, userId: user.id });
       return { success: true, user };
     } catch (error) {
-      console.error('❌ Ошибка авторизации:', error);
+      logger.error('Ошибка авторизации', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        phoneNumber 
+      });
       return { success: false, error: 'Server error' };
     }
   }
@@ -88,7 +92,9 @@ export class WebAuthService {
       
       return user && user.isActive ? user : null;
     } catch (error) {
-      console.error('Ошибка получения текущего пользователя:', error);
+      logger.error('Ошибка получения текущего пользователя', { 
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       return null;
     }
   }
