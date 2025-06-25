@@ -1,9 +1,10 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
 import { createServer } from 'http';
 import { testConnection } from './config/database';
 import { AuthService } from './services/AuthService';
@@ -28,13 +29,11 @@ const requiredEnvVars = ['JWT_SECRET', 'DB_PASSWORD'];
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingEnvVars.length > 0 && process.env.NODE_ENV === 'production') {
-  console.error('🚨 Missing required environment variables:', missingEnvVars);
   process.exit(1);
 }
 
 // Проверяем силу JWT секрета
 if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
-  console.warn('⚠️ JWT_SECRET should be at least 32 characters long for security');
   if (process.env.NODE_ENV === 'production') {
     process.exit(1);
   }
@@ -76,7 +75,6 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.warn(`🚨 CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'), false);
     }
   },
@@ -216,6 +214,21 @@ app.use((req, res, next) => {
   next();
 });
 
+// Обслуживание статических файлов веб-приложения
+const webDistPath = path.join(__dirname, '../web-dist');
+const webDistExists = require('fs').existsSync(webDistPath);
+
+if (webDistExists) {
+  app.use(express.static(webDistPath, {
+    maxAge: '1d',
+    etag: true,
+    lastModified: true
+  }));
+  logger.info(`Serving web app from: ${webDistPath}`);
+} else {
+  logger.warn(`Web app dist folder not found at: ${webDistPath}`);
+}
+
 // Маршруты API с различными уровнями rate limiting
 app.use('/api/auth', authRateLimit, authRoutes); // Строгий лимит для аутентификации
 app.use('/api/users', userRoutes);
@@ -275,13 +288,20 @@ app.get('/api/info', (req, res) => {
   });
 });
 
-// Обработка 404
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint not found',
-    message: `Route ${req.method} ${req.originalUrl} not found`
-  });
+// Fallback для SPA - возвращаем index.html для всех не-API маршрутов
+app.get('*', (req, res) => {
+  const indexPath = path.join(__dirname, '../web-dist/index.html');
+  const indexExists = require('fs').existsSync(indexPath);
+  
+  if (indexExists && !req.originalUrl.startsWith('/api/')) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).json({
+      success: false,
+      error: 'Endpoint not found',
+      message: `Route ${req.method} ${req.originalUrl} not found`
+    });
+  }
 });
 
 // Глобальная обработка ошибок

@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { WebDatabaseService } from '../services/WebDatabaseService';
 import { WebSyncService } from '../services/WebSyncService';
 import { AuthUser, ConstructionSite, WorkReport, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation } from '../types';
 import AssignmentsTab from './AssignmentsTab';
 import SyncTab from './SyncTab';
-import SyncStatusPanel from './SyncStatusPanel';
+import { SyncStatusPanel } from './SyncStatusPanel';
 import ChatManagementPanel from './ChatManagementPanel';
+import PreRegistrationPanel from './PreRegistrationPanel';
 
 // Импорты для карты (только для веб-платформы)
 let MapContainer: any, TileLayer: any, Marker: any, useMapEvents: any;
@@ -22,8 +23,7 @@ if (Platform.OS === 'web') {
     Marker = reactLeaflet.Marker;
     useMapEvents = reactLeaflet.useMapEvents;
   } catch (error) {
-    console.warn('Leaflet не установлен:', error);
-  }
+    }
 }
 
 interface WebAdminPanelProps {
@@ -39,7 +39,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
   const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
   const [assignments, setAssignments] = useState<UserSiteAssignment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState<'workers' | 'schedule' | 'reports' | 'users' | 'assignments' | 'sync' | 'chat'>('workers');
+  const [selectedTab, setSelectedTab] = useState<'workers' | 'schedule' | 'reports' | 'users' | 'assignments' | 'sync' | 'chat' | 'preregistration'>('workers');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<AuthUser | null>(null);
   const [syncStatus, setSyncStatus] = useState<any>(null);
@@ -81,8 +81,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
       setSchedules(schedulesData);
       setAssignments(assignmentsData);
     } catch (error) {
-      console.error('Ошибка загрузки данных:', error);
-    } finally {
+      } finally {
       setLoading(false);
     }
   };
@@ -95,8 +94,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
       setSyncStatus(status);
       setSyncHistory(history);
     } catch (error) {
-      console.error('Ошибка загрузки данных синхронизации:', error);
-    }
+      }
   };
 
   const formatTime = (minutes: number): string => {
@@ -555,6 +553,15 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
         >
           💬 Chat
         </button>
+        <button
+          style={{
+            ...styles.tab,
+            ...(selectedTab === 'preregistration' ? styles.activeTab : {})
+          }}
+          onClick={() => setSelectedTab('preregistration')}
+        >
+          👤 Pre-Registration
+        </button>
         
         <div style={styles.tabActions}>
           <button style={styles.refreshButton} onClick={loadData}>
@@ -602,6 +609,9 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
             </p>
           </div>
         </div>
+      )}
+      {selectedTab === 'preregistration' && (
+        <PreRegistrationPanel />
       )}
 
       {/* Chat Management Panel */}

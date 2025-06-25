@@ -1,10 +1,9 @@
-import { Platform } from 'react-native';
+﻿import { Platform } from 'react-native';
 import { WorkReport, Violation } from '../types';
 
 // For web platforms - CSV export
 export const exportToCSV = (reports: WorkReport[], period: string): void => {
   if (Platform.OS !== 'web') {
-    console.warn('CSV export is only available on web platform');
     return;
   }
 
@@ -174,7 +173,6 @@ export const generateReportHTML = (reports: WorkReport[], period: string): strin
 // Export to PDF (web only - using print functionality)
 export const exportToPDF = (reports: WorkReport[], period: string): void => {
   if (Platform.OS !== 'web') {
-    console.warn('PDF export is only available on web platform');
     return;
   }
 
@@ -188,11 +186,15 @@ export const exportToPDF = (reports: WorkReport[], period: string): void => {
     
     // Wait for content to load then trigger print
     printWindow.onload = () => {
-      printWindow!.print();
-      // Close window after printing (user will be prompted to save as PDF)
-      setTimeout(() => {
-        printWindow!.close();
-      }, 100);
+      if (printWindow) {
+        printWindow.print();
+        // Close window after printing (user will be prompted to save as PDF)
+        setTimeout(() => {
+          if (printWindow) {
+            printWindow.close();
+          }
+        }, 100);
+      }
     };
   }
 };
@@ -200,7 +202,6 @@ export const exportToPDF = (reports: WorkReport[], period: string): void => {
 // Export violations to CSV
 export const exportViolationsToCSV = (violations: Violation[], period: string): void => {
   if (Platform.OS !== 'web') {
-    console.warn('CSV export is only available on web platform');
     return;
   }
 
@@ -253,10 +254,10 @@ export const generateReportSummary = (reports: WorkReport[]) => {
         shifts: 0
       };
     }
-    acc[report.siteName].workers += 1;
-    acc[report.siteName].totalHours += report.totalHours;
-    acc[report.siteName].violations += report.violations;
-    acc[report.siteName].shifts += report.shiftsCount;
+    acc[report.siteName]!.workers += 1;
+    acc[report.siteName]!.totalHours += report.totalHours;
+    acc[report.siteName]!.violations += report.violations;
+    acc[report.siteName]!.shifts += report.shiftsCount;
     return acc;
   }, {} as Record<string, {
     workers: number;
@@ -295,10 +296,8 @@ Generated on: ${new Date().toLocaleString()}
     `;
 
     // For now, just copy to clipboard (would need Clipboard API)
-    console.log('Report summary:', message);
     return Promise.resolve();
   } catch (error) {
-    console.error('Error sharing report:', error);
     throw error;
   }
 }; 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { Text, TextInput, Button, Card, Title, HelperText } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -98,35 +98,28 @@ export default function VerifyPhoneScreen() {
     } catch (error) {
       setStatusMessage('An error occurred while verifying code');
       setStatusType('error');
-      console.error('Verify code error:', error);
-    } finally {
+      } finally {
       setLoading(false);
     }
   };
 
   const handleResendCode = async () => {
-    console.log('🔄 VerifyPhoneScreen: Повторная отправка кода');
-    console.log('📱 Номер телефона:', phoneNumber);
-    
     setResendLoading(true);
     setStatusMessage('');
     try {
       const result = await authService.sendLoginCode(phoneNumber);
       
       if (result.success) {
-        console.log('✅ Код отправлен повторно');
         setStatusMessage('Verification code sent again');
         setStatusType('info');
         setTimeLeft(60);
         setCanResend(false);
         startTimer();
       } else {
-        console.log('❌ Не удалось отправить код повторно');
         setStatusMessage(result.error || 'Failed to resend code');
         setStatusType('error');
       }
     } catch (error) {
-      console.error('❌ Ошибка повторной отправки:', error);
       setStatusMessage('An error occurred while sending code');
       setStatusType('error');
     } finally {

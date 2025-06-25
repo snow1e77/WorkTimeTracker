@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -70,7 +70,6 @@ export default function ChatManagementPanel({ visible, onClose }: ChatManagement
         setChats(response.data);
       }
     } catch (error) {
-      console.error('Error loading chats:', error);
       if (Platform.OS === 'web') {
         alert('Failed to load chats');
       } else {
@@ -90,8 +89,7 @@ export default function ChatManagementPanel({ visible, onClose }: ChatManagement
         setMessages(response.data);
       }
     } catch (error) {
-      console.error('Error loading messages:', error);
-    }
+      }
   };
 
   const sendMessage = async () => {
@@ -117,7 +115,6 @@ export default function ChatManagementPanel({ visible, onClose }: ChatManagement
         }
       }
     } catch (error) {
-      console.error('Error sending message:', error);
       if (Platform.OS === 'web') {
         alert('Failed to send message');
       } else {
@@ -156,7 +153,6 @@ export default function ChatManagementPanel({ visible, onClose }: ChatManagement
         }
       }
     } catch (error) {
-      console.error('Error assigning task:', error);
       if (Platform.OS === 'web') {
         alert('Failed to assign task');
       } else {

@@ -1,4 +1,4 @@
-import { UserSiteAssignment, AuthUser, ConstructionSite } from '../types';
+﻿import { UserSiteAssignment, AuthUser, ConstructionSite } from '../types';
 import { ApiDatabaseService } from './ApiDatabaseService';
 import { SyncService } from './SyncService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -62,10 +62,8 @@ export class AssignmentService {
 
       await this.dbService.createUserSiteAssignment(assignment);
 
-      console.log('✅ Assignment created via API');
       return { success: true };
     } catch (error) {
-      console.error('Failed to create assignment:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -86,10 +84,8 @@ export class AssignmentService {
       // Обновить назначение через API
       await this.dbService.updateUserSiteAssignment(assignmentId, updates);
 
-      console.log('✅ Assignment updated via API');
       return { success: true };
     } catch (error) {
-      console.error('Failed to update assignment:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -115,7 +111,6 @@ export class AssignmentService {
     try {
       return await this.dbService.getUserSiteAssignments(userId);
     } catch (error) {
-      console.error('Failed to get user assignments:', error);
       return [];
     }
   }
@@ -132,7 +127,6 @@ export class AssignmentService {
         (!assignment.validTo || new Date(assignment.validTo) >= now)
       );
     } catch (error) {
-      console.error('Failed to get user active assignments:', error);
       return [];
     }
   }
@@ -153,7 +147,6 @@ export class AssignmentService {
       
       return sites;
     } catch (error) {
-      console.error('Failed to get user assigned sites:', error);
       return [];
     }
   }
@@ -164,7 +157,6 @@ export class AssignmentService {
       const activeAssignments = await this.getUserActiveAssignments(userId);
       return activeAssignments.some(assignment => assignment.siteId === siteId);
     } catch (error) {
-      console.error('Failed to check user site access:', error);
       return false;
     }
   }
@@ -176,10 +168,8 @@ export class AssignmentService {
       if (response.success && response.data) {
         return response.data;
       }
-      console.error('Failed to get site assignments:', response.error); 
       return [];
     } catch (error) {
-      console.error('Failed to get site assignments:', error);
       return [];
     }
   }
@@ -200,7 +190,6 @@ export class AssignmentService {
       
       return workers;
     } catch (error) {
-      console.error('Failed to get site active workers:', error);
       return [];
     }
   }
@@ -222,7 +211,6 @@ export class AssignmentService {
           sitesWithAssignments: response.data.sitesWithAssignments || 0
         };
       }
-      console.error('Failed to get assignment stats:', response.error);
       return {
         totalAssignments: 0,
         activeAssignments: 0,
@@ -230,7 +218,6 @@ export class AssignmentService {
         sitesWithAssignments: 0
       };
     } catch (error) {
-      console.error('Failed to get assignment stats:', error);
       return {
         totalAssignments: 0,
         activeAssignments: 0,
@@ -275,7 +262,6 @@ export class AssignmentService {
       
       return conflicts;
     } catch (error) {
-      console.error('Failed to check assignment conflicts:', error);
       return [];
     }
   }
@@ -309,7 +295,6 @@ export class AssignmentService {
         };
       }
     } catch (error) {
-      console.error('Failed to bulk assign users to site:', error);
       return {
         success: false,
         errors: [error instanceof Error ? error.message : 'Unknown error']

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -32,7 +32,6 @@ const WorkReportsScreen: React.FC = () => {
       const periodReports = await dbService.getWorkReports(selectedPeriod);
       setReports(periodReports);
     } catch (error) {
-      console.error('Error loading reports:', error);
       setStatusMessage('Failed to load reports');
       setStatusType('error');
     } finally {

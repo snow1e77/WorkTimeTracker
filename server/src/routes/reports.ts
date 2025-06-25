@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { ReportService } from '../services/ReportService';
 import Joi from 'joi';
@@ -61,7 +61,6 @@ router.get('/work', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Work report error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to generate work report'
@@ -89,7 +88,6 @@ router.get('/violations', requireAdmin, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Violation report error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to generate violation report'
@@ -113,7 +111,6 @@ router.get('/statistics', requireAdmin, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Statistics error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get statistics'
@@ -146,7 +143,6 @@ router.get('/export/:type', requireAdmin, async (req, res) => {
     res.send(csvData);
 
   } catch (error) {
-    console.error('Export error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to export report'

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { WebSyncService } from '../services/WebSyncService';
 
 interface SyncTabProps {
@@ -34,8 +34,7 @@ const SyncTab: React.FC<SyncTabProps> = ({ onRefresh }) => {
       setSyncStatus(status);
       setSyncHistory(history);
     } catch (error) {
-      console.error('Failed to load sync data:', error);
-    }
+      }
   };
 
   const checkServerConnection = async () => {
@@ -43,7 +42,6 @@ const SyncTab: React.FC<SyncTabProps> = ({ onRefresh }) => {
       const connected = await syncService.checkServerConnection();
       setServerConnected(connected);
     } catch (error) {
-      console.error('Failed to check server connection:', error);
       setServerConnected(false);
     }
   };
@@ -61,7 +59,6 @@ const SyncTab: React.FC<SyncTabProps> = ({ onRefresh }) => {
         alert(`Sync failed: ${result.error}`);
       }
     } catch (error) {
-      console.error('Force sync failed:', error);
       alert('Force sync failed');
     } finally {
       setIsRefreshing(false);
@@ -79,7 +76,6 @@ const SyncTab: React.FC<SyncTabProps> = ({ onRefresh }) => {
         alert(`Assignments sync failed: ${result.error}`);
       }
     } catch (error) {
-      console.error('Assignments sync failed:', error);
       alert('Assignments sync failed');
     }
   };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -35,7 +35,6 @@ const SiteManagementScreen: React.FC = () => {
       const allSites = await dbService.getConstructionSites();
       setSites(allSites);
     } catch (error) {
-      console.error('Error loading sites:', error);
       setStatusMessage('Failed to load sites');
       setStatusType('error');
     } finally {
@@ -50,7 +49,6 @@ const SiteManagementScreen: React.FC = () => {
       setStatusType('info');
       loadSites();
     } catch (error) {
-      console.error('Error deleting site:', error);
       setStatusMessage('Failed to delete site');
       setStatusType('error');
     }
@@ -63,7 +61,6 @@ const SiteManagementScreen: React.FC = () => {
       setStatusType('info');
       loadSites();
     } catch (error) {
-      console.error('Error changing site status:', error);
       setStatusMessage('Failed to change site status');
       setStatusType('error');
     }

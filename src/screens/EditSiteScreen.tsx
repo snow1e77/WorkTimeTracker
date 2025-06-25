@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,8 +26,7 @@ if (Platform.OS !== 'web') {
     Marker = MapModule.Marker;
     Circle = MapModule.Circle;
   } catch (error) {
-    console.warn('react-native-maps not available');
-  }
+    }
 }
 
 type EditSiteScreenProps = NativeStackScreenProps<RootStackParamList, 'EditSite'>;
@@ -73,7 +72,6 @@ const EditSiteScreen: React.FC<EditSiteScreenProps> = () => {
         setStatusType('error');
       }
     } catch (error) {
-      console.error('Error loading site:', error);
       setStatusMessage('Failed to load site');
       setStatusType('error');
     } finally {
@@ -150,7 +148,6 @@ const EditSiteScreen: React.FC<EditSiteScreenProps> = () => {
         navigation.goBack();
       }, 1500);
     } catch (error) {
-      console.error('Error updating site:', error);
       setStatusMessage('Failed to update site');
       setStatusType('error');
     } finally {

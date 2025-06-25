@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+﻿import { Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import { body, validationResult, param } from 'express-validator';
 import * as crypto from 'crypto';
@@ -129,13 +129,6 @@ export const handleValidationErrors = (req: Request, res: Response, next: NextFu
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     // Логируем попытки валидации
-    console.warn('Validation failed:', {
-      ip: req.ip,
-      userAgent: req.get('User-Agent'),
-      errors: errors.array(),
-      body: req.body
-    });
-    
     return res.status(400).json({
       success: false,
       error: 'Validation failed',
@@ -165,7 +158,6 @@ export const ipWhitelist = (allowedIPs: string[]) => {
       });
       
       if (!isAllowed) {
-        console.warn(`🚨 Unauthorized IP attempt: ${clientIP} for ${req.originalUrl}`);
         return res.status(403).json({
           success: false,
           error: 'Access denied from this location'
@@ -198,7 +190,6 @@ export const requireValidUserAgent = (req: Request, res: Response, next: NextFun
   const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(userAgent));
   
   if (isSuspicious && process.env.NODE_ENV === 'production') {
-    console.warn(`🚨 Suspicious User-Agent blocked: ${userAgent} from ${req.ip}`);
     return res.status(403).json({
       success: false,
       error: 'Invalid user agent'
@@ -238,13 +229,11 @@ export const logSuspiciousActivity = (req: Request, res: Response, next: NextFun
   
   // Логируем попытки входа
   if (req.path.includes('/auth/login') && req.method === 'POST') {
-    console.log(`🔐 Login attempt: ${timestamp} - IP: ${ip} - UA: ${userAgent}`);
-  }
+    }
   
   // Логируем админские операции
   if (req.path.includes('/admin') || req.path.includes('/reports')) {
-    console.log(`👑 Admin access: ${timestamp} - IP: ${ip} - User: ${req.user?.id || 'anonymous'} - Path: ${req.path}`);
-  }
+    }
   
   // Логируем подозрительные паттерны в URL
   const suspiciousPatterns = [
@@ -260,8 +249,7 @@ export const logSuspiciousActivity = (req: Request, res: Response, next: NextFun
    });
   
   if (isSuspiciousUrl) {
-    console.warn(`🚨 Suspicious URL pattern detected: ${timestamp} - IP: ${ip} - URL: ${req.originalUrl}`);
-  }
+    }
   
   next();
 };
@@ -328,3 +316,4 @@ export const setSecurityHeaders = (req: Request, res: Response, next: NextFuncti
   
   next();
 }; 
+

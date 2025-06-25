@@ -1,4 +1,4 @@
-import { parsePhoneNumber, isValidPhoneNumber, formatIncompletePhoneNumber, AsYouType, CountryCode, PhoneNumber } from 'libphonenumber-js';
+﻿import { parsePhoneNumber, isValidPhoneNumber, formatIncompletePhoneNumber, AsYouType, CountryCode, PhoneNumber } from 'libphonenumber-js';
 import * as Location from 'expo-location';
 
 // Маппинг ISO кодов стран к телефонным кодам
@@ -55,18 +55,13 @@ const COUNTRY_TO_PHONE_CODE_MAPPING: Record<string, CountryCode> = {
  */
 export const detectUserCountryByLocation = async (): Promise<CountryCode | null> => {
   try {
-    console.log('🌍 Запрос разрешений на геолокацию...');
-    
     // Запрашиваем разрешение на геолокацию
     const { status } = await Location.requestForegroundPermissionsAsync();
     
     if (status !== 'granted') {
-      console.log('❌ Разрешение на геолокацию не предоставлено');
       return null;
     }
 
-    console.log('📍 Получение текущего местоположения с таймаутом...');
-    
     // Функция с таймаутом для геолокации
     const locationWithTimeout = Promise.race([
       Location.getCurrentPositionAsync({
@@ -78,9 +73,7 @@ export const detectUserCountryByLocation = async (): Promise<CountryCode | null>
     ]);
 
     const location = await locationWithTimeout;
-    console.log(`📍 Местоположение получено: ${location.coords.latitude}, ${location.coords.longitude}`);
-
-    console.log('🗺️ Выполнение обратного геокодирования с таймаутом...');
+    
     
     // Обратное геокодирование с таймаутом
     const geocodeWithTimeout = Promise.race([
@@ -97,25 +90,16 @@ export const detectUserCountryByLocation = async (): Promise<CountryCode | null>
 
     if (reverseGeocode && reverseGeocode.length > 0) {
       const address = reverseGeocode[0];
-      const isoCountryCode = address.isoCountryCode;
-      
-      console.log(`🏁 Определена страна: ${isoCountryCode} (${address.country || 'Unknown'})`);
+      const isoCountryCode = address?.isoCountryCode;
       
       if (isoCountryCode && COUNTRY_TO_PHONE_CODE_MAPPING[isoCountryCode]) {
         return COUNTRY_TO_PHONE_CODE_MAPPING[isoCountryCode];
       }
     }
 
-    console.log('❓ Не удалось определить страну по геолокации');
     return null;
   } catch (error: any) {
-    if (error?.message === 'Location timeout') {
-      console.warn('⏱️ Таймаут при получении местоположения (3 сек)');
-    } else if (error?.message === 'Geocoding timeout') {
-      console.warn('⏱️ Таймаут при обратном геокодировании (3 сек)');
-    } else {
-      console.error('❌ Ошибка при определении страны по геолокации:', error);
-    }
+    // Молча обрабатываем ошибки геолокации
     return null;
   }
 };
@@ -126,8 +110,6 @@ export const detectUserCountryByLocation = async (): Promise<CountryCode | null>
 export const detectUserCountryByTimezone = (): CountryCode | null => {
   try {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    console.log(`🕐 Определение страны по часовому поясу: ${timezone}`);
-
     // Расширенное сопоставление часовых поясов со странами
     const timezoneToCountry: Record<string, CountryCode> = {
       // США
@@ -229,21 +211,16 @@ export const detectUserCountryByTimezone = (): CountryCode | null => {
     };
 
     if (timezoneToCountry[timezone]) {
-      console.log(`🏁 Определена страна по часовому поясу: ${timezoneToCountry[timezone]} (${timezone})`);
       return timezoneToCountry[timezone];
     }
 
     // Дополнительная логика для российских часовых поясов
     if (timezone.includes('Asia/') && (timezone.includes('Russia') || timezone.includes('Yekaterinburg') || timezone.includes('Omsk') || timezone.includes('Novosibirsk'))) {
-      console.log(`🇷🇺 Обнаружен российский часовой пояс: ${timezone}, устанавливаем RU`);
       return 'RU';
     }
-
-    console.log(`❓ Неизвестный часовой пояс: ${timezone}`);
-    return null;
-  } catch (error) {
-    console.error('❌ Ошибка при определении страны по часовому поясу:', error);
-    return null;
+          return null;
+    } catch (error) {
+      return null;
   }
 };
 
@@ -252,27 +229,21 @@ export const detectUserCountryByTimezone = (): CountryCode | null => {
  */
 export const autoDetectUserCountry = async (): Promise<CountryCode> => {
   try {
-    console.log('🔍 Начинаем автоопределение страны пользователя...');
-
     // Сначала пробуем определить по геолокации
     const locationCountry = await detectUserCountryByLocation();
     if (locationCountry) {
-      console.log(`✅ Страна определена по геолокации: ${locationCountry}`);
       return locationCountry;
     }
 
     // Fallback: определяем по часовому поясу
     const timezoneCountry = detectUserCountryByTimezone();
     if (timezoneCountry) {
-      console.log(`✅ Страна определена по часовому поясу: ${timezoneCountry}`);
       return timezoneCountry;
     }
 
     // Если ничего не получилось, возвращаем США по умолчанию
-    console.log('⚠️ Не удалось определить страну, используем US по умолчанию');
     return 'US';
   } catch (error) {
-    console.error('❌ Критическая ошибка автоопределения страны:', error);
     return 'US';
   }
 };

@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+﻿import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../config/database';
 
@@ -6,8 +6,6 @@ const seedDatabase = async (): Promise<void> => {
   const client = await pool.connect();
   
   try {
-    console.log('🌱 Заполнение базы данных тестовыми данными...');
-    
     // Очистка существующих данных (в обратном порядке зависимостей)
     await client.query('TRUNCATE TABLE work_shifts CASCADE');
     await client.query('TRUNCATE TABLE user_site_assignments CASCADE');
@@ -43,8 +41,6 @@ const seedDatabase = async (): Promise<void> => {
       VALUES ($1, $2, $3, $4, $5, $6, $7)
     `, [worker2Id, '+1234567892', 'Рабочий Сидоров', 'worker', true, true, workerPasswordHash]);
     
-    console.log('✅ Пользователи созданы');
-    
     // Создание строительных объектов
     const site1Id = uuidv4();
     const site2Id = uuidv4();
@@ -65,8 +61,6 @@ const seedDatabase = async (): Promise<void> => {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `, [site3Id, 'Строительный объект Гамма', 'ул. Индустриальная, 5, СПб', 59.9311, 30.3609, 75, false, adminId]);
     
-    console.log('✅ Строительные объекты созданы');
-    
     // Создание назначений
     await client.query(`
       INSERT INTO user_site_assignments (id, user_id, site_id, assigned_by, is_active, notes)
@@ -77,8 +71,6 @@ const seedDatabase = async (): Promise<void> => {
       INSERT INTO user_site_assignments (id, user_id, site_id, assigned_by, is_active, notes)
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [uuidv4(), worker2Id, site2Id, adminId, true, 'Основной рабочий на объекте Бета']);
-    
-    console.log('✅ Назначения созданы');
     
     // Создание рабочих смен
     const now = new Date();
@@ -114,8 +106,6 @@ const seedDatabase = async (): Promise<void> => {
       JSON.stringify({ latitude: 55.7387, longitude: 37.6032 })
     ]);
     
-    console.log('✅ Рабочие смены созданы');
-    
     // Создание нарушений
     await client.query(`
       INSERT INTO violations (id, user_id, site_id, shift_id, type, description, severity)
@@ -130,8 +120,6 @@ const seedDatabase = async (): Promise<void> => {
       'low'
     ]);
     
-    console.log('✅ Нарушения созданы');
-    
     // Создание SMS верификаций (для тестирования)
     await client.query(`
       INSERT INTO sms_verifications (id, phone_number, code, type, is_used, expires_at)
@@ -145,30 +133,8 @@ const seedDatabase = async (): Promise<void> => {
       new Date(now.getTime() + 10 * 60 * 1000) // истекает через 10 минут
     ]);
     
-    console.log('✅ SMS верификации созданы');
-    console.log('🎉 Заполнение базы данных завершено!');
-    
     // Вывод информации о созданных данных
-    console.log('\n📋 Созданные тестовые аккаунты:');
-    console.log('👤 Администратор:');
-    console.log('   Телефон: +1234567890');
-    console.log('   Пароль: admin123');
-    console.log('   Роль: admin');
-    
-    console.log('\n👤 Рабочий 1:');
-    console.log('   Телефон: +1234567891'); 
-    console.log('   Пароль: worker123');
-    console.log('   Роль: worker');
-    console.log('   Назначен на: Строительный объект Альфа');
-    
-    console.log('\n👤 Рабочий 2:');
-    console.log('   Телефон: +1234567892');
-    console.log('   Пароль: worker123');
-    console.log('   Роль: worker');
-    console.log('   Назначен на: Строительный объект Бета');
-    
-  } catch (error) {
-    console.error('❌ Ошибка при заполнении базы данных:', error);
+    } catch (error) {
     throw error;
   } finally {
     client.release();
@@ -179,11 +145,9 @@ const seedDatabase = async (): Promise<void> => {
 if (require.main === module) {
   seedDatabase()
     .then(() => {
-      console.log('✅ Заполнение завершено');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Ошибка:', error);
       process.exit(1);
     });
 }

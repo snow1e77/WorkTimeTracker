@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { WebDatabaseService } from '../services/WebDatabaseService';
 import { WebSyncService } from '../services/WebSyncService';
 import { AuthUser, ConstructionSite, UserSiteAssignment } from '../types';
@@ -58,9 +58,7 @@ const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
       
       onAssignmentsChange();
 
-      console.log('✅ Assignment created successfully');
-    } catch (error) {
-      console.error('Failed to create assignment:', error);
+      } catch (error) {
       alert('Failed to create assignment');
     } finally {
       setIsCreating(false);
@@ -81,7 +79,6 @@ const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
       
       onAssignmentsChange();
     } catch (error) {
-      console.error('Failed to toggle assignment:', error);
       alert('Failed to update assignment');
     }
   };
@@ -95,7 +92,6 @@ const AssignmentsTab: React.FC<AssignmentsTabProps> = ({
       await dbService.deleteAssignment(assignmentId);
       onAssignmentsChange();
     } catch (error) {
-      console.error('Failed to delete assignment:', error);
       alert('Failed to delete assignment');
     }
   };

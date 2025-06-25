@@ -5,14 +5,15 @@ import { query } from '../config/database';
 import { UserService } from './UserService';
 import { SMSService } from './SMSService';
 import { User, AuthTokens, JWTPayload, LoginRequest, RegisterRequest } from '../types';
+import logger from '../utils/logger';
 
 export class AuthService {
   private static readonly JWT_SECRET: string = process.env.JWT_SECRET || 'your_super_secret_jwt_key';
   private static readonly JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
   private static readonly REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
-  private static readonly BCRYPT_ROUNDS = 12; // Высокий уровень безопасности
+  private static readonly BCRYPT_ROUNDS = 12; // High security level
 
-  // Безопасное хеширование пароля
+  // Secure password hashing
   static async hashPassword(password: string): Promise<string> {
     return await bcrypt.hash(password, this.BCRYPT_ROUNDS);
   }
@@ -66,12 +67,12 @@ export class AuthService {
           return { success: false, error: smsResult.error || 'Failed to send SMS' };
         }
       } else {
-        console.log(`📱 SMS код для ${phoneNumber}: ${code}`);
+        logger.info('SMS code sent (dev mode)', { phoneNumber, code });
       }
 
       return { success: true };
     } catch (error) {
-      console.error('Error sending login code:', error);
+      logger.error('Error sending login code', { error });
       return { success: false, error: 'Failed to send verification code' };
     }
   }
@@ -83,48 +84,64 @@ export class AuthService {
     tokens?: AuthTokens;
     error?: string;
     isNewUser?: boolean;
+    needsProfile?: boolean;
   }> {
     try {
       const { phoneNumber, code } = data;
 
-      // Проверяем код
+      // Verify code
       const isCodeValid = await this.verifyCode(phoneNumber, code, 'login');
       if (!isCodeValid) {
         return { success: false, error: 'Invalid or expired verification code' };
       }
 
-      // Проверяем, существует ли пользователь
+      // Check if user exists in main users table
       let user = await UserService.getUserByPhoneNumber(phoneNumber);
-      let isNewUser = false;
 
-      if (!user) {
-        // Если пользователя нет, это новая регистрация
-        isNewUser = true;
+      if (user) {
+        // User is already fully registered
+        if (!user.isActive) {
+          return { success: false, error: 'Account is deactivated' };
+        }
+
+        const tokens = await this.generateTokens(user);
+        await this.markCodeAsUsed(phoneNumber, code);
+        return { success: true, user, tokens };
+      }
+
+      // Import PreRegistrationService dynamically to avoid circular dependencies
+      const { PreRegistrationService } = await import('./PreRegistrationService');
+      
+      // Check if user exists in pre-registration
+      const preRegisteredUser = await PreRegistrationService.getPreRegisteredUserByPhone(phoneNumber);
+      
+      if (preRegisteredUser) {
+        // Activate pre-registered user
+        await PreRegistrationService.activatePreRegisteredUser(phoneNumber);
+        
+        // Mark code as used
+        await this.markCodeAsUsed(phoneNumber, code);
+        
+        // Return flag that profile creation is needed
         return { 
           success: true, 
           isNewUser: true,
-          error: 'User not found. Please complete registration.' 
+          needsProfile: true 
         };
       }
 
-      if (!user.isActive) {
-        return { success: false, error: 'Account is deactivated' };
-      }
-
-      // Генерируем токены
-      const tokens = await this.generateTokens(user);
-
-      // Помечаем код как использованный
-      await this.markCodeAsUsed(phoneNumber, code);
-
-      return { success: true, user, tokens };
+      // User not found in either main table or pre-registration
+      return { 
+        success: false, 
+        error: 'Your phone number is not found in the system. Please contact your foreman or supervisor to be added to the database.' 
+      };
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error', { error });
       return { success: false, error: 'Login failed' };
     }
   }
 
-  // Регистрация нового пользователя
+  // Register new user (only for pre-registered users)
   static async register(data: RegisterRequest): Promise<{ 
     success: boolean; 
     user?: User; 
@@ -134,51 +151,68 @@ export class AuthService {
     try {
       const { phoneNumber, name, code } = data;
 
-      // Проверяем код
+      // Verify code
       const isCodeValid = await this.verifyCode(phoneNumber, code, 'login');
       if (!isCodeValid) {
         return { success: false, error: 'Invalid or expired verification code' };
       }
 
-      // Проверяем, не существует ли уже пользователь
+      // Check if user already exists
       const existingUser = await UserService.getUserByPhoneNumber(phoneNumber);
       if (existingUser) {
         return { success: false, error: 'User already exists' };
       }
 
-      // Генерируем сильный временный пароль
+      // Import PreRegistrationService
+      const { PreRegistrationService } = await import('./PreRegistrationService');
+      
+      // Check if user exists in pre-registration
+      const preRegisteredUser = await PreRegistrationService.getPreRegisteredUserByPhone(phoneNumber);
+      if (!preRegisteredUser) {
+        return { 
+          success: false, 
+          error: 'Your phone number is not found in the system. Please contact your foreman or supervisor to be added to the database.' 
+        };
+      }
+
+      if (!preRegisteredUser.isActivated) {
+        return { success: false, error: 'User is not activated' };
+      }
+
+      // Generate strong temporary password
       const tempPassword = uuidv4() + Math.random().toString(36);
       const hashedPassword = await this.hashPassword(tempPassword);
 
-      // Создаем нового пользователя
+      // Create new user using data from pre-registration
       const user = await UserService.createUser({
         phoneNumber,
-        name,
+        name: name || preRegisteredUser.name || 'New User',
         password: hashedPassword,
-        role: 'worker',
+        role: preRegisteredUser.role,
+        companyId: preRegisteredUser.companyId
       });
 
-      // Генерируем токены
+      // Generate tokens
       const tokens = await this.generateTokens(user);
 
-      // Помечаем код как использованный
+      // Mark code as used
       await this.markCodeAsUsed(phoneNumber, code);
 
       return { success: true, user, tokens };
     } catch (error) {
-      console.error('Registration error:', error);
+      logger.error('Registration error', { error });
       return { success: false, error: 'Registration failed' };
     }
   }
 
-  // Обновление токена
+  // Token refresh
   static async refreshToken(refreshToken: string): Promise<{
     success: boolean;
     tokens?: AuthTokens;
     error?: string;
   }> {
     try {
-      // Проверяем refresh token в базе данных
+      // Check refresh token in database
       const result = await query(
         'SELECT user_id FROM refresh_tokens WHERE token = $1 AND expires_at > NOW()',
         [refreshToken]
@@ -195,31 +229,31 @@ export class AuthService {
         return { success: false, error: 'User not found or inactive' };
       }
 
-      // Удаляем старый refresh token
+      // Remove old refresh token
       await query('DELETE FROM refresh_tokens WHERE token = $1', [refreshToken]);
 
-      // Генерируем новые токены
+      // Generate new tokens
       const tokens = await this.generateTokens(user);
 
       return { success: true, tokens };
     } catch (error) {
-      console.error('Refresh token error:', error);
+      logger.error('Refresh token error', { error });
       return { success: false, error: 'Token refresh failed' };
     }
   }
 
-  // Выход из системы
+  // Logout
   static async logout(refreshToken: string): Promise<{ success: boolean }> {
     try {
       await query('DELETE FROM refresh_tokens WHERE token = $1', [refreshToken]);
       return { success: true };
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error', { error });
       return { success: false };
     }
   }
 
-  // Проверка токена доступа
+  // Verify access token
   static verifyAccessToken(token: string): JWTPayload | null {
     try {
       const decoded = jwt.verify(token, this.JWT_SECRET) as JWTPayload;
@@ -229,7 +263,7 @@ export class AuthService {
     }
   }
 
-  // Генерация JWT токенов
+  // Generate JWT tokens
   private static async generateTokens(user: User): Promise<AuthTokens> {
     const payload: JWTPayload = {
       userId: user.id,
@@ -243,9 +277,9 @@ export class AuthService {
 
     const refreshToken = uuidv4();
 
-    // Сохраняем refresh token в базе данных
+    // Save refresh token in database
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30 дней
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
 
     await query(
       'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
@@ -255,7 +289,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  // Сохранение SMS кода
+  // Save SMS code
   private static async saveSMSVerification(
     phoneNumber: string, 
     code: string, 
@@ -263,7 +297,7 @@ export class AuthService {
   ): Promise<void> {
     const id = uuidv4();
     const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 10); // Код действует 10 минут
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10); // Code valid for 10 minutes
 
     await query(
       `INSERT INTO sms_verifications (id, phone_number, code, type, expires_at)
@@ -272,7 +306,7 @@ export class AuthService {
     );
   }
 
-  // Проверка SMS кода
+  // Verify SMS code
   private static async verifyCode(
     phoneNumber: string, 
     code: string, 
@@ -288,7 +322,7 @@ export class AuthService {
     return result.rows.length > 0;
   }
 
-  // Пометка кода как использованного
+  // Mark code as used
   private static async markCodeAsUsed(phoneNumber: string, code: string): Promise<void> {
     await query(
       'UPDATE sms_verifications SET is_used = true WHERE phone_number = $1 AND code = $2',
@@ -296,14 +330,14 @@ export class AuthService {
     );
   }
 
-  // Очистка истекших токенов и кодов
+  // Cleanup expired tokens and codes
   static async cleanupExpiredTokens(): Promise<void> {
     try {
       await query('DELETE FROM refresh_tokens WHERE expires_at < NOW()');
       await query('DELETE FROM sms_verifications WHERE expires_at < NOW()');
-      console.log('✅ Expired tokens and codes cleaned up');
+      logger.info('Expired tokens and codes cleaned up');
     } catch (error) {
-      console.error('Cleanup error:', error);
+      logger.error('Cleanup error', { error });
     }
   }
 } 

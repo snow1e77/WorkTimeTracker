@@ -1,9 +1,10 @@
-import express from 'express';
+﻿import express from 'express';
 import Joi from 'joi';
 import { AuthService } from '../services/AuthService';
 import { SMSService } from '../services/SMSService';
 import { authenticateToken, validateJSON } from '../middleware/auth';
 import { LoginRequest, RegisterRequest } from '../types';
+import logger from '../utils/logger';
 
 const router = express.Router();
 
@@ -68,6 +69,20 @@ router.post('/send-code', validateJSON, async (req, res) => {
 
     const { phoneNumber } = value;
 
+    // Импортируем PreRegistrationService
+    const { PreRegistrationService } = await import('../services/PreRegistrationService');
+    
+    // Проверяем, может ли пользователь войти в систему
+    const loginCheck = await PreRegistrationService.canUserLogin(phoneNumber);
+    
+    if (!loginCheck.canLogin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Ваш номер телефона не найден в системе. Обратитесь к прорабу, бригадиру или начальнику для добавления в базу данных.',
+        needsContact: true
+      });
+    }
+
     const result = await AuthService.sendLoginCode(phoneNumber);
 
     if (result.success) {
@@ -76,7 +91,9 @@ router.post('/send-code', validateJSON, async (req, res) => {
         message: 'Verification code sent successfully',
         data: {
           phoneNumber,
-          expiresIn: 600 // 10 минут в секундах
+          expiresIn: 600, // 10 минут в секундах
+          isPreRegistered: loginCheck.isPreRegistered,
+          isActivated: loginCheck.isActivated
         }
       });
     } else {
@@ -86,7 +103,7 @@ router.post('/send-code', validateJSON, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Send code error:', error);
+    logger.error('Send code error', { error });
     return res.status(500).json({
       success: false,
       error: 'Failed to send verification code'
@@ -138,7 +155,7 @@ router.post('/login', validateJSON, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('Login error', { error });
     return res.status(500).json({
       success: false,
       error: 'Login failed'
@@ -177,7 +194,7 @@ router.post('/register', validateJSON, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error('Registration error', { error });
     return res.status(500).json({
       success: false,
       error: 'Registration failed'
@@ -215,7 +232,6 @@ router.post('/refresh', validateJSON, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Refresh token error:', error);
     return res.status(500).json({
       success: false,
       error: 'Token refresh failed'
@@ -243,7 +259,6 @@ router.post('/logout', validateJSON, async (req, res) => {
       message: 'Logout successful'
     });
   } catch (error) {
-    console.error('Logout error:', error);
     return res.status(500).json({
       success: false,
       error: 'Logout failed'
@@ -260,9 +275,9 @@ router.get('/me', authenticateToken, (req, res) => {
         user: req.user
       }
     });
-  } catch (error) {
-    console.error('Get user info error:', error);
-    res.status(500).json({
+      } catch (error) {
+      logger.error('Get user info error', { error });
+      res.status(500).json({
       success: false,
       error: 'Failed to get user information'
     });
@@ -299,9 +314,9 @@ router.get('/status', (req, res) => {
         sms: smsStatus
       }
     });
-  } catch (error) {
-    console.error('Status check error:', error);
-    res.status(500).json({
+      } catch (error) {
+      logger.error('Status check error', { error });
+      res.status(500).json({
       success: false,
       error: 'Failed to get status'
     });

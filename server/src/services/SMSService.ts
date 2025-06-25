@@ -1,4 +1,4 @@
-import twilio from 'twilio';
+﻿import twilio from 'twilio';
 
 export interface SMSResult {
   success: boolean;
@@ -32,17 +32,12 @@ export class SMSService {
       try {
         this.twilioClient = twilio(accountSid, authToken);
         this.isInitialized = true;
-        console.log('✅ SMS Service initialized with Twilio');
-      } catch (error) {
-        console.error('❌ Failed to initialize Twilio client:', error);
-        console.log('⚠️ SMS Service running in demo mode (Twilio initialization failed)');
+        } catch (error) {
         this.isInitialized = false;
       }
     } else {
-      console.log('⚠️ SMS Service running in demo mode (no valid Twilio credentials)');
       if (accountSid && !accountSid.startsWith('AC')) {
-        console.log('   - Twilio Account SID must start with "AC"');
-      }
+        }
       this.isInitialized = false;
     }
   }
@@ -55,7 +50,6 @@ export class SMSService {
     try {
       // В режиме разработки просто логируем сообщение
       if (process.env.NODE_ENV !== 'production' || !this.isInitialized || !this.twilioClient) {
-        console.log(`📱 SMS to ${phoneNumber}: ${message}`);
         return { 
           success: true, 
           messageId: `demo_${Date.now()}` 
@@ -72,15 +66,12 @@ export class SMSService {
         to: formattedPhone
       });
 
-      console.log(`✅ SMS sent to ${phoneNumber}, SID: ${result.sid}`);
       return { 
         success: true, 
         messageId: result.sid 
       };
 
     } catch (error) {
-      console.error('❌ SMS sending error:', error);
-      
       let errorMessage = 'Failed to send SMS';
       if (error instanceof Error) {
         errorMessage = error.message;
@@ -220,7 +211,6 @@ export class SMSService {
       const message = await this.twilioClient.messages(messageId).fetch();
       return { status: message.status };
     } catch (error) {
-      console.error('Error checking message status:', error);
       return { error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -277,7 +267,6 @@ export class SMSService {
       return { totalSent, delivered, failed, undelivered };
 
     } catch (error) {
-      console.error('Error getting SMS statistics:', error);
       return { totalSent: 0, delivered: 0, failed: 0, undelivered: 0 };
     }
   }
@@ -339,3 +328,4 @@ export class SMSService {
 
 // Инициализируем сервис при загрузке модуля
 SMSService.initialize(); 
+

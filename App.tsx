@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PaperProvider } from 'react-native-paper';
@@ -40,17 +40,13 @@ const AppNavigator = () => {
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   // Отладочная информация
-  console.log('🔍 AppNavigator - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
-
   // Инициализация NotificationService
   useEffect(() => {
     const initNotifications = async () => {
       try {
         await notificationService.initialize();
-        console.log('✅ NotificationService инициализирован');
-      } catch (error) {
-        console.error('❌ Ошибка инициализации NotificationService:', error);
-      }
+        } catch (error) {
+        }
     };
 
     if (Platform.OS !== 'web') {
@@ -61,12 +57,10 @@ const AppNavigator = () => {
   // Автоматическая навигация к Home после аутентификации
   useEffect(() => {
     if (isAuthenticated && navigationRef.current) {
-      console.log('🔄 Навигация к Home экрану');
       try {
         navigationRef.current.navigate('Home');
       } catch (error) {
-        console.error('❌ Ошибка навигации к Home:', error);
-      }
+        }
     }
   }, [isAuthenticated]);
 
@@ -195,3 +189,4 @@ export default function App() {
     </PaperProvider>
   );
 }
+

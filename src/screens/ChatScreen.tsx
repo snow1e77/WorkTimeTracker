@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -62,7 +62,6 @@ export default function ChatScreen() {
         await loadTodaysTask(response.data.id);
       }
     } catch (error) {
-      console.error('Error loading chat:', error);
       Alert.alert('Error', 'Failed to load chat');
     } finally {
       setLoading(false);
@@ -82,8 +81,7 @@ export default function ChatScreen() {
         }, 100);
       }
     } catch (error) {
-      console.error('Error loading messages:', error);
-    }
+      }
   };
 
   const loadTodaysTask = async (chatId: string) => {
@@ -93,8 +91,7 @@ export default function ChatScreen() {
         setTodaysTask(response.data);
       }
     } catch (error) {
-      console.error('Error loading today\'s task:', error);
-    }
+      }
   };
 
   const sendMessage = async (messageType: 'text' | 'photo', content: string, photoUri?: string, location?: { latitude: number; longitude: number }) => {
@@ -121,7 +118,6 @@ export default function ChatScreen() {
         Alert.alert('Error', response.error || 'Failed to send message');
       }
     } catch (error) {
-      console.error('Error sending message:', error);
       Alert.alert('Error', 'Failed to send message');
     } finally {
       setSending(false);
@@ -175,7 +171,6 @@ export default function ChatScreen() {
         );
       }
     } catch (error) {
-      console.error('Error sending photo:', error);
       Alert.alert('Error', 'Failed to send photo');
     }
   };
@@ -220,7 +215,6 @@ export default function ChatScreen() {
         );
       }
     } catch (error) {
-      console.error('Error taking photo:', error);
       Alert.alert('Error', 'Failed to take photo');
     }
   };
@@ -338,21 +332,6 @@ export default function ChatScreen() {
 
       {/* Input Section */}
       <View style={styles.inputContainer}>
-        <View style={styles.photoButtons}>
-          <IconButton
-            icon="camera"
-            mode="contained"
-            onPress={handleTakePhoto}
-            style={styles.photoButton}
-          />
-          <IconButton
-            icon="image"
-            mode="contained"
-            onPress={handleSendPhoto}
-            style={styles.photoButton}
-          />
-        </View>
-        
         <View style={styles.textInputContainer}>
           <TextInput
             style={styles.textInput}
@@ -370,6 +349,33 @@ export default function ChatScreen() {
             style={styles.sendButton}
           />
         </View>
+      </View>
+
+      {/* Большие круглые кнопки внизу экрана */}
+      <View style={styles.bottomButtonsContainer}>
+        {/* Кнопка камеры */}
+        <TouchableOpacity
+          style={styles.cameraButton}
+          onPress={handleTakePhoto}
+        >
+          <IconButton
+            icon="camera"
+            iconColor="#333"
+            size={40}
+          />
+        </TouchableOpacity>
+
+        {/* Кнопка галереи */}
+        <TouchableOpacity
+          style={styles.galleryButton}
+          onPress={handleSendPhoto}
+        >
+          <IconButton
+            icon="image"
+            iconColor="white"
+            size={50}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Image Modal */}
@@ -402,6 +408,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingBottom: 120, // Отступ для кнопок
   },
   loadingContainer: {
     flex: 1,
@@ -497,14 +504,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  photoButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  photoButton: {
-    marginHorizontal: 8,
-  },
   textInputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -516,6 +515,43 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     alignSelf: 'flex-end',
+  },
+  bottomButtonsContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  cameraButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  galleryButton: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   imageModal: {
     flex: 1,

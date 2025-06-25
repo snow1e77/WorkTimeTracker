@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { serverNotificationService } from '../services/NotificationService';
 import { authenticateToken } from '../middleware/auth';
 import { Request, Response } from 'express';
@@ -74,7 +74,6 @@ router.post('/register-token', authenticateToken, async (req: AuthenticatedReque
       message: 'Push token registered successfully' 
     });
   } catch (error) {
-    console.error('Error registering push token:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
@@ -120,7 +119,6 @@ router.post('/send-test', authenticateToken, async (req: AuthenticatedRequest, r
       });
     }
   } catch (error) {
-    console.error('Error sending test notification:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
@@ -161,7 +159,6 @@ router.post('/violation-alert', authenticateToken, async (req: AuthenticatedRequ
       message: 'Violation alert sent to administrators' 
     });
   } catch (error) {
-    console.error('Error sending violation alert:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
@@ -201,7 +198,6 @@ router.post('/assignment-notification', authenticateToken, async (req: Authentic
       message: 'Assignment notification sent successfully' 
     });
   } catch (error) {
-    console.error('Error sending assignment notification:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
@@ -241,7 +237,6 @@ router.post('/shift-reminder', authenticateToken, async (req: AuthenticatedReque
       message: 'Shift reminder sent successfully' 
     });
   } catch (error) {
-    console.error('Error sending shift reminder:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
@@ -280,7 +275,6 @@ router.post('/overtime-alert', authenticateToken, async (req: AuthenticatedReque
       message: 'Overtime notification sent successfully' 
     });
   } catch (error) {
-    console.error('Error sending overtime notification:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
@@ -328,7 +322,6 @@ router.post('/broadcast', authenticateToken, async (req: AuthenticatedRequest, r
       data: result
     });
   } catch (error) {
-    console.error('Error sending broadcast notification:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
@@ -364,7 +357,6 @@ router.post('/delivery-receipts', authenticateToken, async (req: AuthenticatedRe
       data: receipts
     });
   } catch (error) {
-    console.error('Error getting delivery receipts:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
@@ -395,7 +387,6 @@ router.post('/validate-token', authenticateToken, async (req: AuthenticatedReque
       }
     });
   } catch (error) {
-    console.error('Error validating push token:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
@@ -436,7 +427,6 @@ router.post('/cleanup-tokens', authenticateToken, async (req: AuthenticatedReque
       }
     });
   } catch (error) {
-    console.error('Error cleaning up tokens:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
@@ -471,7 +461,6 @@ router.delete('/token', authenticateToken, async (req: AuthenticatedRequest, res
       message: 'Push token removed successfully' 
     });
   } catch (error) {
-    console.error('Error removing push token:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
@@ -520,7 +509,6 @@ router.get('/preferences', authenticateToken, async (req: AuthenticatedRequest, 
       data: preferences
     });
   } catch (error) {
-    console.error('Error getting notification preferences:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
@@ -572,7 +560,6 @@ router.put('/preferences', authenticateToken, async (req: AuthenticatedRequest, 
       data: updatedPreferences
     });
   } catch (error) {
-    console.error('Error updating notification preferences:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 

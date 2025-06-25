@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import Joi from 'joi';
 import { authenticateToken, requireAdmin, validateJSON } from '../middleware/auth';
 import { ShiftService } from '../services/ShiftService';
@@ -80,7 +80,6 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get shifts error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve shifts'
@@ -121,7 +120,6 @@ router.get('/my', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get user shifts error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve user shifts'
@@ -147,7 +145,6 @@ router.get('/active', async (req, res) => {
       data: activeShift
     });
   } catch (error) {
-    console.error('Get active shift error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve active shift'
@@ -173,7 +170,6 @@ router.get('/stats', requireAdmin, async (req, res) => {
       data: stats
     });
   } catch (error) {
-    console.error('Get shift stats error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve shift statistics'
@@ -257,7 +253,6 @@ router.post('/start', validateJSON, async (req, res) => {
       data: shift
     });
   } catch (error) {
-    console.error('Start shift error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to start shift'
@@ -348,7 +343,6 @@ router.post('/:shiftId/end', validateJSON, async (req, res) => {
       data: shift
     });
   } catch (error) {
-    console.error('End shift error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to end shift'
@@ -391,7 +385,6 @@ router.get('/:shiftId', async (req, res) => {
       data: shift
     });
   } catch (error) {
-    console.error('Get shift error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve shift'
@@ -444,7 +437,6 @@ router.put('/:shiftId', requireAdmin, validateJSON, async (req, res) => {
       data: updatedShift
     });
   } catch (error) {
-    console.error('Update shift error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to update shift'
@@ -487,7 +479,6 @@ router.delete('/:shiftId', requireAdmin, async (req, res) => {
       message: 'Shift deleted successfully'
     });
   } catch (error) {
-    console.error('Delete shift error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to delete shift'
@@ -555,7 +546,6 @@ router.get('/user/:userId/hours', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get work hours error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve work hours'

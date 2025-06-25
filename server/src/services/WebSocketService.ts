@@ -1,4 +1,4 @@
-import { Server as SocketIOServer, Socket } from 'socket.io';
+﻿import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import jwt from 'jsonwebtoken';
 import { User } from '../types';
@@ -53,7 +53,6 @@ export class WebSocketService {
 
         next();
       } catch (error) {
-        console.error('WebSocket authentication error:', error);
         next(new Error('Authentication failed'));
       }
     });
@@ -61,8 +60,6 @@ export class WebSocketService {
 
   private setupEventHandlers(): void {
     this.io.on('connection', (socket: AuthenticatedSocket) => {
-      console.log(`📱 User ${socket.user?.name} (${socket.user?.id}) connected via WebSocket`);
-      
       if (socket.user) {
         this.connectedUsers.set(socket.user.id, socket);
       }
@@ -95,7 +92,6 @@ export class WebSocketService {
       });
 
       socket.on('disconnect', () => {
-        console.log(`📱 User ${socket.user?.name} disconnected`);
         if (socket.user) {
           this.connectedUsers.delete(socket.user.id);
         }
@@ -113,8 +109,6 @@ export class WebSocketService {
   // Обработка запроса синхронизации
   private async handleSyncRequest(socket: AuthenticatedSocket, data: any): Promise<void> {
     try {
-      console.log(`🔄 Sync request from ${socket.user?.name}:`, data);
-      
       // Здесь была бы логика синхронизации
       // Пока отправляем подтверждение
       socket.emit('sync_response', {
@@ -123,7 +117,6 @@ export class WebSocketService {
         message: 'Sync completed successfully'
       });
     } catch (error) {
-      console.error('Sync request error:', error);
       socket.emit('sync_error', {
         error: 'Failed to process sync request'
       });
@@ -133,8 +126,6 @@ export class WebSocketService {
   // Обработка начала смены
   private async handleShiftStarted(socket: AuthenticatedSocket, data: any): Promise<void> {
     try {
-      console.log(`▶️ Shift started by ${socket.user?.name}:`, data);
-      
       // Уведомляем всех админов о начале смены
       this.io.to('admins').emit('user_shift_started', {
         userId: socket.user?.id,
@@ -152,7 +143,6 @@ export class WebSocketService {
         timestamp: new Date()
       });
     } catch (error) {
-      console.error('Shift start error:', error);
       socket.emit('shift_start_error', {
         error: 'Failed to start shift'
       });
@@ -162,8 +152,6 @@ export class WebSocketService {
   // Обработка окончания смены
   private async handleShiftEnded(socket: AuthenticatedSocket, data: any): Promise<void> {
     try {
-      console.log(`⏹️ Shift ended by ${socket.user?.name}:`, data);
-      
       // Уведомляем админов об окончании смены
       this.io.to('admins').emit('user_shift_ended', {
         userId: socket.user?.id,
@@ -180,7 +168,6 @@ export class WebSocketService {
         timestamp: new Date()
       });
     } catch (error) {
-      console.error('Shift end error:', error);
       socket.emit('shift_end_error', {
         error: 'Failed to end shift'
       });
@@ -190,8 +177,6 @@ export class WebSocketService {
   // Обработка создания назначения
   private async handleAssignmentCreated(socket: AuthenticatedSocket, data: any): Promise<void> {
     try {
-      console.log(`📋 Assignment created by admin ${socket.user?.name}:`, data);
-      
       // Уведомляем конкретного пользователя о новом назначении
       if (data.userId) {
         this.io.to(`user_${data.userId}`).emit('new_assignment', {
@@ -213,7 +198,6 @@ export class WebSocketService {
         timestamp: new Date()
       });
     } catch (error) {
-      console.error('Assignment creation error:', error);
       socket.emit('assignment_creation_error', {
         error: 'Failed to create assignment'
       });
@@ -269,7 +253,7 @@ export class WebSocketService {
     if (socket) {
       socket.disconnect(true);
       this.connectedUsers.delete(userId);
-      console.log(`🚪 User ${userId} forcibly disconnected`);
-    }
+      }
   }
 } 
+

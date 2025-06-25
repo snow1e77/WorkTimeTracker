@@ -1,7 +1,8 @@
-import express from 'express';
+﻿import express from 'express';
 import Joi from 'joi';
-import { authenticateToken, requireAdmin, requireOwnershipOrAdmin, validateJSON } from '../middleware/auth';
+import { authenticateToken, requireAdmin, requireOwnershipOrAdmin, validateJSON, requireRole } from '../middleware/auth';
 import { UserService } from '../services/UserService';
+import { PreRegistrationService } from '../services/PreRegistrationService';
 
 const router = express.Router();
 
@@ -20,6 +21,18 @@ const getUsersQuerySchema = Joi.object({
   role: Joi.string().valid('worker', 'admin').optional(),
   isActive: Joi.boolean().optional(),
   search: Joi.string().max(100).optional()
+});
+
+const addPreRegisteredUserSchema = Joi.object({
+  phoneNumber: Joi.string()
+    .pattern(/^\+[1-9]\d{1,14}$/)
+    .required()
+    .messages({
+      'string.pattern.base': 'Phone number must be in international format (+1234567890)',
+      'any.required': 'Phone number is required'
+    }),
+  name: Joi.string().min(2).max(100).optional(),
+  role: Joi.string().valid('worker', 'admin').default('worker')
 });
 
 // Все маршруты требуют аутентификации
@@ -54,7 +67,6 @@ router.get('/', requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get users error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve users'
@@ -73,7 +85,6 @@ router.get('/stats', requireAdmin, async (req, res) => {
       data: stats
     });
   } catch (error) {
-    console.error('Get user stats error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve user statistics'
@@ -108,7 +119,6 @@ router.get('/:userId', requireOwnershipOrAdmin('userId'), async (req, res) => {
       data: user
     });
   } catch (error) {
-    console.error('Get user error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve user'
@@ -168,7 +178,6 @@ router.put('/:userId', requireOwnershipOrAdmin('userId'), validateJSON, async (r
       data: updatedUser
     });
   } catch (error) {
-    console.error('Update user error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to update user'
@@ -219,7 +228,6 @@ router.delete('/:userId', requireAdmin, async (req, res) => {
       message: 'User deleted successfully'
     });
   } catch (error) {
-    console.error('Delete user error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to delete user'
@@ -270,7 +278,6 @@ router.put('/:userId/password', requireOwnershipOrAdmin('userId'), validateJSON,
       message: 'Password updated successfully'
     });
   } catch (error) {
-    console.error('Update password error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to update password'
@@ -316,7 +323,6 @@ router.get('/:userId/assignments', requireOwnershipOrAdmin('userId'), async (req
       }
     });
   } catch (error) {
-    console.error('Get user assignments error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve user assignments'
@@ -377,7 +383,6 @@ router.get('/:userId/shifts', requireOwnershipOrAdmin('userId'), async (req, res
       }
     });
   } catch (error) {
-    console.error('Get user shifts error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve user shifts'
@@ -412,7 +417,6 @@ router.get('/workers', requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get workers error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve workers'
@@ -492,10 +496,144 @@ router.post('/bulk-update', requireAdmin, validateJSON, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Bulk update users error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to process bulk update'
+    });
+  }
+});
+
+// POST /api/users/pre-register - Добавление пользователя для предварительной регистрации (только админы)
+router.post('/pre-register', authenticateToken, requireRole('admin'), validateJSON, async (req, res) => {
+  try {
+    const { error, value } = addPreRegisteredUserSchema.validate(req.body);
+    
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: error.details[0]?.message || 'Validation error'
+      });
+    }
+
+    const { phoneNumber, name, role } = value;
+    const addedBy = req.user?.id;
+
+    if (!addedBy) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    const preRegisteredUser = await PreRegistrationService.addPreRegisteredUser({
+      phoneNumber,
+      name,
+      role,
+      addedBy: addedBy as string
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Пользователь добавлен для предварительной регистрации',
+      data: preRegisteredUser
+    });
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to pre-register user';
+    return res.status(400).json({
+      success: false,
+      error: errorMessage
+    });
+  }
+});
+
+// GET /api/users/pre-registered - Получение списка предварительно зарегистрированных пользователей (только админы)
+router.get('/pre-registered', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const search = req.query.search as string;
+    const isActivated = req.query.isActivated === 'true' ? true : 
+                       req.query.isActivated === 'false' ? false : undefined;
+
+    const result = await PreRegistrationService.getAllPreRegisteredUsers({
+      page,
+      limit,
+      search,
+      isActivated
+    });
+
+    return res.json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to get pre-registered users'
+    });
+  }
+});
+
+// DELETE /api/users/pre-registered/:id - Удаление предварительно зарегистрированного пользователя (только админы)
+router.delete('/pre-registered/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID parameter is required'
+      });
+    }
+
+    const success = await PreRegistrationService.removePreRegisteredUser(id);
+
+    if (success) {
+      return res.json({
+        success: true,
+        message: 'Предварительно зарегистрированный пользователь удален'
+      });
+    } else {
+      return res.status(404).json({
+        success: false,
+        error: 'Пользователь не найден'
+      });
+    }
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to remove pre-registered user'
+    });
+  }
+});
+
+// POST /api/users/resend-app-link - Повторная отправка ссылки на скачивание (только админы)
+router.post('/resend-app-link', authenticateToken, requireRole('admin'), validateJSON, async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Phone number is required'
+      });
+    }
+
+    await PreRegistrationService.resendAppDownloadLink(phoneNumber);
+
+    return res.json({
+      success: true,
+      message: 'Ссылка на скачивание отправлена повторно'
+    });
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to resend app link';
+    return res.status(400).json({
+      success: false,
+      error: errorMessage
     });
   }
 });

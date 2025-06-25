@@ -1,4 +1,4 @@
-import { Pool, PoolConfig } from 'pg';
+﻿import { Pool, PoolConfig } from 'pg';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -19,7 +19,6 @@ export const pool = new Pool(dbConfig);
 
 // Обработка ошибок подключения
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
   process.exit(-1);
 });
 
@@ -31,7 +30,6 @@ export const testConnection = async (): Promise<boolean> => {
     client.release();
     return true;
   } catch (error) {
-    console.error('Database connection failed:', error);
     return false;
   }
 };
@@ -42,10 +40,8 @@ export const query = async (text: string, params?: any[]): Promise<any> => {
   try {
     const res = await pool.query(text, params);
     const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rows: res.rowCount });
     return res;
   } catch (error) {
-    console.error('Database query error:', { text, error });
     throw error;
   }
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -47,7 +47,6 @@ const ViolationsReportScreen: React.FC = () => {
       setUsers(usersData);
       setSites(sitesData);
     } catch (error) {
-      console.error('Error loading data:', error);
       setStatusMessage('Failed to load violations data');
       setStatusType('error');
     } finally {
@@ -70,7 +69,6 @@ const ViolationsReportScreen: React.FC = () => {
               setStatusType('info');
               loadData();
             } catch (error) {
-              console.error('Error resolving violation:', error);
               setStatusMessage('Failed to resolve violation');
               setStatusType('error');
             }
@@ -96,7 +94,6 @@ const ViolationsReportScreen: React.FC = () => {
               setStatusType('info');
               loadData();
             } catch (error) {
-              console.error('Error deleting violation:', error);
               setStatusMessage('Failed to delete violation');
               setStatusType('error');
             }

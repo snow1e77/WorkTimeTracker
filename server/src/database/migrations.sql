@@ -222,6 +222,22 @@ CREATE TABLE IF NOT EXISTS notification_history (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Pre-registered users table - for admin to pre-register users before they can login
+CREATE TABLE IF NOT EXISTS pre_registered_users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    phone_number VARCHAR(20) UNIQUE NOT NULL,
+    name VARCHAR(255),
+    role VARCHAR(20) NOT NULL DEFAULT 'worker' CHECK (role IN ('worker', 'admin')),
+    company_id UUID,
+    added_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    is_activated BOOLEAN DEFAULT FALSE,
+    activated_at TIMESTAMP WITH TIME ZONE,
+    app_download_sent BOOLEAN DEFAULT FALSE,
+    app_download_sent_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
@@ -302,6 +318,11 @@ CREATE INDEX IF NOT EXISTS idx_notification_history_status ON notification_histo
 CREATE INDEX IF NOT EXISTS idx_notification_history_sent_at ON notification_history(sent_at);
 CREATE INDEX IF NOT EXISTS idx_notification_history_read_at ON notification_history(read_at);
 
+-- Indexes for pre-registered users
+CREATE INDEX IF NOT EXISTS idx_pre_registered_phone ON pre_registered_users(phone_number);
+CREATE INDEX IF NOT EXISTS idx_pre_registered_activated ON pre_registered_users(is_activated);
+CREATE INDEX IF NOT EXISTS idx_pre_registered_added_by ON pre_registered_users(added_by);
+
 -- Functions for updating updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -335,6 +356,11 @@ CREATE TRIGGER update_push_tokens_updated_at
 
 CREATE TRIGGER update_notification_prefs_updated_at 
     BEFORE UPDATE ON user_notification_preferences 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Trigger for updating pre_registered_users updated_at
+CREATE TRIGGER update_pre_registered_users_updated_at 
+    BEFORE UPDATE ON pre_registered_users 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Views for commonly used queries

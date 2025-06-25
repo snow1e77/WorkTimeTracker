@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { TextInput, Button, List, Searchbar, Text, Card } from 'react-native-paper';
 import { CountryCode } from 'libphonenumber-js';
@@ -116,17 +116,13 @@ export default function InternationalPhoneInput({
   useEffect(() => {
     if (autoDetectCountry && !isDetectingCountry) {
       setIsDetectingCountry(true);
-      console.log('🔍 Автоопределение страны для телефонного номера...');
-      
       autoDetectUserCountry()
         .then((detectedCountry) => {
-          console.log(`✅ Автоопределена страна: ${detectedCountry}`);
           setCurrentCountry(detectedCountry);
           onCountryChange?.(detectedCountry);
         })
         .catch((error) => {
-          console.error('❌ Ошибка автоопределения страны:', error);
-        })
+          })
         .finally(() => {
           setIsDetectingCountry(false);
         });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -32,7 +32,6 @@ const UserManagementScreen: React.FC = () => {
       const allUsers = await dbService.getAllUsers();
       setUsers(allUsers);
     } catch (error) {
-      console.error('Error loading users:', error);
       setStatusMessage('Failed to load users');
       setStatusType('error');
     } finally {
@@ -48,7 +47,6 @@ const UserManagementScreen: React.FC = () => {
       loadUsers(); // Refresh the list
       setSelectedUserId(null);
     } catch (error) {
-      console.error('Error updating user role:', error);
       setStatusMessage('Failed to update user role');
       setStatusType('error');
     }
@@ -61,7 +59,6 @@ const UserManagementScreen: React.FC = () => {
       setStatusType('info');
       loadUsers(); // Refresh the list
     } catch (error) {
-      console.error('Error updating user status:', error);
       setStatusMessage('Failed to update user status');
       setStatusType('error');
     }
@@ -74,7 +71,6 @@ const UserManagementScreen: React.FC = () => {
       setStatusType('info');
       loadUsers(); // Refresh the list
     } catch (error) {
-      console.error('Error deleting user:', error);
       setStatusMessage('Failed to delete user');
       setStatusType('error');
     }

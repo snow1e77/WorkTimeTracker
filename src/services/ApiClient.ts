@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_CONFIG, ApiResponse } from '../config/api';
 
 export class ApiClient {
@@ -24,8 +24,7 @@ export class ApiClient {
       this.accessToken = await AsyncStorage.getItem('accessToken');
       this.refreshToken = await AsyncStorage.getItem('refreshToken');
     } catch (error) {
-      console.error('Error initializing ApiClient:', error);
-    }
+      }
   }
 
   // Установка токенов
@@ -37,8 +36,7 @@ export class ApiClient {
       await AsyncStorage.setItem('accessToken', accessToken);
       await AsyncStorage.setItem('refreshToken', refreshToken);
     } catch (error) {
-      console.error('Error saving tokens:', error);
-    }
+      }
   }
 
   // Очистка токенов
@@ -50,8 +48,7 @@ export class ApiClient {
       await AsyncStorage.removeItem('accessToken');
       await AsyncStorage.removeItem('refreshToken');
     } catch (error) {
-      console.error('Error clearing tokens:', error);
-    }
+      }
   }
 
   // Получение заголовков для запроса
@@ -86,8 +83,7 @@ export class ApiClient {
         }
       }
     } catch (error) {
-      console.error('Error refreshing token:', error);
-    }
+      }
 
     return false;
   }
@@ -171,8 +167,6 @@ export class ApiClient {
       }
     } catch (error) {
       clearTimeout(timeoutId);
-      console.error('API request failed:', error);
-      
       if (error instanceof TypeError && error.message === 'Network request failed') {
         return {
           success: false,
@@ -232,7 +226,6 @@ export class ApiClient {
       clearTimeout(timeoutId);
       return response.ok;
     } catch (error) {
-      console.error('Server connection check failed:', error);
       return false;
     }
   }

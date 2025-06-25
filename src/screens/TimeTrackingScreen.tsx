@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { 
   Card, 
@@ -86,7 +86,6 @@ export default function TimeTrackingScreen() {
       setStatusMessage('Location permission granted');
       
     } catch (error) {
-      console.error('Permission request error:', error);
       setStatusMessage('Unable to get location permissions');
       setHasLocationPermission(false);
     }
@@ -110,7 +109,6 @@ export default function TimeTrackingScreen() {
       setStatusMessage('GPS tracking active');
       return subscription;
     } catch (error) {
-      console.error('Tracking error:', error);
       setStatusMessage('Unable to start GPS tracking');
       return null;
     }

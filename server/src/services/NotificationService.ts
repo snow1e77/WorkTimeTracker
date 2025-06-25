@@ -1,4 +1,4 @@
-import { Expo } from 'expo-server-sdk';
+﻿import { Expo } from 'expo-server-sdk';
 
 export interface PushNotificationData {
   to: string | string[];
@@ -49,7 +49,6 @@ export class ServerNotificationService {
   ): Promise<boolean> {
     try {
       if (!Expo.isExpoPushToken(pushToken)) {
-        console.error('Invalid push token:', pushToken);
         return false;
       }
 
@@ -67,16 +66,13 @@ export class ServerNotificationService {
       for (const result of results) {
         for (const ticket of result) {
           if (ticket.status === 'error') {
-            console.error('Push notification error:', ticket.message);
             return false;
           }
         }
       }
 
-      console.log('Push notification sent successfully');
       return true;
     } catch (error) {
-      console.error('Failed to send push notification:', error);
       return false;
     }
   }
@@ -92,7 +88,6 @@ export class ServerNotificationService {
       const validTokens = pushTokens.filter(token => Expo.isExpoPushToken(token));
       
       if (validTokens.length === 0) {
-        console.warn('No valid push tokens provided');
         return results;
       }
 
@@ -113,15 +108,12 @@ export class ServerNotificationService {
             results.success++;
           } else {
             results.failed++;
-            console.error('Push notification error:', ticket.message);
-          }
+            }
         }
       }
 
-      console.log(`Push notifications sent: ${results.success} success, ${results.failed} failed`);
       return results;
     } catch (error) {
-      console.error('Failed to send push notifications:', error);
       results.failed = pushTokens.length;
       return results;
     }
@@ -276,11 +268,8 @@ export class ServerNotificationService {
             receipts.push({ receiptId, ...receipt });
             
             if (receipt.status === 'error' && 'message' in receipt) {
-              console.error(`Receipt error for ${receiptId}:`, receipt.message);
-              
               // Если токен недействителен, помечаем его для удаления
               if ('details' in receipt && receipt.details && 'error' in receipt.details && receipt.details.error === 'DeviceNotRegistered') {
-                console.log(`Push token is invalid: ${receiptId}`);
                 // Здесь можно добавить логику для удаления недействительного токена из базы данных
               }
             }
@@ -290,7 +279,6 @@ export class ServerNotificationService {
       
       return receipts;
     } catch (error) {
-      console.error('Failed to get delivery receipts:', error);
       return [];
     }
   }

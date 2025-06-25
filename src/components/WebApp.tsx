@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { WebAuthProvider, useWebAuth } from '../contexts/WebAuthContext';
 import WebWelcomeScreen from './WebWelcomeScreen';
@@ -16,7 +16,6 @@ const WebLoginForm: React.FC<{ onLogin: (phone: string, password: string) => Pro
     try {
       await onLogin(phone, password);
     } catch (error) {
-      console.error('Login error:', error);
       alert('Login failed. Please check your credentials.');
     } finally {
       setLoading(false);

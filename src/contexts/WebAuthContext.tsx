@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthUser } from '../types';
 import { WebAuthService } from '../services/WebAuthService';
 
@@ -35,7 +35,6 @@ export const WebAuthProvider: React.FC<WebAuthProviderProps> = ({ children }) =>
       const currentUser = await authService.getCurrentUser();
       setUser(currentUser);
     } catch (error) {
-      console.error('Error checking auth status:', error);
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -53,7 +52,6 @@ export const WebAuthProvider: React.FC<WebAuthProviderProps> = ({ children }) =>
         throw new Error(result.error || 'Login failed');
       }
     } catch (error) {
-      console.error('Login error:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -65,8 +63,7 @@ export const WebAuthProvider: React.FC<WebAuthProviderProps> = ({ children }) =>
       await authService.logout();
       setUser(null);
     } catch (error) {
-      console.error('Logout error:', error);
-    }
+      }
   };
 
   const value: WebAuthContextType = {

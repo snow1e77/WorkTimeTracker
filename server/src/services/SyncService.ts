@@ -1,4 +1,4 @@
-import { query } from '../config/database';
+﻿import { query } from '../config/database';
 import { SyncPayload, SyncConflict, User, ConstructionSite, UserSiteAssignment, WorkShift } from '../types';
 import { ShiftService } from './ShiftService';
 import { AssignmentService } from './AssignmentService';
@@ -388,7 +388,6 @@ export class SyncService {
 
       return { success: true, message: 'Changes processed successfully' };
     } catch (error) {
-      console.error('Error processing web admin changes:', error);
       return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -432,7 +431,6 @@ export class SyncService {
       );
              return result.rows.map((row: any) => row.device_id);
     } catch (error) {
-      console.error('Failed to get active devices:', error);
       return [];
     }
   }
@@ -444,8 +442,7 @@ export class SyncService {
         const webSocketService = getWebSocketServiceInstance();
         webSocketService.notifyAdmins(event, data);
       } catch (error) {
-        console.error('Failed to notify admins via WebSocket:', error);
-      }
+        }
     }
   }
 
@@ -456,8 +453,7 @@ export class SyncService {
         const webSocketService = getWebSocketServiceInstance();
         webSocketService.notifyUser(userId, event, data);
       } catch (error) {
-        console.error('Failed to notify user via WebSocket:', error);
-      }
+        }
     }
   }
 
@@ -613,8 +609,7 @@ export class SyncService {
     // Применяем разрешение конфликта
     if (resolution.data) {
       // Здесь была бы логика применения разрешенного конфликта
-      console.log(`Conflict ${conflictId} resolved with ${resolution.resolution}`);
-    }
+      }
 
     return { success: true, conflictId, resolution: resolution.resolution };
   }

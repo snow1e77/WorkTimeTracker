@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthUser, SMSVerification, ConstructionSite, WorkShift, UserSiteAssignment, Violation } from '../types';
 import { notificationService } from './NotificationService';
 import { API_CONFIG, getApiUrl, getHealthUrl, ApiResponse } from '../config/api';
@@ -60,15 +60,11 @@ export class ApiDatabaseService {
       // Проверяем соединение с сервером
       const isConnected = await apiClient.checkConnection();
       if (!isConnected) {
-        console.warn('⚠️ Cannot connect to server. Working in offline mode.');
-      } else {
-        console.log('✅ Connected to API server');
-      }
+        } else {
+        }
 
       this.isInitialized = true;
-      console.log('✅ API Database service initialized');
-    } catch (error) {
-      console.error('❌ Failed to initialize API Database service:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -85,9 +81,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to create user');
       }
       
-      console.log(`✅ User created: ${user.phoneNumber}`);
-    } catch (error) {
-      console.error('Error creating user:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -97,7 +91,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/users/by-phone/${encodeURIComponent(phoneNumber)}`);
       return response.success ? response.data : null;
     } catch (error) {
-      console.error('Error getting user by phone:', error);
       return null;
     }
   }
@@ -107,7 +100,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/users/${id}`);
       return response.success ? response.data : null;
     } catch (error) {
-      console.error('Error getting user by ID:', error);
       return null;
     }
   }
@@ -117,7 +109,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/users/${userId}/password`);
       return response.success ? response.data.passwordHash : null;
     } catch (error) {
-      console.error('Error getting user password:', error);
       return null;
     }
   }
@@ -130,9 +121,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to update password');
       }
       
-      console.log(`✅ Password updated for user ${userId}`);
-    } catch (error) {
-      console.error('Error updating user password:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -140,8 +129,7 @@ export class ApiDatabaseService {
   // SMS Verification methods
   async saveSMSVerification(verification: SMSVerification): Promise<void> {
     // SMS verification is handled on the server side
-    console.log('SMS verification saved on server side');
-  }
+    }
 
   async getSMSVerification(phoneNumber: string, type: 'registration' | 'login'): Promise<SMSVerification | null> {
     // SMS verification is handled on the server side
@@ -150,13 +138,11 @@ export class ApiDatabaseService {
 
   async markSMSVerificationAsUsed(verificationId: string): Promise<void> {
     // SMS verification is handled on the server side
-    console.log('SMS verification marked as used on server side');
-  }
+    }
 
   async cleanupExpiredVerifications(): Promise<void> {
     // Cleanup is handled on the server side
-    console.log('Expired verifications cleanup handled on server side');
-  }
+    }
 
   // Construction Sites methods
   async getConstructionSites(): Promise<ConstructionSite[]> {
@@ -164,7 +150,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/sites');
       return response.success ? response.data : [];
     } catch (error) {
-      console.error('Error getting construction sites:', error);
       return [];
     }
   }
@@ -177,9 +162,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to create site');
       }
       
-      console.log(`✅ Site created: ${site.name}`);
-    } catch (error) {
-      console.error('Error creating construction site:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -192,9 +175,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to delete site');
       }
       
-      console.log(`✅ Site deleted: ${siteId}`);
-    } catch (error) {
-      console.error('Error deleting construction site:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -207,9 +188,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to update site status');
       }
       
-      console.log(`✅ Site ${siteId} status updated to ${isActive ? 'active' : 'inactive'}`);
-    } catch (error) {
-      console.error('Error updating site status:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -222,9 +201,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to update site');
       }
       
-      console.log(`✅ Site ${site.id} updated successfully`);
-    } catch (error) {
-      console.error('Error updating construction site:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -235,7 +212,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/reports/work?period=${period}`);
       return response.success ? response.data : [];
     } catch (error) {
-      console.error('Error getting work reports:', error);
       return [];
     }
   }
@@ -258,7 +234,6 @@ export class ApiDatabaseService {
         bySeverity: { low: 0, medium: 0, high: 0 }
       };
     } catch (error) {
-      console.error('Error getting violations summary:', error);
       return {
         total: 0,
         resolved: 0,
@@ -274,7 +249,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/reports/violations/list?period=${period}&severity=${severity}`);
       return response.success ? response.data : [];
     } catch (error) {
-      console.error('Error getting violations:', error);
       return [];
     }
   }
@@ -287,9 +261,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to resolve violation');
       }
       
-      console.log(`✅ Violation ${violationId} resolved`);
-    } catch (error) {
-      console.error('Error resolving violation:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -302,9 +274,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to delete violation');
       }
       
-      console.log(`✅ Violation ${violationId} deleted`);
-    } catch (error) {
-      console.error('Error deleting violation:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -320,8 +290,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/violations', violation);
       
       const violationId = response.data?.id;
-      console.log(`✅ Violation created: ${violationId}`);
-
       // Send notification about new violation
       try {
         await notificationService.sendLocalNotification(
@@ -330,10 +298,8 @@ export class ApiDatabaseService {
           'violation_alert'
         );
       } catch (error) {
-        console.error('Error sending violation notification:', error);
-      }
+        }
     } catch (error) {
-      console.error('Error creating violation:', error);
       throw error;
     }
   }
@@ -344,7 +310,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/users');
       return response.success ? response.data : [];
     } catch (error) {
-      console.error('Error getting all users:', error);
       return [];
     }
   }
@@ -357,9 +322,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to update user role');
       }
       
-      console.log(`✅ User ${userId} role updated to ${role}`);
-    } catch (error) {
-      console.error('Error updating user role:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -372,9 +335,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to update user status');
       }
       
-      console.log(`✅ User ${userId} status updated to ${isActive ? 'active' : 'inactive'}`);
-    } catch (error) {
-      console.error('Error updating user status:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -387,9 +348,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to delete user');
       }
       
-      console.log(`✅ User ${userId} deleted successfully`);
-    } catch (error) {
-      console.error('Error deleting user:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -411,9 +370,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to create location event');
       }
       
-      console.log(`✅ Location event created: ${event.eventType} at ${event.latitude}, ${event.longitude}`);
-    } catch (error) {
-      console.error('Error creating location event:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -427,7 +384,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/locations/events?${params}`);
       return response.success ? response.data : [];
     } catch (error) {
-      console.error('Error getting location events:', error);
       return [];
     }
   }
@@ -437,7 +393,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/locations/current');
       return response.success ? response.data : [];
     } catch (error) {
-      console.error('Error getting current user locations:', error);
       return [];
     }
   }
@@ -449,7 +404,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/shifts${params}`);
       return response.success ? response.data : [];
     } catch (error) {
-      console.error('Error getting work shifts:', error);
       return [];
     }
   }
@@ -459,7 +413,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/shifts/start', shift);
       return response.data.id;
     } catch (error) {
-      console.error('Error starting work shift:', error);
       throw error;
     }
   }
@@ -472,9 +425,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to end work shift');
       }
       
-      console.log(`✅ Work shift ${shiftId} ended successfully`);
-    } catch (error) {
-      console.error('Error ending work shift:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -485,7 +436,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/assignments/user/${userId}`);
       return response.success ? response.data : [];
     } catch (error) {
-      console.error('Error getting user site assignments:', error);
       return [];
     }
   }
@@ -498,9 +448,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to create user site assignment');
       }
       
-      console.log(`✅ User site assignment created: ${assignment.userId} - ${assignment.siteId}`);
-    } catch (error) {
-      console.error('Error creating user site assignment:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -513,9 +461,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to update user site assignment');
       }
       
-      console.log(`✅ User site assignment updated: ${assignmentId}`);
-    } catch (error) {
-      console.error('Error updating user site assignment:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -528,9 +474,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to delete user site assignment');
       }
       
-      console.log(`✅ User site assignment deleted: ${assignmentId}`);
-    } catch (error) {
-      console.error('Error deleting user site assignment:', error);
+      } catch (error) {
       throw error;
     }
   }
@@ -541,7 +485,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/chat/my-chat');
       return response;
     } catch (error) {
-      console.error('Error getting worker chat:', error);
       return { success: false, error: 'Failed to get chat' };
     }
   }
@@ -551,7 +494,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/chat/foreman-chats');
       return response;
     } catch (error) {
-      console.error('Error getting foreman chats:', error);
       return { success: false, error: 'Failed to get chats' };
     }
   }
@@ -561,7 +503,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/chat/${chatId}/messages?limit=${limit}&offset=${offset}`);
       return response;
     } catch (error) {
-      console.error('Error getting chat messages:', error);
       return { success: false, error: 'Failed to get messages' };
     }
   }
@@ -578,7 +519,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/chat/send-message', messageData);
       return response;
     } catch (error) {
-      console.error('Error sending message:', error);
       return { success: false, error: 'Failed to send message' };
     }
   }
@@ -591,7 +531,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/chat/assign-task', taskData);
       return response;
     } catch (error) {
-      console.error('Error assigning task:', error);
       return { success: false, error: 'Failed to assign task' };
     }
   }
@@ -601,7 +540,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/chat/${chatId}/todays-task`);
       return response;
     } catch (error) {
-      console.error('Error getting today\'s task:', error);
       return { success: false, error: 'Failed to get today\'s task' };
     }
   }
@@ -611,7 +549,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/chat/validate-photo', { reportId, notes });
       return response;
     } catch (error) {
-      console.error('Error validating photo:', error);
       return { success: false, error: 'Failed to validate photo' };
     }
   }
@@ -623,7 +560,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/sync${params}`);
       return response;
     } catch (error) {
-      console.error('Error getting sync data:', error);
       return { success: false, error: 'Failed to get sync data' };
     }
   }
@@ -633,7 +569,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/sync', syncData);
       return response;
     } catch (error) {
-      console.error('Error posting sync data:', error);
       return { success: false, error: 'Failed to post sync data' };
     }
   }
@@ -643,7 +578,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/sync/status');
       return response;
     } catch (error) {
-      console.error('Error getting sync status:', error);
       return { success: false, error: 'Failed to get sync status' };
     }
   }
@@ -653,7 +587,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/sync/full', { deviceId });
       return response;
     } catch (error) {
-      console.error('Error performing full sync:', error);
       return { success: false, error: 'Failed to perform full sync' };
     }
   }
@@ -663,7 +596,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/sync/conflicts/${userId}`);
       return response;
     } catch (error) {
-      console.error('Error getting sync conflicts:', error);
       return { success: false, error: 'Failed to get sync conflicts' };
     }
   }
@@ -673,7 +605,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/sync/resolve-conflict', { conflictId, resolution });
       return response;
     } catch (error) {
-      console.error('Error resolving sync conflict:', error);
       return { success: false, error: 'Failed to resolve sync conflict' };
     }
   }
@@ -683,7 +614,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/sync/metrics');
       return response;
     } catch (error) {
-      console.error('Error getting sync metrics:', error);
       return { success: false, error: 'Failed to get sync metrics' };
     }
   }
@@ -693,7 +623,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/sync/force-all');
       return response;
     } catch (error) {
-      console.error('Error forcing global sync:', error);
       return { success: false, error: 'Failed to force global sync' };
     }
   }
@@ -704,7 +633,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/notifications/register-token', { token });
       return response;
     } catch (error) {
-      console.error('Error registering push token:', error);
       return { success: false, error: 'Failed to register push token' };
     }
   }
@@ -714,7 +642,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/notifications/send-test');
       return response;
     } catch (error) {
-      console.error('Error sending test notification:', error);
       return { success: false, error: 'Failed to send test notification' };
     }
   }
@@ -724,7 +651,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/notifications/violation-alert', violationData);
       return response;
     } catch (error) {
-      console.error('Error sending violation alert:', error);
       return { success: false, error: 'Failed to send violation alert' };
     }
   }
@@ -734,7 +660,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/notifications/assignment-notification', assignmentData);
       return response;
     } catch (error) {
-      console.error('Error sending assignment notification:', error);
       return { success: false, error: 'Failed to send assignment notification' };
     }
   }
@@ -744,7 +669,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/notifications/shift-reminder', reminderData);
       return response;
     } catch (error) {
-      console.error('Error sending shift reminder:', error);
       return { success: false, error: 'Failed to send shift reminder' };
     }
   }
@@ -754,7 +678,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/notifications/broadcast', notificationData);
       return response;
     } catch (error) {
-      console.error('Error sending broadcast notification:', error);
       return { success: false, error: 'Failed to send broadcast notification' };
     }
   }
@@ -764,7 +687,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/notifications/overtime-alert', overtimeData);
       return response;
     } catch (error) {
-      console.error('Error sending overtime alert:', error);
       return { success: false, error: 'Failed to send overtime alert' };
     }
   }
@@ -774,7 +696,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/notifications/validate-token', { token });
       return response;
     } catch (error) {
-      console.error('Error validating push token:', error);
       return { success: false, error: 'Failed to validate push token' };
     }
   }
@@ -784,7 +705,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/notifications/delivery-receipts', { receiptIds });
       return response;
     } catch (error) {
-      console.error('Error getting delivery receipts:', error);
       return { success: false, error: 'Failed to get delivery receipts' };
     }
   }
@@ -795,7 +715,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/sites/my');
       return response.success ? response.data : [];
     } catch (error) {
-      console.error('Error getting my sites:', error);
       return [];
     }
   }
@@ -805,7 +724,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post(`/sites/${siteId}/check-location`, { latitude, longitude });
       return response;
     } catch (error) {
-      console.error('Error checking site location:', error);
       return { success: false, error: 'Failed to check site location' };
     }
   }
@@ -816,7 +734,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/assignments/my');
       return response.success ? response.data : [];
     } catch (error) {
-      console.error('Error getting my assignments:', error);
       return [];
     }
   }
@@ -826,7 +743,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/assignments');
       return response.success ? response.data : [];
     } catch (error) {
-      console.error('Error getting all assignments:', error);
       return [];
     }
   }
@@ -837,7 +753,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/shifts/my');
       return response.success ? response.data : [];
     } catch (error) {
-      console.error('Error getting my shifts:', error);
       return [];
     }
   }
@@ -847,7 +762,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/shifts/${shiftId}`);
       return response.success ? response.data : null;
     } catch (error) {
-      console.error('Error getting shift by ID:', error);
       return null;
     }
   }
@@ -857,7 +771,6 @@ export class ApiDatabaseService {
       const response = await apiClient.put(`/shifts/${shiftId}`, updates);
       return response;
     } catch (error) {
-      console.error('Error updating shift:', error);
       return { success: false, error: 'Failed to update shift' };
     }
   }
@@ -867,7 +780,6 @@ export class ApiDatabaseService {
       const response = await apiClient.delete(`/shifts/${shiftId}`);
       return response;
     } catch (error) {
-      console.error('Error deleting shift:', error);
       return { success: false, error: 'Failed to delete shift' };
     }
   }
@@ -878,7 +790,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/auth/status');
       return response;
     } catch (error) {
-      console.error('Error getting auth status:', error);
       return { success: false, error: 'Failed to get auth status' };
     }
   }
@@ -889,7 +800,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get(`/assignments/site/${siteId}`);
       return response;
     } catch (error) {
-      console.error('Error getting site assignments:', error);
       return { success: false, error: 'Failed to get site assignments' };
     }
   }
@@ -899,7 +809,6 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/assignments/stats');
       return response;
     } catch (error) {
-      console.error('Error getting assignment stats:', error);
       return { success: false, error: 'Failed to get assignment stats' };
     }
   }
@@ -915,7 +824,6 @@ export class ApiDatabaseService {
       const response = await apiClient.post('/assignments/bulk', assignmentData);
       return response;
     } catch (error) {
-      console.error('Error bulk assigning users to site:', error);
       return { success: false, error: 'Failed to bulk assign users' };
     }
   }

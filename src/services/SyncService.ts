@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   SyncPayload, 
   SyncMetadata, 
@@ -115,7 +115,6 @@ export class SyncService {
         }
       }
     } catch (error) {
-      console.error('Failed to load sync queue:', error);
       this.syncQueue = { operations: [], lastProcessed: null };
     }
   }
@@ -125,8 +124,7 @@ export class SyncService {
     try {
       await AsyncStorage.setItem('syncQueue', JSON.stringify(this.syncQueue));
     } catch (error) {
-      console.error('Failed to save sync queue:', error);
-    }
+      }
   }
 
   // Добавить операцию в очередь
@@ -151,7 +149,6 @@ export class SyncService {
     this.syncQueue.operations.push(operation);
     await this.saveSyncQueue();
     
-    console.log(`➕ Added operation to sync queue: ${type} ${entityType} ${entityId}`);
     this.notifySyncStatusChange();
 
     // Если онлайн, сразу попробуем обработать
@@ -183,8 +180,6 @@ export class SyncService {
 
     if (pendingOperations.length === 0) return;
 
-    console.log(`🔄 Processing ${pendingOperations.length} queued operations`);
-
     for (const operation of pendingOperations) {
       if (!this.isOnline()) break;
       await this.processQueueOperation(operation);
@@ -203,8 +198,6 @@ export class SyncService {
     operation.attempts++;
 
     try {
-      console.log(`🔄 Processing operation: ${operation.type} ${operation.entityType} ${operation.entityId} (attempt ${operation.attempts})`);
-
       switch (operation.entityType) {
         case 'shift':
           await this.syncShiftOperation(operation);
@@ -221,15 +214,10 @@ export class SyncService {
       }
 
       operation.status = 'completed';
-      console.log(`✅ Operation completed: ${operation.type} ${operation.entityType} ${operation.entityId}`);
-
-    } catch (error) {
-      console.error(`❌ Operation failed: ${operation.type} ${operation.entityType} ${operation.entityId}`, error);
-      
+      } catch (error) {
       if (operation.attempts >= operation.maxAttempts) {
         operation.status = 'failed';
-        console.error(`💥 Operation permanently failed after ${operation.attempts} attempts`);
-      } else {
+        } else {
         operation.status = 'pending';
         // Увеличиваем задержку с каждой попыткой
         const retryTimeout = setTimeout(() => {
@@ -303,14 +291,12 @@ export class SyncService {
   // Синхронизация операций с пользователями
   private async syncUserOperation(operation: SyncOperation): Promise<void> {
     // Реализация для пользователей
-    console.log('Syncing user operation:', operation);
-  }
+    }
 
   // Синхронизация операций с объектами
   private async syncSiteOperation(operation: SyncOperation): Promise<void> {
     // Реализация для объектов
-    console.log('Syncing site operation:', operation);
-  }
+    }
 
   // Проверить подключение к интернету
   private isOnline(): boolean {
@@ -333,7 +319,6 @@ export class SyncService {
     
     if (before !== after) {
       await this.saveSyncQueue();
-      console.log(`🧹 Cleaned up ${before - after} completed operations from queue`);
       this.notifySyncStatusChange();
     }
   }
@@ -387,7 +372,6 @@ export class SyncService {
       }
       this.deviceId = deviceId;
     } catch (error) {
-      console.error('Failed to initialize device ID:', error);
       this.deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
   }
@@ -398,7 +382,6 @@ export class SyncService {
       const timestamp = await AsyncStorage.getItem('lastSyncTimestamp');
       return timestamp ? new Date(timestamp) : null;
     } catch (error) {
-      console.error('Failed to get last sync timestamp:', error);
       return null;
     }
   }
@@ -409,8 +392,7 @@ export class SyncService {
       await AsyncStorage.setItem('lastSyncTimestamp', timestamp.toISOString());
       this.lastSyncTimestamp = timestamp;
     } catch (error) {
-      console.error('Failed to set last sync timestamp:', error);
-    }
+      }
   }
 
   // Проверить, нужна ли синхронизация
@@ -434,8 +416,6 @@ export class SyncService {
     }
 
     this.syncInProgress = true;
-    console.log('🔄 Starting sync process...');
-
     try {
       // 1. Подготовить данные для отправки
       const outgoingData = await this.prepareOutgoingData();
@@ -451,10 +431,8 @@ export class SyncService {
       // 4. Обновить время синхронизации
       await this.setLastSyncTimestamp(new Date());
       
-      console.log('✅ Sync completed successfully');
       return { success: true };
     } catch (error) {
-      console.error('❌ Sync failed:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     } finally {
       this.syncInProgress = false;
@@ -508,7 +486,6 @@ export class SyncService {
         new Date(meta.lastModified) > since
       );
     } catch (error) {
-      console.error('Failed to get pending metadata:', error);
       return [];
     }
   }
@@ -520,8 +497,6 @@ export class SyncService {
     conflicts?: SyncConflict[] 
   }> {
     try {
-      console.log('📤 Sending data to server:', payload);
-      
       // Получаем токен авторизации
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
@@ -561,10 +536,7 @@ export class SyncService {
       }
       
     } catch (error) {
-      console.error('Failed to send data to server:', error);
-      
       // Fallback к локальным данным веб-панели для демонстрации
-      console.log('📤 Falling back to local web panel data...');
       const incomingData = await this.getDataFromWebPanel();
       
       return {
@@ -593,7 +565,6 @@ export class SyncService {
         deviceId: 'web_admin_panel'
       };
     } catch (error) {
-      console.error('Failed to get data from web panel:', error);
       return {
         metadata: [],
         timestamp: new Date(),
@@ -604,8 +575,6 @@ export class SyncService {
 
   // Обработать входящие данные
   private async processIncomingData(data: SyncPayload): Promise<void> {
-    console.log('📥 Processing incoming data:', data);
-
     // Обработать пользователей
     if (data.users) {
       for (const user of data.users) {
@@ -641,8 +610,7 @@ export class SyncService {
         await this.createUser(user);
       }
     } catch (error) {
-      console.error('Failed to sync user:', error);
-    }
+      }
   }
 
   // Синхронизировать объект
@@ -651,8 +619,7 @@ export class SyncService {
       // Сохранить объект в локальной базе
       await this.saveSiteToLocal(site);
     } catch (error) {
-      console.error('Failed to sync site:', error);
-    }
+      }
   }
 
   // Синхронизировать назначение
@@ -661,8 +628,7 @@ export class SyncService {
       // Сохранить назначение в локальной базе
       await this.saveAssignmentToLocal(assignment);
     } catch (error) {
-      console.error('Failed to sync assignment:', error);
-    }
+      }
   }
 
   // Получить назначенные пользователю объекты
@@ -682,7 +648,6 @@ export class SyncService {
       
       return sites;
     } catch (error) {
-      console.error('Failed to get user assigned sites:', error);
       return [];
     }
   }
@@ -699,7 +664,6 @@ export class SyncService {
         (!assignment.validTo || new Date(assignment.validTo) >= new Date())
       );
     } catch (error) {
-      console.error('Failed to check user site access:', error);
       return false;
     }
   }
@@ -707,30 +671,25 @@ export class SyncService {
   // Вспомогательные методы для работы с локальной базой данных
   private async updateUser(user: AuthUser): Promise<void> {
     // Реализация обновления пользователя в локальной базе
-    console.log('Updating user:', user.id);
-  }
+    }
 
   private async createUser(user: AuthUser): Promise<void> {
     // Реализация создания пользователя в локальной базе
-    console.log('Creating user:', user.id);
-  }
+    }
 
   private async saveSiteToLocal(site: ConstructionSite): Promise<void> {
     // Реализация сохранения объекта в локальной базе
-    console.log('Saving site:', site.id);
-  }
+    }
 
   private async saveAssignmentToLocal(assignment: UserSiteAssignment): Promise<void> {
     // Реализация сохранения назначения в локальной базе
-    console.log('Saving assignment:', assignment.id);
-  }
+    }
 
   private async getUserAssignments(userId: string): Promise<UserSiteAssignment[]> {
     try {
       const assignmentsJson = await AsyncStorage.getItem(`assignments_${userId}`);
       return assignmentsJson ? JSON.parse(assignmentsJson) : [];
     } catch (error) {
-      console.error('Failed to get user assignments:', error);
       return [];
     }
   }
@@ -743,14 +702,12 @@ export class SyncService {
       const sites: ConstructionSite[] = JSON.parse(sitesJson);
       return sites.find(site => site.id === siteId) || null;
     } catch (error) {
-      console.error('Failed to get site by ID:', error);
       return null;
     }
   }
 
   private async getShiftById(shiftId: string): Promise<WorkShift | null> {
     // Реализация получения смены по ID
-    console.log('Getting shift:', shiftId);
     return null;
   }
 
@@ -782,8 +739,7 @@ export class SyncService {
       
       await AsyncStorage.setItem('pendingSync', JSON.stringify(filtered));
     } catch (error) {
-      console.error('Failed to add sync metadata:', error);
-    }
+      }
   }
 
   // Автоматическая синхронизация каждые 5 минут
@@ -818,8 +774,7 @@ export class SyncService {
     this.retryTimeouts.forEach(timeout => clearTimeout(timeout));
     this.retryTimeouts.clear();
 
-    console.log('🧹 All SyncService timers have been cleared');
-  }
+    }
 
   // Принудительная синхронизация
   public async forcSync(): Promise<{ success: boolean; error?: string }> {
@@ -833,8 +788,6 @@ export class SyncService {
       const connected = await this.webSocketService.connect();
       
       if (connected) {
-        console.log('✅ WebSocket connected for sync service');
-        
         // Подписываемся на события синхронизации
         this.webSocketService.on('sync_response', (data) => {
           this.handleWebSocketSyncResponse(data);
@@ -849,14 +802,11 @@ export class SyncService {
         });
       }
     } catch (error) {
-      console.error('Failed to setup WebSocket connection:', error);
-    }
+      }
   }
 
   // Обработка ответа синхронизации через WebSocket
   private async handleWebSocketSyncResponse(data: any): Promise<void> {
-    console.log('🔄 Handling WebSocket sync response:', data);
-    
     if (data.success) {
       // Принудительная синхронизация при получении уведомления
       await this.sync(true);
@@ -865,26 +815,20 @@ export class SyncService {
 
   // Обработка нового назначения через WebSocket
   private async handleNewAssignmentFromWebSocket(data: any): Promise<void> {
-    console.log('📋 Handling new assignment from WebSocket:', data);
-    
     try {
       // Принудительная синхронизация для получения полных данных
       await this.sync(true);
     } catch (error) {
-      console.error('Failed to handle new assignment from WebSocket:', error);
-    }
+      }
   }
 
   // Обработка обновления назначения через WebSocket
   private async handleAssignmentUpdateFromWebSocket(data: any): Promise<void> {
-    console.log('📋 Handling assignment update from WebSocket:', data);
-    
     try {
       // Принудительная синхронизация для получения обновленных данных
       await this.sync(true);
     } catch (error) {
-      console.error('Failed to handle assignment update from WebSocket:', error);
-    }
+      }
   }
 
   // Уведомление о начале смены через WebSocket
@@ -916,3 +860,4 @@ export class SyncService {
     return await this.webSocketService.connect();
   }
 } 
+

@@ -1,4 +1,4 @@
-import * as Notifications from 'expo-notifications';
+﻿import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { APP_CONFIG } from '../config/appConfig';
@@ -88,10 +88,8 @@ export class NotificationService {
       this.setupNotificationHandlers();
 
       this.isInitialized = true;
-      console.log('NotificationService initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize NotificationService:', error);
-    }
+      } catch (error) {
+      }
   }
 
   // Создание каналов уведомлений
@@ -170,7 +168,6 @@ export class NotificationService {
   private async getPushToken(): Promise<string | null> {
     try {
       if (!Device.isDevice) {
-        console.log('Must use physical device for Push Notifications');
         return null;
       }
 
@@ -180,7 +177,6 @@ export class NotificationService {
 
       return token.data;
     } catch (error) {
-      console.error('Failed to get push token:', error);
       return null;
     }
   }
@@ -196,11 +192,9 @@ export class NotificationService {
       
       if (user) {
         // Здесь можно добавить API вызов для сохранения токена на сервере
-        console.log('Push token saved for user:', user.id);
-      }
+        }
     } catch (error) {
-      console.error('Failed to save push token:', error);
-    }
+      }
   }
 
   // Настройка обработчиков уведомлений
@@ -216,14 +210,11 @@ export class NotificationService {
     // Обработчик получения уведомления в foreground
     Notifications.addNotificationReceivedListener(notification => {
       const data = notification.request.content.data;
-      console.log('Notification received:', data);
-    });
+      });
   }
 
   // Обработка нажатия на уведомление
   private handleNotificationPress(data: any): void {
-    console.log('Notification pressed:', data);
-    
     // Здесь можно добавить навигацию в зависимости от типа уведомления
     switch (data?.type) {
       case 'shift_reminder':
@@ -267,7 +258,6 @@ export class NotificationService {
 
       return identifier;
     } catch (error) {
-      console.error('Failed to send local notification:', error);
       throw error;
     }
   }
@@ -303,7 +293,6 @@ export class NotificationService {
 
       return identifier;
     } catch (error) {
-      console.error('Failed to schedule notification:', error);
       throw error;
     }
   }
@@ -313,8 +302,7 @@ export class NotificationService {
     try {
       await Notifications.cancelScheduledNotificationAsync(identifier);
     } catch (error) {
-      console.error('Failed to cancel notification:', error);
-    }
+      }
   }
 
   // Отмена всех уведомлений
@@ -322,8 +310,7 @@ export class NotificationService {
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
     } catch (error) {
-      console.error('Failed to cancel all notifications:', error);
-    }
+      }
   }
 
   // Получение канала по типу уведомления
@@ -486,7 +473,6 @@ export class NotificationService {
         violations: true,
       };
     } catch (error) {
-      console.error('Failed to get notification settings:', error);
       return {
         enabled: true,
         sound: true,
@@ -512,8 +498,7 @@ export class NotificationService {
     try {
       await AsyncStorage.setItem('notificationSettings', JSON.stringify(settings));
     } catch (error) {
-      console.error('Failed to save notification settings:', error);
-    }
+      }
   }
 
   // Получение push токена (публичный метод)

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { 
   Card, 
@@ -56,8 +56,7 @@ export default function SettingsScreen() {
         setGpsEvents(settings.gpsEvents);
         setViolationAlerts(settings.violations);
       } catch (error) {
-        console.error('Ошибка загрузки настроек уведомлений:', error);
-      }
+        }
     };
 
     loadNotificationSettings();
@@ -135,7 +134,6 @@ export default function SettingsScreen() {
       
       setStatusMessage('Settings saved successfully');
     } catch (error) {
-      console.error('Ошибка сохранения настроек:', error);
       setStatusMessage('Failed to save settings');
     }
   };
@@ -145,7 +143,6 @@ export default function SettingsScreen() {
       await notificationService.sendTestNotification();
       setStatusMessage('Test notification sent');
     } catch (error) {
-      console.error('Ошибка отправки тестового уведомления:', error);
       setStatusMessage('Failed to send test notification');
     }
   };

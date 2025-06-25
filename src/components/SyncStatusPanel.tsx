@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { WebSyncService } from '../services/WebSyncService';
 
 interface SyncDevice {
@@ -20,7 +20,7 @@ interface SyncMetrics {
   syncSuccess: number;
 }
 
-export const SyncStatusPanel: React.FC = () => {
+const SyncStatusPanel: React.FC = () => {
   const [devices, setDevices] = useState<SyncDevice[]>([]);
   const [metrics, setMetrics] = useState<SyncMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -91,7 +91,6 @@ export const SyncStatusPanel: React.FC = () => {
       setMetrics(mockMetrics);
 
     } catch (error) {
-      console.error('Failed to load sync data:', error);
       setError(error instanceof Error ? error.message : 'Failed to load sync data');
     } finally {
       setIsLoading(false);
@@ -101,10 +100,8 @@ export const SyncStatusPanel: React.FC = () => {
   const handleForceSync = async (deviceId?: string) => {
     try {
       if (deviceId) {
-        console.log(`Forcing sync for device: ${deviceId}`);
         // В реальном приложении отправляем WebSocket сообщение конкретному устройству
       } else {
-        console.log('Forcing sync for all devices');
         // В реальном приложении отправляем WebSocket сообщение всем устройствам
       }
       
@@ -118,7 +115,6 @@ export const SyncStatusPanel: React.FC = () => {
       }, 1000);
       
     } catch (error) {
-      console.error('Failed to force sync:', error);
       setError('Failed to force synchronization');
     }
   };
@@ -265,7 +261,7 @@ export const SyncStatusPanel: React.FC = () => {
                 </button>
                 {device.failedOperations > 0 && (
                   <button 
-                    onClick={() => console.log(`Retry failed operations for ${device.deviceId}`)}
+                    onClick={() => {/* TODO: Handle retry failed operations */}}
                     style={styles.retryButton}
                   >
                     Retry Failed
@@ -421,4 +417,5 @@ const styles = {
   }
 };
 
-export default SyncStatusPanel; 
+export { SyncStatusPanel }; 
+

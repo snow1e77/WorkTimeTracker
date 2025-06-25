@@ -1,4 +1,4 @@
-import { pool } from '../config/database';
+﻿import { pool } from '../config/database';
 import { Chat, ChatMessage, DailyTask, PhotoReport } from '../types';
 import logger from '../utils/logger';
 
@@ -135,7 +135,6 @@ export class ChatService {
       };
       
     } catch (error) {
-      console.error('Error in getChatsForForeman:', error);
       return {
         success: false,
         error: 'Failed to get chats'
@@ -185,7 +184,6 @@ export class ChatService {
       };
       
     } catch (error) {
-      console.error('Error in sendMessage:', error);
       return {
         success: false,
         error: 'Failed to send message'
@@ -229,7 +227,6 @@ export class ChatService {
       };
       
     } catch (error) {
-      console.error('Error in getChatMessages:', error);
       return {
         success: false,
         error: 'Failed to get messages'
@@ -251,7 +248,6 @@ export class ChatService {
       return { success: true };
       
     } catch (error) {
-      console.error('Error in markMessagesAsRead:', error);
       return {
         success: false,
         error: 'Failed to mark messages as read'
@@ -322,7 +318,6 @@ export class ChatService {
       }
       
     } catch (error) {
-      console.error('Error in assignDailyTask:', error);
       return {
         success: false,
         error: 'Failed to assign daily task'
@@ -361,7 +356,6 @@ export class ChatService {
       };
       
     } catch (error) {
-      console.error('Error in getTodaysTask:', error);
       return {
         success: false,
         error: 'Failed to get today\'s task'
@@ -400,7 +394,6 @@ export class ChatService {
       };
       
     } catch (error) {
-      console.error('Error in savePhotoReport:', error);
       return {
         success: false,
         error: 'Failed to save photo report'
@@ -422,7 +415,6 @@ export class ChatService {
       return { success: true };
       
     } catch (error) {
-      console.error('Error in validatePhotoReport:', error);
       return {
         success: false,
         error: 'Failed to validate photo report'

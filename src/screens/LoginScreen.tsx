@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, StyleSheet, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { Text, TextInput, Button, Card, Title, HelperText } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -49,12 +49,16 @@ export default function LoginScreen() {
         setUserExists(result.userExists);
         setStep('code');
       } else {
-        setError(result.error || 'Failed to send code');
+        if (result.needsContact) {
+          // Show special message about contacting management
+          setError(result.error || 'Contact your foreman or supervisor to be added to the database');
+        } else {
+          setError(result.error || 'Failed to send code');
+        }
       }
     } catch (error) {
       setError('An error occurred while sending code');
-      console.error('Send code error:', error);
-    } finally {
+      } finally {
       setLoading(false);
     }
   };
@@ -73,10 +77,10 @@ export default function LoginScreen() {
 
       if (result.success) {
         if (result.user) {
-          // Пользователь существовал и вошел в систему
+          // User existed and logged in
           navigation.navigate('Home');
         } else if (result.needsProfile) {
-          // Новый пользователь - нужно создать профиль
+          // New user - need to create profile
           setStep('profile');
         }
       } else {
@@ -84,8 +88,7 @@ export default function LoginScreen() {
       }
     } catch (error) {
       setError('An error occurred while verifying code');
-      console.error('Verify code error:', error);
-    } finally {
+      } finally {
       setLoading(false);
     }
   };
@@ -114,8 +117,7 @@ export default function LoginScreen() {
       }
     } catch (error) {
       setError('An error occurred while creating profile');
-      console.error('Create profile error:', error);
-    } finally {
+      } finally {
       setLoading(false);
     }
   };

@@ -1,4 +1,4 @@
-import { AuthUser, SMSVerification, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation, ConstructionSite, WorkReport, LocationEvent, Chat, ChatMessage } from '../types';
+﻿import { AuthUser, SMSVerification, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation, ConstructionSite, WorkReport, LocationEvent, Chat, ChatMessage } from '../types';
 
 // Веб-версия DatabaseService для работы с localStorage
 export class WebDatabaseService {
@@ -618,7 +618,6 @@ export class WebDatabaseService {
       
       return { success: true, data: foremanChats };
     } catch (error) {
-      console.error('Error getting foreman chats:', error);
       return { success: false, error: 'Failed to get chats' };
     }
   }
@@ -635,7 +634,6 @@ export class WebDatabaseService {
       
       return { success: true, data: messages };
     } catch (error) {
-      console.error('Error getting chat messages:', error);
       return { success: false, error: 'Failed to get messages' };
     }
   }
@@ -673,7 +671,6 @@ export class WebDatabaseService {
       
       return { success: true, data: newMessage };
     } catch (error) {
-      console.error('Error sending message:', error);
       return { success: false, error: 'Failed to send message' };
     }
   }
@@ -715,7 +712,6 @@ export class WebDatabaseService {
       
       return { success: true, data: taskInfo };
     } catch (error) {
-      console.error('Error assigning task:', error);
       return { success: false, error: 'Failed to assign task' };
     }
   }
@@ -745,7 +741,6 @@ export class WebDatabaseService {
       
       return { success: true, data: null };
     } catch (error) {
-      console.error('Error getting today\'s task:', error);
       return { success: false, error: 'Failed to get task' };
     }
   }
@@ -753,10 +748,8 @@ export class WebDatabaseService {
   async validatePhoto(reportId: string, notes?: string): Promise<{ success: boolean; error?: string }> {
     try {
       // For demo purposes, just log the validation
-      console.log('Photo validated:', reportId, notes);
       return { success: true };
     } catch (error) {
-      console.error('Error validating photo:', error);
       return { success: false, error: 'Failed to validate photo' };
     }
   }

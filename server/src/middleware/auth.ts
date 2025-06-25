@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+﻿import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/AuthService';
 import { UserService } from '../services/UserService';
 import { JWTPayload, User } from '../types';
@@ -67,7 +67,6 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     
     return next();
   } catch (error) {
-    console.error('Authentication error:', error);
     return res.status(500).json({
       success: false,
       error: 'Authentication failed'
@@ -184,8 +183,6 @@ export const logUserAction = (action: string) => {
     const timestamp = new Date().toISOString();
     const ip = req.ip || req.connection.remoteAddress;
     
-    console.log(`${timestamp} - ${action} - User: ${user?.name || 'Anonymous'} (${user?.id || 'N/A'}) - IP: ${ip}`);
-    
     return next();
   };
 };
@@ -202,3 +199,4 @@ export const validateJSON = (req: Request, res: Response, next: NextFunction) =>
   }
   return next();
 }; 
+

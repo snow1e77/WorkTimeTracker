@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthUser, LoginRequest, RegisterRequest, ResetPasswordRequest, SMSVerification } from '../types';
 import { ApiDatabaseService } from './ApiDatabaseService';
 import { TwilioService } from './TwilioService';
@@ -58,7 +58,6 @@ export class AuthService {
       const result = await this.twilioService.sendVerificationCode(phoneNumber, code, type);
       return result.success;
     } catch (error) {
-      console.error('SMS sending error:', error);
       return false;
     }
   }
@@ -96,16 +95,20 @@ export class AuthService {
       const user = await this.dbService.getUserByPhone(phoneNumber);
       return { exists: !!user, user: user || undefined };
     } catch (error) {
-      console.error('Ошибка проверки пользователя:', error);
       return { exists: false };
     }
   }
 
   // Отправка SMS-кода для входа или регистрации
-  async sendLoginCode(phoneNumber: string): Promise<{ success: boolean; userExists: boolean; error?: string }> {
+  async sendLoginCode(phoneNumber: string): Promise<{ 
+    success: boolean; 
+    userExists: boolean; 
+    error?: string; 
+    needsContact?: boolean;
+    isPreRegistered?: boolean;
+    isActivated?: boolean;
+  }> {
     try {
-      console.log('🔄 AuthService: Отправка кода входа для:', phoneNumber);
-      
       const response = await this.apiCall('/auth/send-code', {
         method: 'POST',
         body: JSON.stringify({ phoneNumber }),
@@ -114,11 +117,18 @@ export class AuthService {
       return {
         success: response.success,
         userExists: response.userExists || false,
-        error: response.error
+        error: response.error,
+        needsContact: response.needsContact,
+        isPreRegistered: response.data?.isPreRegistered,
+        isActivated: response.data?.isActivated
       };
     } catch (error) {
-      console.error('❌ Ошибка в sendLoginCode:', error);
-      return { success: false, userExists: false, error: error instanceof Error ? error.message : 'Server error' };
+      return { 
+        success: false, 
+        userExists: false, 
+        error: error instanceof Error ? error.message : 'Server error',
+        needsContact: false
+      };
     }
   }
 
@@ -131,8 +141,6 @@ export class AuthService {
     tokens?: { accessToken: string; refreshToken: string };
   }> {
     try {
-      console.log('🔄 Проверка SMS-кода для:', phoneNumber);
-      
       const response = await this.apiCall('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ phoneNumber, code }),
@@ -144,8 +152,7 @@ export class AuthService {
         // Сохраняем refresh token отдельно
         await AsyncStorage.setItem('refreshToken', response.tokens.refreshToken);
         
-        console.log('✅ Пользователь успешно вошел в систему');
-        return { 
+                  return { 
           success: true, 
           user: response.user,
           tokens: response.tokens
@@ -154,7 +161,6 @@ export class AuthService {
 
       return response;
     } catch (error) {
-      console.error('Ошибка проверки кода:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Server error' };
     }
   }
@@ -167,8 +173,6 @@ export class AuthService {
     tokens?: { accessToken: string; refreshToken: string };
   }> {
     try {
-      console.log('🔄 Создание профиля для нового пользователя:', phoneNumber);
-      
       const response = await this.apiCall('/auth/register', {
         method: 'POST',
         body: JSON.stringify({
@@ -184,8 +188,7 @@ export class AuthService {
         // Сохраняем refresh token отдельно
         await AsyncStorage.setItem('refreshToken', response.tokens.refreshToken);
         
-        console.log('✅ Пользователь создан успешно');
-        return { 
+                  return { 
           success: true, 
           user: response.user,
           tokens: response.tokens
@@ -194,7 +197,6 @@ export class AuthService {
 
       return response;
     } catch (error) {
-      console.error('Ошибка создания профиля:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Server error' };
     }
   }
@@ -208,7 +210,6 @@ export class AuthService {
       const response = await this.apiCall('/auth/me');
       return response.success ? response.user : null;
     } catch (error) {
-      console.error('Ошибка получения текущего пользователя:', error);
       return null;
     }
   }
@@ -246,7 +247,6 @@ export class AuthService {
 
       return { success: false, error: data.error || 'Token refresh failed' };
     } catch (error) {
-      console.error('Ошибка обновления токена:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Token refresh failed' };
     }
   }
@@ -263,12 +263,10 @@ export class AuthService {
           body: JSON.stringify({ refreshToken }),
         }).catch(() => {
           // Игнорируем ошибки при выходе с сервера
-          console.warn('Failed to logout on server, continuing with local logout');
-        });
+          });
       }
     } catch (error) {
-      console.error('Ошибка при выходе:', error);
-    } finally {
+      } finally {
       // Всегда очищаем локальные токены
       await this.removeAuthToken();
       await AsyncStorage.removeItem('refreshToken');
@@ -278,33 +276,28 @@ export class AuthService {
   // Устаревшие методы - оставляем для совместимости, но помечаем как deprecated
   /** @deprecated Используйте sendLoginCode вместо этого */
   async sendVerificationCode(phoneNumber: string, type: 'registration' | 'password_reset'): Promise<boolean> {
-    console.warn('⚠️ sendVerificationCode устарел, используйте sendLoginCode');
     const result = await this.sendLoginCode(phoneNumber);
     return result.success;
   }
 
   /** @deprecated Используйте verifyLoginCode вместо этого */
   async verifyCode(phoneNumber: string, code: string, type: 'registration' | 'password_reset'): Promise<boolean> {
-    console.warn('⚠️ verifyCode устарел, используйте verifyLoginCode');
     const result = await this.verifyLoginCode(phoneNumber, code);
     return result.success;
   }
 
   /** @deprecated Регистрация теперь происходит через sendLoginCode + createUserProfile */
   async register(data: RegisterRequest): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-    console.warn('⚠️ register устарел, используйте sendLoginCode + createUserProfile');
     return { success: false, error: 'Method deprecated' };
   }
 
   /** @deprecated Вход теперь происходит через sendLoginCode + verifyLoginCode */
   async login(data: LoginRequest): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-    console.warn('⚠️ login устарел, используйте sendLoginCode + verifyLoginCode');
     return { success: false, error: 'Method deprecated' };
   }
 
   /** @deprecated Сброс пароля заменен на sendLoginCode */
   async resetPassword(data: ResetPasswordRequest): Promise<{ success: boolean; error?: string }> {
-    console.warn('⚠️ resetPassword устарел, используйте sendLoginCode');
     return { success: false, error: 'Method deprecated' };
   }
 } 

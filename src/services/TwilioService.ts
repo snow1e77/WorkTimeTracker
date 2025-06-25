@@ -1,4 +1,4 @@
-import { APP_CONFIG } from '../config/appConfig';
+﻿import { APP_CONFIG } from '../config/appConfig';
 
 export interface SMSResult {
   success: boolean;
@@ -51,18 +51,8 @@ export class TwilioService {
     from?: string
   ): Promise<SMSResult> {
     try {
-      console.log('🚀 TwilioService: Attempting to send SMS');
-      console.log('📱 To:', to);
-      console.log('💬 Message:', message);
-      console.log('🔧 Config check:', {
-        hasAccountSid: !!this.config.ACCOUNT_SID,
-        hasAuthToken: !!this.config.AUTH_TOKEN,
-        hasFromNumber: !!this.config.FROM_NUMBER
-      });
-
       // Проверяем формат номера
       if (!this.isValidPhoneNumber(to)) {
-        console.log('❌ Invalid phone number format:', to);
         return {
           success: false,
           error: 'Invalid phone number format. Use international format (+1234567890)'
@@ -72,7 +62,6 @@ export class TwilioService {
       // Предварительная проверка региона
       const preflightResult = await this.preflightCheck(to);
       if (!preflightResult.canSend) {
-        console.log('⚠️ Region check failed:', preflightResult.warning);
         return {
           success: false,
           error: preflightResult.warning || 'Region not supported'
@@ -81,9 +70,6 @@ export class TwilioService {
 
       const fromNumber = from || this.config.FROM_NUMBER;
       const url = `${this.baseUrl}/Accounts/${this.config.ACCOUNT_SID}/Messages.json`;
-
-      console.log('🌐 API URL:', url);
-      console.log('📤 From number:', fromNumber);
 
       if (!fromNumber) {
         return {
@@ -98,22 +84,14 @@ export class TwilioService {
         Body: message
       });
 
-      console.log('📋 Form data:', formData);
-
       const response = await fetch(url, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: formData
       });
 
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
-
       const responseData = await response.json();
-      console.log('📄 Response data:', responseData);
-
       if (response.ok) {
-        console.log('✅ SMS sent successfully, ID:', responseData.sid);
         return {
           success: true,
           messageId: responseData.sid
@@ -121,11 +99,6 @@ export class TwilioService {
       } else {
         // Обработка ошибок Twilio
         const errorMessage = this.getTwilioErrorMessage(responseData.code, responseData.message);
-        console.log('❌ Twilio API error:', {
-          code: responseData.code,
-          message: responseData.message,
-          details: responseData.more_info || 'No additional info'
-        });
         return {
           success: false,
           error: errorMessage
@@ -133,12 +106,6 @@ export class TwilioService {
       }
 
     } catch (error: any) {
-      console.error('❌ Network/Fetch Error:', error);
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
       return {
         success: false,
         error: `Network error: ${error.message}`
@@ -257,7 +224,6 @@ export class TwilioService {
       }
       return null;
     } catch (error) {
-      console.error('Failed to fetch account info:', error);
       return null;
     }
   }
@@ -280,7 +246,6 @@ export class TwilioService {
       }
       return [];
     } catch (error) {
-      console.error('Failed to fetch phone numbers:', error);
       return [];
     }
   }
@@ -303,8 +268,8 @@ export class TwilioService {
       }
       return null;
     } catch (error) {
-      console.error('Failed to fetch message status:', error);
       return null;
     }
   }
 } 
+

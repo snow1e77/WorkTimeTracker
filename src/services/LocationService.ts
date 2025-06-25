@@ -1,4 +1,4 @@
-import * as Location from 'expo-location';
+﻿import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { LocationEvent, ConstructionSite } from '../types';
 import { DatabaseService } from './DatabaseService';
@@ -30,19 +30,15 @@ class LocationService {
   // Инициализация фонового отслеживания
   public async initializeBackgroundTracking(userId: string, sites: ConstructionSite[]): Promise<boolean> {
     try {
-      console.log('🔄 Инициализация фонового отслеживания геолокации');
-
       // Запрашиваем разрешения
       const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
       if (foregroundStatus !== 'granted') {
-        console.error('❌ Нет разрешения на геолокацию');
         return false;
       }
 
       const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
       if (backgroundStatus !== 'granted') {
-        console.warn('⚠️ Нет разрешения на фоновую геолокацию');
-      }
+        }
 
       // Настраиваем конфигурацию
       this.config = {
@@ -54,7 +50,6 @@ class LocationService {
       // Определяем задачу для фонового отслеживания
       TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
         if (error) {
-          console.error('❌ Ошибка фонового отслеживания:', error);
           return;
         }
         
@@ -74,10 +69,8 @@ class LocationService {
         },
       });
 
-      console.log('✅ Фоновое отслеживание запущено');
       return true;
     } catch (error) {
-      console.error('❌ Ошибка инициализации фонового отслеживания:', error);
       return false;
     }
   }
@@ -88,15 +81,13 @@ class LocationService {
       const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
       if (hasStarted) {
         await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-        console.log('✅ Фоновое отслеживание остановлено');
-      }
+        }
       
       this.config = null;
       this.lastKnownLocation = null;
       this.currentSiteId = null;
     } catch (error) {
-      console.error('❌ Ошибка остановки фонового отслеживания:', error);
-    }
+      }
   }
 
   // Обработка обновления локации
@@ -108,12 +99,6 @@ class LocationService {
 
       const location = data.locations[0];
       this.lastKnownLocation = location;
-
-      console.log('📍 Обновление геолокации:', {
-        lat: location.coords.latitude,
-        lng: location.coords.longitude,
-        timestamp: new Date(location.timestamp).toLocaleTimeString()
-      });
 
       // Проверяем расстояние до каждого объекта
       let nearestSite: ConstructionSite | null = null;
@@ -141,18 +126,13 @@ class LocationService {
       if (isInSite && !wasInCurrentSite) {
         eventType = 'site_entry';
         this.currentSiteId = nearestSite!.id;
-        console.log('🟢 Вход на объект:', nearestSite!.name);
-        
         // Отправляем уведомление о входе на объект
         try {
           await notificationService.notifyGeofenceEvent('entry', nearestSite!.name);
         } catch (error) {
-          console.error('Ошибка отправки уведомления о входе:', error);
-        }
+          }
       } else if (!isInSite && wasInCurrentSite) {
         eventType = 'site_exit';
-        console.log('🔴 Выход с объекта');
-        
         // Найдем сайт, с которого происходит выход
         const exitSite = this.config.sites.find(site => site.id === this.currentSiteId);
         const siteName = exitSite ? exitSite.name : 'Unknown Site';
@@ -161,8 +141,7 @@ class LocationService {
         try {
           await notificationService.notifyGeofenceEvent('exit', siteName);
         } catch (error) {
-          console.error('Ошибка отправки уведомления о выходе:', error);
-        }
+          }
         
         this.currentSiteId = null;
       }
@@ -180,8 +159,7 @@ class LocationService {
       await this.saveLocationEvent(locationEvent);
 
     } catch (error) {
-      console.error('❌ Ошибка обработки обновления геолокации:', error);
-    }
+      }
   }
 
   // Расчёт расстояния между двумя точками
@@ -208,8 +186,7 @@ class LocationService {
         timestamp: new Date(),
       });
     } catch (error) {
-      console.error('❌ Ошибка сохранения события геолокации:', error);
-    }
+      }
   }
 
   // Получение текущего местоположения
@@ -227,7 +204,6 @@ class LocationService {
       this.lastKnownLocation = location;
       return location;
     } catch (error) {
-      console.error('❌ Ошибка получения текущего местоположения:', error);
       return null;
     }
   }
@@ -256,3 +232,4 @@ class LocationService {
 }
 
 export { LocationService }; 
+

@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import Joi from 'joi';
 import { ChatService } from '../services/ChatService';
 import { authenticateToken, validateJSON } from '../middleware/auth';
@@ -74,7 +74,6 @@ router.get('/my-chat', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Get my chat error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to get chat'
@@ -110,7 +109,6 @@ router.get('/foreman-chats', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Get foreman chats error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to get chats'
@@ -159,7 +157,6 @@ router.get('/:chatId/messages', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Get chat messages error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to get messages'
@@ -232,7 +229,6 @@ router.post('/send-message', validateJSON, async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Send message error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to send message'
@@ -309,7 +305,6 @@ router.post('/assign-task', validateJSON, async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Assign task error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to assign task'
@@ -353,7 +348,6 @@ router.get('/:chatId/todays-task', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Get today\'s task error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to get today\'s task'
@@ -404,7 +398,6 @@ router.post('/validate-photo', validateJSON, async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Validate photo error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to validate photo'

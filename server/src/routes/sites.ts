@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import Joi from 'joi';
 import { authenticateToken, requireAdmin, validateJSON } from '../middleware/auth';
 import { SiteService } from '../services/SiteService';
@@ -80,7 +80,6 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get sites error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve sites'
@@ -106,7 +105,6 @@ router.get('/my', async (req, res) => {
       data: sites
     });
   } catch (error) {
-    console.error('Get user sites error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve user sites'
@@ -125,7 +123,6 @@ router.get('/stats', requireAdmin, async (req, res) => {
       data: stats
     });
   } catch (error) {
-    console.error('Get site stats error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve site statistics'
@@ -163,7 +160,6 @@ router.post('/', requireAdmin, validateJSON, async (req, res) => {
       data: site
     });
   } catch (error) {
-    console.error('Create site error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to create site'
@@ -206,7 +202,6 @@ router.get('/:siteId', async (req, res) => {
       data: site
     });
   } catch (error) {
-    console.error('Get site error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve site'
@@ -259,7 +254,6 @@ router.put('/:siteId', requireAdmin, validateJSON, async (req, res) => {
       data: updatedSite
     });
   } catch (error) {
-    console.error('Update site error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to update site'
@@ -302,7 +296,6 @@ router.delete('/:siteId', requireAdmin, async (req, res) => {
       message: 'Site deleted successfully'
     });
   } catch (error) {
-    console.error('Delete site error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to delete site'
@@ -372,7 +365,6 @@ router.post('/:siteId/check-location', validateJSON, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Check location error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to check location'
@@ -418,7 +410,6 @@ router.get('/:siteId/assignments', requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get site assignments error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve site assignments'
@@ -479,7 +470,6 @@ router.get('/:siteId/shifts', requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get site shifts error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve site shifts'

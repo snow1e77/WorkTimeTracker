@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+﻿import { Request, Response, NextFunction } from 'express';
 import { performance } from 'perf_hooks';
 
 interface RequestMetrics {
@@ -27,13 +27,11 @@ class MonitoringService {
 
     // Логируем медленные запросы
     if (metrics.duration > 1000) {
-      console.warn(`Slow request detected: ${metrics.method} ${metrics.url} took ${metrics.duration}ms`);
-    }
+      }
 
     // Логируем ошибки
     if (metrics.statusCode >= 400) {
-      console.error(`Error response: ${metrics.statusCode} for ${metrics.method} ${metrics.url}`);
-    }
+      }
   }
 
   getMetrics(limit = 100): RequestMetrics[] {

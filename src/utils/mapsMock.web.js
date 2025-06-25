@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 // Mock MapView component for web
@@ -19,8 +19,7 @@ const MapView = React.forwardRef((props, ref) => {
 
   React.useImperativeHandle(ref, () => ({
     animateToRegion: (region) => {
-      console.log('Web MapView: animateToRegion called with', region);
-    }
+      }
   }));
 
   return React.createElement(

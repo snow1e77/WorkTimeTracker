@@ -1,4 +1,4 @@
-import { 
+﻿import { 
   SyncPayload, 
   SyncMetadata, 
   SyncConflict, 
@@ -40,10 +40,8 @@ export class WebSyncService {
       // Запускаем автосинхронизацию
       this.startAutoSync();
       
-      console.log('🔄 WebSyncService initialized');
-    } catch (error) {
-      console.error('Error initializing web sync:', error);
-    }
+      } catch (error) {
+      }
   }
 
   // Синхронизация данных с сервером
@@ -53,8 +51,6 @@ export class WebSyncService {
     }
 
     this.syncInProgress = true;
-    console.log('🔄 Starting web sync...');
-
     try {
       // Получаем JWT токен для авторизации
       const token = localStorage.getItem('worktime_admin_token');
@@ -68,13 +64,11 @@ export class WebSyncService {
       if (result.success) {
         this.lastSyncTimestamp = new Date();
         localStorage.setItem('worktime_last_sync', this.lastSyncTimestamp.toISOString());
-        console.log('✅ Web sync completed successfully');
-      }
+        }
 
       return result;
       
     } catch (error) {
-      console.error('❌ Web sync failed:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     } finally {
       this.syncInProgress = false;
@@ -114,7 +108,6 @@ export class WebSyncService {
       return { success: result.success };
 
     } catch (error) {
-      console.error('Failed to send changes to server:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Network error' };
     }
   }
@@ -172,8 +165,6 @@ export class WebSyncService {
 
   // Обработать данные от мобильных устройств
   public async processMobileData(payload: SyncPayload): Promise<{ success: boolean; conflicts?: SyncConflict[] }> {
-    console.log('📱 Processing mobile sync data:', payload);
-
     try {
       // В реальном приложении здесь была бы логика обработки конфликтов
       // и обновления данных от мобильных устройств
@@ -194,7 +185,6 @@ export class WebSyncService {
       
       return { success: true };
     } catch (error) {
-      console.error('Error processing mobile data:', error);
       return { success: false };
     }
   }
@@ -214,20 +204,16 @@ export class WebSyncService {
       }
       
       localStorage.setItem('worktime_mobile_shifts', JSON.stringify(shifts));
-      console.log('📱 Mobile shift saved:', shift.id);
-    } catch (error) {
-      console.error('Failed to save mobile shift:', error);
-    }
+      } catch (error) {
+      }
   }
 
   // Обновить назначение от мобильного устройства
   private async updateAssignmentFromMobile(assignment: UserSiteAssignment): Promise<void> {
     try {
       await this.dbService.updateAssignment(assignment.id, assignment);
-      console.log('📱 Assignment updated from mobile:', assignment.id);
-    } catch (error) {
-      console.error('Failed to update assignment from mobile:', error);
-    }
+      } catch (error) {
+      }
   }
 
   // Получить статус синхронизации
@@ -248,17 +234,13 @@ export class WebSyncService {
   // Принудительная синхронизация назначений
   public async syncAssignments(): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('🔄 Syncing assignments...');
-      
       const result = await this.syncData();
       
       if (result.success) {
-        console.log('✅ Assignments synced successfully');
-      }
+        }
       
       return result;
     } catch (error) {
-      console.error('Error syncing assignments:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -271,20 +253,17 @@ export class WebSyncService {
 
     this.autoSyncInterval = setInterval(async () => {
       if (!this.syncInProgress) {
-        console.log('🔄 Auto-sync triggered');
         await this.syncData();
       }
     }, 5 * 60 * 1000); // 5 минут
 
-    console.log('✅ Auto-sync started (every 5 minutes)');
-  }
+    }
 
   public stopAutoSync(): void {
     if (this.autoSyncInterval) {
       clearInterval(this.autoSyncInterval);
       this.autoSyncInterval = null;
-      console.log('⏹️ Auto-sync stopped');
-    }
+      }
 
     // Также очищаем таймаут уведомлений
     if (this.notificationTimeout) {
@@ -315,7 +294,6 @@ export class WebSyncService {
       return result.data || [];
 
     } catch (error) {
-      console.error('Failed to get sync history:', error);
       return [];
     }
   }
@@ -323,12 +301,9 @@ export class WebSyncService {
   // Принудительная полная синхронизация
   public async forceFullSync(): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('🔄 Starting forced full sync...');
-      
       const result = await this.syncData();
       
       if (result.success) {
-        console.log('✅ Full sync completed successfully');
         // Очищаем кэш для принудительного обновления
         localStorage.removeItem('worktime_last_sync');
         this.lastSyncTimestamp = new Date();
@@ -337,15 +312,12 @@ export class WebSyncService {
       
       return result;
     } catch (error) {
-      console.error('Full sync failed:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
   // Уведомление о изменениях для мгновенной синхронизации
   public async notifyAssignmentChange(assignment: UserSiteAssignment): Promise<void> {
-    console.log('📡 Assignment changed, triggering sync:', assignment.id);
-    
     // Очищаем предыдущий таймаут если он есть
     if (this.notificationTimeout) {
       clearTimeout(this.notificationTimeout);
@@ -368,8 +340,8 @@ export class WebSyncService {
 
       return response.ok;
     } catch (error) {
-      console.warn('Server connection check failed:', error);
       return false;
     }
   }
 } 
+

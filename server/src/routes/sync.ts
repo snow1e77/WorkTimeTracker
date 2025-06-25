@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import { authenticateToken } from '../middleware/auth';
 import { SyncService } from '../services/SyncService';
 import Joi from 'joi';
@@ -36,7 +36,6 @@ router.get('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Sync get error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get sync data'
@@ -72,7 +71,6 @@ router.post('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Sync post error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to process sync data'
@@ -92,7 +90,6 @@ router.get('/status', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Sync status error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get sync status'
@@ -122,7 +119,6 @@ router.post('/full', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Full sync error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to perform full sync'
@@ -158,7 +154,6 @@ router.post('/web-changes', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Web changes sync error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to process web admin changes'
@@ -189,7 +184,6 @@ router.get('/devices/:userId', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get devices error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get user devices'
@@ -218,7 +212,6 @@ router.post('/init-tables', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Init tables error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to initialize sync tables'
@@ -267,7 +260,6 @@ router.get('/history', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Sync history error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get sync history'
@@ -280,8 +272,6 @@ router.post('/shift', async (req, res) => {
   try {
     const { operation, entityId, data, deviceId } = req.body;
     const userId = req.user!.id;
-
-    console.log(`Processing shift operation: ${operation} for ${entityId} from device ${deviceId}`);
 
     let result;
     switch (operation) {
@@ -308,7 +298,6 @@ router.post('/shift', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Shift sync operation error:', error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to process shift operation'
@@ -321,8 +310,6 @@ router.post('/assignment', async (req, res) => {
   try {
     const { operation, entityId, data, deviceId } = req.body;
     const userId = req.user!.id;
-
-    console.log(`Processing assignment operation: ${operation} for ${entityId} from device ${deviceId}`);
 
     let result;
     switch (operation) {
@@ -349,7 +336,6 @@ router.post('/assignment', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Assignment sync operation error:', error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to process assignment operation'
@@ -380,7 +366,6 @@ router.get('/conflicts/:userId', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get conflicts error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get sync conflicts'
@@ -414,7 +399,6 @@ router.post('/resolve-conflict', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Resolve conflict error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to resolve conflict'
@@ -443,7 +427,6 @@ router.get('/metrics', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get sync metrics error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get sync metrics'
@@ -473,7 +456,6 @@ router.post('/force-all', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Force global sync error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to force global sync'

@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import Joi from 'joi';
 import { authenticateToken, requireAdmin, validateJSON } from '../middleware/auth';
 import { AssignmentService } from '../services/AssignmentService';
@@ -69,7 +69,6 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get assignments error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve assignments'
@@ -95,7 +94,6 @@ router.get('/my', async (req, res) => {
       data: assignments
     });
   } catch (error) {
-    console.error('Get user assignments error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve user assignments'
@@ -114,7 +112,6 @@ router.get('/stats', requireAdmin, async (req, res) => {
       data: stats
     });
   } catch (error) {
-    console.error('Get assignment stats error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve assignment statistics'
@@ -185,7 +182,6 @@ router.post('/', requireAdmin, validateJSON, async (req, res) => {
       data: assignment
     });
   } catch (error) {
-    console.error('Create assignment error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to create assignment'
@@ -228,7 +224,6 @@ router.get('/:assignmentId', async (req, res) => {
       data: assignment
     });
   } catch (error) {
-    console.error('Get assignment error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve assignment'
@@ -281,7 +276,6 @@ router.put('/:assignmentId', requireAdmin, validateJSON, async (req, res) => {
       data: updatedAssignment
     });
   } catch (error) {
-    console.error('Update assignment error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to update assignment'
@@ -324,7 +318,6 @@ router.delete('/:assignmentId', requireAdmin, async (req, res) => {
       message: 'Assignment deleted successfully'
     });
   } catch (error) {
-    console.error('Delete assignment error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to delete assignment'
@@ -361,7 +354,6 @@ router.get('/site/:siteId', async (req, res) => {
       data: assignments
     });
   } catch (error) {
-    console.error('Get site assignments error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve site assignments'
@@ -398,7 +390,6 @@ router.get('/user/:userId', requireAdmin, async (req, res) => {
       data: assignments
     });
   } catch (error) {
-    console.error('Get user assignments error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to retrieve user assignments'
@@ -484,7 +475,6 @@ router.post('/bulk', requireAdmin, validateJSON, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Bulk assignment error:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to process bulk assignments'
