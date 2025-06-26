@@ -18,14 +18,8 @@ config.resolver.resolverMainFields = [
   'main',
 ];
 
-// Platform-specific aliases
-config.resolver.alias = {
-  'react-native-maps': path.resolve(__dirname, 'src/utils/mapsMock.web.js'),
-  'expo-task-manager': path.resolve(__dirname, 'src/utils/emptyMock.js'),
-  'expo-notifications': path.resolve(__dirname, 'src/utils/emptyMock.js'),
-  'expo-device': path.resolve(__dirname, 'src/utils/emptyMock.js'),
-  'expo-image-picker': path.resolve(__dirname, 'src/utils/emptyMock.js'),
-};
+// Platform-specific aliases - these will be overridden by resolveRequest for web platform
+config.resolver.alias = {};
 
 // Enhanced resolver for platform-specific modules
 if (config.resolver.resolveRequest) {
