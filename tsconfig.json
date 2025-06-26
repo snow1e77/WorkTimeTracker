@@ -23,6 +23,10 @@
     "**/*.jsx"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "nginx/**/*",
+    "dist/**/*",
+    "build/**/*",
+    "coverage/**/*"
   ]
 }

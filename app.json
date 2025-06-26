@@ -34,7 +34,8 @@
     "plugins": [
       "expo-task-manager",
       "expo-location",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-image-picker"
     ],
     "extra": {
       "eas": {

@@ -100,7 +100,12 @@ export const getMonthName = (monthIndex: number): string => {
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-  return months[monthIndex];
+  
+  if (monthIndex < 0 || monthIndex >= months.length) {
+    return 'Unknown';
+  }
+  
+  return months[monthIndex]!;
 };
 
 /**
@@ -110,7 +115,12 @@ export const getDayName = (dayIndex: number): string => {
   const days = [
     'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
   ];
-  return days[dayIndex];
+  
+  if (dayIndex < 0 || dayIndex >= days.length) {
+    return 'Unknown';
+  }
+  
+  return days[dayIndex]!;
 };
 
 /**
