@@ -5,7 +5,7 @@ export const API_CONFIG = {
   // Базовый URL для API
   BASE_URL: Platform.OS === 'web' 
     ? 'http://localhost:3001/api'  // Для веб-версии
-    : 'http://10.0.2.2:3001/api',  // Для Android эмулятора (для физических устройств используйте локальный IP)
+    : 'http://192.168.0.4:3001/api',  // Для физических устройств Android/iOS
     
   // Таймауты
   TIMEOUT: 30000, // 30 секунд

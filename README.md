@@ -163,7 +163,8 @@ npm run create-test-worker
 ```
 
 📖 **Подробная инструкция**: [TEST_WORKER_ACCOUNT.md](TEST_WORKER_ACCOUNT.md)  
-🍎 **macOS версия**: [TEST_WORKER_MACOS.md](TEST_WORKER_MACOS.md)
+🍎 **macOS версия**: [TEST_WORKER_MACOS.md](TEST_WORKER_MACOS.md)  
+📱 **Настройка для физических устройств**: [MOBILE_DEVICE_SETUP.md](MOBILE_DEVICE_SETUP.md)
 
 ## 🗄️ База данных
 
