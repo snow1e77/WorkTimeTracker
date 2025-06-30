@@ -36,9 +36,10 @@ export class TwilioService {
   /**
    * Преобразование объекта в URL-encoded строку
    */
-  private encodeFormData(data: Record<string, string>): string {
+  private formatFormData(data: Record<string, string | number | boolean | undefined>): string {
     return Object.keys(data)
-      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
+      .filter(key => data[key] !== undefined)
+      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(data[key] as string | number | boolean)}`)
       .join('&');
   }
 
@@ -78,7 +79,7 @@ export class TwilioService {
         };
       }
 
-      const formData = this.encodeFormData({
+      const formData = this.formatFormData({
         To: to,
         From: fromNumber,
         Body: message

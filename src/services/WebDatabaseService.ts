@@ -107,7 +107,7 @@ export class WebDatabaseService {
   async updateUserRole(userId: string, role: 'worker' | 'admin'): Promise<void> {
     const users = await this.getAllUsers();
     const userIndex = users.findIndex(user => user.id === userId);
-    if (userIndex !== -1) {
+    if (userIndex !== -1 && users[userIndex]) {
       users[userIndex].role = role;
       localStorage.setItem('worktime_users', JSON.stringify(users));
     }
@@ -116,7 +116,7 @@ export class WebDatabaseService {
   async updateUserStatus(userId: string, isActive: boolean): Promise<void> {
     const users = await this.getAllUsers();
     const userIndex = users.findIndex(user => user.id === userId);
-    if (userIndex !== -1) {
+    if (userIndex !== -1 && users[userIndex]) {
       users[userIndex].isActive = isActive;
       localStorage.setItem('worktime_users', JSON.stringify(users));
     }
@@ -198,7 +198,7 @@ export class WebDatabaseService {
   async updateSiteStatus(siteId: string, isActive: boolean): Promise<void> {
     const sites = await this.getConstructionSites();
     const siteIndex = sites.findIndex(site => site.id === siteId);
-    if (siteIndex !== -1) {
+    if (siteIndex !== -1 && sites[siteIndex]) {
       sites[siteIndex].isActive = isActive;
       localStorage.setItem('worktime_sites', JSON.stringify(sites));
     }
@@ -293,8 +293,20 @@ export class WebDatabaseService {
   async updateAssignment(assignmentId: string, updates: Partial<UserSiteAssignment>): Promise<void> {
     const assignments = await this.getAllAssignments();
     const assignmentIndex = assignments.findIndex(assignment => assignment.id === assignmentId);
-    if (assignmentIndex !== -1) {
-      assignments[assignmentIndex] = { ...assignments[assignmentIndex], ...updates };
+    if (assignmentIndex !== -1 && assignments[assignmentIndex]) {
+      const currentAssignment = assignments[assignmentIndex];
+      const updatedAssignment: UserSiteAssignment = {
+        id: currentAssignment.id,
+        userId: updates.userId ?? currentAssignment.userId,
+        siteId: updates.siteId ?? currentAssignment.siteId,
+        assignedBy: updates.assignedBy ?? currentAssignment.assignedBy,
+        isActive: updates.isActive ?? currentAssignment.isActive,
+        assignedAt: updates.assignedAt ?? currentAssignment.assignedAt,
+        validFrom: updates.validFrom ?? currentAssignment.validFrom,
+        validTo: updates.validTo ?? currentAssignment.validTo,
+        notes: updates.notes ?? currentAssignment.notes
+      };
+      assignments[assignmentIndex] = updatedAssignment;
       localStorage.setItem('worktime_assignments', JSON.stringify(assignments));
     }
   }
@@ -388,44 +400,29 @@ export class WebDatabaseService {
   async getPhotoReports(userId?: string, siteId?: string): Promise<PhotoReport[]> {
     const reportsData = localStorage.getItem('worktime_photo_reports');
     if (!reportsData) {
-      // Создаем моковые данные для фото отчетов
-      const mockPhotoReports = [
+      // Создаём демо данные для тестирования
+      const mockPhotoReports: PhotoReport[] = [
         {
           id: 'photo-1',
-          chatId: 'chat-worker-1',
-          messageId: 'msg-photo-1',
           userId: 'worker-1',
           siteId: 'site-1',
-          photoUri: 'https://via.placeholder.com/300x200?text=Work+Photo+1',
+          shiftId: 'shift-1',
+          photoUri: 'demo-photo-1.jpg',
           latitude: 40.7128,
           longitude: -74.0060,
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-          isValidated: true,
-          notes: 'Good quality photo'
+          timestamp: new Date(),
+          isValidated: false,
+          notes: 'Morning progress check'
         },
         {
           id: 'photo-2',
-          chatId: 'chat-worker-2',
-          messageId: 'msg-photo-2',
           userId: 'worker-2',
           siteId: 'site-2',
-          photoUri: 'https://via.placeholder.com/300x200?text=Work+Photo+2',
+          shiftId: 'shift-2',
+          photoUri: 'demo-photo-2.jpg',
           latitude: 40.7589,
           longitude: -73.9851,
-          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
-          isValidated: false,
-          notes: 'Pending validation'
-        },
-        {
-          id: 'photo-3',
-          chatId: 'chat-worker-1',
-          messageId: 'msg-photo-3',
-          userId: 'worker-1',
-          siteId: 'site-1',
-          photoUri: 'https://via.placeholder.com/300x200?text=Work+Photo+3',
-          latitude: 40.7128,
-          longitude: -74.0060,
-          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 24 hours ago
+          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
           isValidated: true,
           notes: 'Progress update'
         }
@@ -434,17 +431,17 @@ export class WebDatabaseService {
       return mockPhotoReports;
     }
     
-    let reports = JSON.parse(reportsData);
+    let reports: PhotoReport[] = JSON.parse(reportsData);
     
     if (userId) {
-      reports = reports.filter((report: any) => report.userId === userId);
+      reports = reports.filter((report: PhotoReport) => report.userId === userId);
     }
     
     if (siteId) {
-      reports = reports.filter((report: any) => report.siteId === siteId);
+      reports = reports.filter((report: PhotoReport) => report.siteId === siteId);
     }
     
-    return reports.map((report: any) => ({
+    return reports.map((report: PhotoReport) => ({
       ...report,
       timestamp: new Date(report.timestamp)
     }));
@@ -453,8 +450,12 @@ export class WebDatabaseService {
   async validatePhotoReport(reportId: string, isValid: boolean): Promise<void> {
     const reports = await this.getPhotoReports();
     const reportIndex = reports.findIndex(report => report.id === reportId);
-    if (reportIndex !== -1) {
+    if (reportIndex !== -1 && reports[reportIndex]) {
       reports[reportIndex].isValidated = isValid;
+      if (isValid && reports[reportIndex]) {
+        reports[reportIndex].validatedBy = 'admin-1';
+        reports[reportIndex].validatedAt = new Date();
+      }
       localStorage.setItem('worktime_photo_reports', JSON.stringify(reports));
     }
   }
@@ -470,13 +471,13 @@ export class WebDatabaseService {
     const schedulesData = localStorage.getItem('worktime_schedules');
     if (!schedulesData) return [];
     
-    let schedules = JSON.parse(schedulesData);
+    let schedules: WorkSchedule[] = JSON.parse(schedulesData);
     
     if (siteId) {
-      schedules = schedules.filter((schedule: any) => schedule.siteId === siteId);
+      schedules = schedules.filter((schedule: WorkSchedule) => schedule.siteId === siteId);
     }
     
-    return schedules.map((schedule: any) => ({
+    return schedules.map((schedule: WorkSchedule) => ({
       ...schedule,
       createdAt: new Date(schedule.createdAt)
     }));
@@ -485,8 +486,20 @@ export class WebDatabaseService {
   async updateWorkSchedule(scheduleId: string, updates: Partial<WorkSchedule>): Promise<void> {
     const schedules = await this.getWorkSchedules();
     const scheduleIndex = schedules.findIndex(schedule => schedule.id === scheduleId);
-    if (scheduleIndex !== -1) {
-      schedules[scheduleIndex] = { ...schedules[scheduleIndex], ...updates };
+    if (scheduleIndex !== -1 && schedules[scheduleIndex]) {
+      const currentSchedule = schedules[scheduleIndex];
+      const updatedSchedule: WorkSchedule = {
+        id: currentSchedule.id,
+        siteId: updates.siteId ?? currentSchedule.siteId,
+        dayOfWeek: updates.dayOfWeek ?? currentSchedule.dayOfWeek,
+        startTime: updates.startTime ?? currentSchedule.startTime,
+        endTime: updates.endTime ?? currentSchedule.endTime,
+        lunchStart: updates.lunchStart ?? currentSchedule.lunchStart,
+        lunchEnd: updates.lunchEnd ?? currentSchedule.lunchEnd,
+        isActive: updates.isActive ?? currentSchedule.isActive,
+        createdAt: updates.createdAt ?? currentSchedule.createdAt
+      };
+      schedules[scheduleIndex] = updatedSchedule;
       localStorage.setItem('worktime_schedules', JSON.stringify(schedules));
     }
   }
@@ -535,8 +548,8 @@ export class WebDatabaseService {
       return demoLocations;
     }
     
-    const locations = JSON.parse(locationsData);
-    return locations.map((location: any) => ({
+    const locations: WorkerLocation[] = JSON.parse(locationsData);
+    return locations.map((location: WorkerLocation) => ({
       ...location,
       timestamp: new Date(location.timestamp),
       shiftStartTime: location.shiftStartTime ? new Date(location.shiftStartTime) : undefined,
@@ -548,8 +561,25 @@ export class WebDatabaseService {
     const locations = await this.getWorkersLocations();
     const locationIndex = locations.findIndex(loc => loc.userId === userId);
     
-    if (locationIndex !== -1) {
-      locations[locationIndex] = { ...locations[locationIndex], ...location };
+    if (locationIndex !== -1 && locations[locationIndex]) {
+      // Создаем правильно типизированный объект
+      const currentLocation = locations[locationIndex];
+      const updatedLocation: WorkerLocation = {
+        userId: currentLocation.userId,
+        userName: currentLocation.userName,
+        userAvatar: location.userAvatar ?? currentLocation.userAvatar,
+        currentSiteId: location.currentSiteId ?? currentLocation.currentSiteId,
+        currentSiteName: location.currentSiteName ?? currentLocation.currentSiteName,
+        latitude: location.latitude ?? currentLocation.latitude,
+        longitude: location.longitude ?? currentLocation.longitude,
+        timestamp: location.timestamp ?? currentLocation.timestamp,
+        isOnSite: location.isOnSite ?? currentLocation.isOnSite,
+        shiftStartTime: location.shiftStartTime ?? currentLocation.shiftStartTime,
+        timeOnSite: location.timeOnSite ?? currentLocation.timeOnSite,
+        lastPhotoReportTime: location.lastPhotoReportTime ?? currentLocation.lastPhotoReportTime,
+        status: location.status ?? currentLocation.status
+      };
+      locations[locationIndex] = updatedLocation;
     } else {
       // Если локация не найдена, создаем новую (нужно будет заполнить обязательные поля)
       const user = await this.getUserById(userId);
@@ -557,12 +587,17 @@ export class WebDatabaseService {
         const newLocation: WorkerLocation = {
           userId,
           userName: user.name,
-          latitude: 0,
-          longitude: 0,
-          timestamp: new Date(),
-          isOnSite: false,
-          status: 'offline',
-          ...location
+          userAvatar: location.userAvatar,
+          currentSiteId: location.currentSiteId,
+          currentSiteName: location.currentSiteName,
+          latitude: location.latitude || 0,
+          longitude: location.longitude || 0,
+          timestamp: location.timestamp || new Date(),
+          isOnSite: location.isOnSite || false,
+          shiftStartTime: location.shiftStartTime,
+          timeOnSite: location.timeOnSite,
+          lastPhotoReportTime: location.lastPhotoReportTime,
+          status: location.status || 'offline'
         };
         locations.push(newLocation);
       }
@@ -577,14 +612,14 @@ export class WebDatabaseService {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      const chats = JSON.parse(localStorage.getItem('worktime_chats') || '[]');
+      const chats: Chat[] = JSON.parse(localStorage.getItem('worktime_chats') || '[]');
       const users = await this.getAllUsers();
       
       // Get workers and create chat entries
       const workers = users.filter(u => u.role === 'worker');
       const foremanChats = workers.map(worker => {
-        const existingChat = chats.find((c: any) => c.workerId === worker.id);
-        const messages = JSON.parse(localStorage.getItem(`worktime_messages_${worker.id}`) || '[]');
+        const existingChat = chats.find((c: Chat) => c.workerId === worker.id);
+        const messages: ChatMessage[] = JSON.parse(localStorage.getItem(`worktime_messages_${worker.id}`) || '[]');
         const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
         
         return {
@@ -678,70 +713,62 @@ export class WebDatabaseService {
   async assignTask(taskData: {
     chatId: string;
     taskDescription: string;
-  }): Promise<{ success: boolean; data?: any; error?: string }> {
+  }): Promise<{ success: boolean; data?: string; error?: string }> {
     try {
+      // Extract worker ID from chat ID
       const workerId = taskData.chatId.replace('chat-', '');
       
       // Update chat with current task
-      const chats = JSON.parse(localStorage.getItem('worktime_chats') || '[]');
-      const chatIndex = chats.findIndex((c: any) => c.workerId === workerId);
+      const chats: Chat[] = JSON.parse(localStorage.getItem('worktime_chats') || '[]');
+      const chatIndex = chats.findIndex((c: Chat) => c.workerId === workerId);
       
-      const taskInfo = {
-        currentTask: taskData.taskDescription,
-        assignedDate: new Date().toISOString().split('T')[0],
-        assignedBy: 'admin-1'
-      };
-      
-      if (chatIndex !== -1) {
-        chats[chatIndex] = { ...chats[chatIndex], workerId, ...taskInfo };
+      if (chatIndex !== -1 && chats[chatIndex]) {
+        chats[chatIndex].currentTask = taskData.taskDescription;
       } else {
+        // Create new chat entry
         chats.push({
-          workerId,
-          ...taskInfo
+          id: taskData.chatId,
+          workerId: workerId,
+          workerName: 'Worker',
+          foremanId: 'admin-1',
+          foremanName: 'Admin User',
+          unreadCount: 0,
+          currentTask: taskData.taskDescription,
+          isActive: true,
+          createdAt: new Date()
         });
       }
       
       localStorage.setItem('worktime_chats', JSON.stringify(chats));
       
-      // Also send a task message
-      await this.sendMessage({
+      // Create task message
+      const messageData = {
         chatId: taskData.chatId,
-        messageType: 'task',
-        content: `📋 Daily Task: ${taskData.taskDescription}`
-      });
+        messageType: 'task' as const,
+        content: `Task assigned: ${taskData.taskDescription}`,
+      };
       
-      return { success: true, data: taskInfo };
+      const result = await this.sendMessage(messageData);
+      return { success: result.success, data: taskData.taskDescription, error: result.error };
     } catch (error) {
       return { success: false, error: 'Failed to assign task' };
     }
   }
 
-  async getTodaysTask(chatId: string): Promise<{ success: boolean; data?: any; error?: string }> {
+  async getTodaysTask(chatId: string): Promise<{ success: boolean; data?: string; error?: string }> {
     try {
+      // Extract worker ID from chat ID
       const workerId = chatId.replace('chat-', '');
-      const chats = JSON.parse(localStorage.getItem('worktime_chats') || '[]');
-      const chat = chats.find((c: any) => c.workerId === workerId);
+      const chats: Chat[] = JSON.parse(localStorage.getItem('worktime_chats') || '[]');
+      const chat = chats.find((c: Chat) => c.workerId === workerId);
       
-      const today = new Date().toISOString().split('T')[0];
-      
-      if (chat && chat.assignedDate === today) {
-        return {
-          success: true,
-          data: {
-            id: `task-${workerId}-${today}`,
-            chatId,
-            assignedBy: chat.assignedBy,
-            assignedTo: workerId,
-            taskDescription: chat.currentTask,
-            assignedDate: new Date(chat.assignedDate),
-            isCompleted: false
-          }
-        };
+      if (chat && chat.currentTask) {
+        return { success: true, data: chat.currentTask };
+      } else {
+        return { success: true, data: 'No task assigned for today' };
       }
-      
-      return { success: true, data: null };
     } catch (error) {
-      return { success: false, error: 'Failed to get task' };
+      return { success: false, error: 'Failed to get today\'s task' };
     }
   }
 

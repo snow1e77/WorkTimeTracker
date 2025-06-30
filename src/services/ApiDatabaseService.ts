@@ -1,5 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthUser, SMSVerification, ConstructionSite, WorkShift, UserSiteAssignment, Violation } from '../types';
+import { AuthUser, SMSVerification, ConstructionSite, WorkShift, UserSiteAssignment, Violation, Chat, ChatMessage, DailyTask, SyncDataResponse, SyncStatusResponse, SyncMetricsResponse, ValidationResponse, LocationCheckResponse, AssignmentStatsResponse, NotificationDeliveryReceipt, ViolationAlertData, AssignmentNotificationData, ShiftReminderData, BroadcastNotificationData, OvertimeAlertData, WorkReport, SyncPayload, SyncConflict, LocationEvent, WorkerLocation } from '../types';
 import { notificationService } from './NotificationService';
 import { API_CONFIG, getApiUrl, getHealthUrl, ApiResponse } from '../config/api';
 import { apiClient } from './ApiClient';
@@ -10,7 +10,7 @@ const getAuthToken = async (): Promise<string | null> => {
 };
 
 // Helper function to make authenticated API calls
-const apiCall = async (endpoint: string, options: RequestInit = {}): Promise<any> => {
+const apiCall = async (endpoint: string, options: RequestInit = {}): Promise<ApiResponse> => {
   const token = await getAuthToken();
   
   const headers: Record<string, string> = {
@@ -89,7 +89,7 @@ export class ApiDatabaseService {
   async getUserByPhone(phoneNumber: string): Promise<AuthUser | null> {
     try {
       const response = await apiClient.get(`/users/by-phone/${encodeURIComponent(phoneNumber)}`);
-      return response.success ? response.data : null;
+      return response.success ? (response.data as AuthUser) : null;
     } catch (error) {
       return null;
     }
@@ -98,7 +98,7 @@ export class ApiDatabaseService {
   async getUserById(id: string): Promise<AuthUser | null> {
     try {
       const response = await apiClient.get(`/users/${id}`);
-      return response.success ? response.data : null;
+      return response.success ? (response.data as AuthUser) : null;
     } catch (error) {
       return null;
     }
@@ -107,7 +107,7 @@ export class ApiDatabaseService {
   async getUserPassword(userId: string): Promise<string | null> {
     try {
       const response = await apiClient.get(`/users/${userId}/password`);
-      return response.success ? response.data.passwordHash : null;
+      return response.success ? (response.data as { passwordHash: string }).passwordHash : null;
     } catch (error) {
       return null;
     }
@@ -148,7 +148,7 @@ export class ApiDatabaseService {
   async getConstructionSites(): Promise<ConstructionSite[]> {
     try {
       const response = await apiClient.get('/sites');
-      return response.success ? response.data : [];
+      return response.success ? (response.data as ConstructionSite[]) : [];
     } catch (error) {
       return [];
     }
@@ -156,13 +156,13 @@ export class ApiDatabaseService {
 
   async createConstructionSite(site: Omit<ConstructionSite, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> {
     try {
-      const response = await apiClient.post('/sites', site);
+      const response = await apiClient.post('/sites', site as unknown as Record<string, unknown>);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to create site');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -195,22 +195,22 @@ export class ApiDatabaseService {
 
   async updateConstructionSite(site: ConstructionSite): Promise<void> {
     try {
-      const response = await apiClient.put(`/sites/${site.id}`, site);
+      const response = await apiClient.put(`/sites/${site.id}`, site as unknown as Record<string, unknown>);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to update site');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
 
   // Work Reports methods
-  async getWorkReports(period: 'today' | 'week' | 'month'): Promise<any[]> {
+  async getWorkReports(period: 'today' | 'week' | 'month'): Promise<WorkReport[]> {
     try {
       const response = await apiClient.get(`/reports/work?period=${period}`);
-      return response.success ? response.data : [];
+      return response.success ? (response.data as WorkReport[]) : [];
     } catch (error) {
       return [];
     }
@@ -225,8 +225,14 @@ export class ApiDatabaseService {
     bySeverity: { low: number; medium: number; high: number };
   }> {
     try {
-      const response = await apiClient.get(`/reports/violations?period=${period}`);
-      return response.success ? response.data : {
+      const response = await apiClient.get(`/violations/summary?period=${period}`);
+      return response.success ? (response.data as {
+        total: number;
+        resolved: number;
+        unresolved: number;
+        byType: { [key: string]: number };
+        bySeverity: { low: number; medium: number; high: number };
+      }) : {
         total: 0,
         resolved: 0,
         unresolved: 0,
@@ -244,10 +250,10 @@ export class ApiDatabaseService {
     }
   }
 
-  async getViolations(period: 'today' | 'week' | 'month', severity: 'all' | 'low' | 'medium' | 'high' = 'all'): Promise<any[]> {
+  async getViolations(period: 'today' | 'week' | 'month', severity: 'all' | 'low' | 'medium' | 'high' = 'all'): Promise<Violation[]> {
     try {
-      const response = await apiClient.get(`/reports/violations/list?period=${period}&severity=${severity}`);
-      return response.success ? response.data : [];
+      const response = await apiClient.get(`/violations?period=${period}&severity=${severity}`);
+      return response.success ? (response.data as Violation[]) : [];
     } catch (error) {
       return [];
     }
@@ -279,26 +285,16 @@ export class ApiDatabaseService {
     }
   }
 
-  async createViolation(violation: {
-    userId: string;
-    siteId?: string;
-    type: 'unauthorized_departure' | 'late_arrival' | 'early_departure' | 'no_show';
-    description: string;
-    severity: 'low' | 'medium' | 'high';
-  }): Promise<void> {
+  async createViolation(violation: Omit<Violation, 'id'>): Promise<string> {
     try {
       const response = await apiClient.post('/violations', violation);
       
-      const violationId = response.data?.id;
-      // Send notification about new violation
-      try {
-        await notificationService.sendLocalNotification(
-          'Violation Alert',
-          `New violation: ${violation.description}`,
-          'violation_alert'
-        );
-      } catch (error) {
-        }
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to create violation');
+      }
+      
+      const violationId = (response.data as { id: string })?.id;
+      return violationId || '';
     } catch (error) {
       throw error;
     }
@@ -308,7 +304,7 @@ export class ApiDatabaseService {
   async getAllUsers(): Promise<AuthUser[]> {
     try {
       const response = await apiClient.get('/users');
-      return response.success ? response.data : [];
+      return response.success ? (response.data as AuthUser[]) : [];
     } catch (error) {
       return [];
     }
@@ -364,34 +360,45 @@ export class ApiDatabaseService {
     distance?: number;
   }): Promise<void> {
     try {
-      const response = await apiClient.post('/locations/events', event);
+      const eventData = {
+        id: '', // Will be generated by server
+        userId: event.userId,
+        siteId: event.siteId,
+        latitude: event.latitude,
+        longitude: event.longitude,
+        timestamp: event.timestamp,
+        eventType: event.eventType,
+        distance: event.distance,
+      };
+      
+      const response = await apiClient.post('/locations/events', eventData);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to create location event');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
 
-  async getRecentLocationEvents(userId?: string, limit: number = 100): Promise<any[]> {
+  async getRecentLocationEvents(userId?: string, limit: number = 100): Promise<LocationEvent[]> {
     try {
       const params = new URLSearchParams();
       if (userId) params.append('userId', userId);
       params.append('limit', limit.toString());
       
-      const response = await apiClient.get(`/locations/events?${params}`);
-      return response.success ? response.data : [];
+      const response = await apiClient.get(`/locations/events?${params.toString()}`);
+      return response.success ? (response.data as LocationEvent[]) : [];
     } catch (error) {
       return [];
     }
   }
 
-  async getUsersCurrentLocations(): Promise<any[]> {
+  async getUsersCurrentLocations(): Promise<WorkerLocation[]> {
     try {
       const response = await apiClient.get('/locations/current');
-      return response.success ? response.data : [];
+      return response.success ? (response.data as WorkerLocation[]) : [];
     } catch (error) {
       return [];
     }
@@ -402,7 +409,7 @@ export class ApiDatabaseService {
     try {
       const params = userId ? `?userId=${userId}` : '';
       const response = await apiClient.get(`/shifts${params}`);
-      return response.success ? response.data : [];
+      return response.success ? (response.data as WorkShift[]) : [];
     } catch (error) {
       return [];
     }
@@ -411,7 +418,7 @@ export class ApiDatabaseService {
   async startWorkShift(shift: Omit<WorkShift, 'id' | 'createdAt'>): Promise<string> {
     try {
       const response = await apiClient.post('/shifts/start', shift);
-      return response.data.id;
+      return response.success ? (response.data as { id: string }).id : '';
     } catch (error) {
       throw error;
     }
@@ -434,23 +441,19 @@ export class ApiDatabaseService {
   async getUserSiteAssignments(userId: string): Promise<UserSiteAssignment[]> {
     try {
       const response = await apiClient.get(`/assignments/user/${userId}`);
-      return response.success ? response.data : [];
+      return response.success ? (response.data as UserSiteAssignment[]) : [];
     } catch (error) {
       return [];
     }
   }
 
-  async createUserSiteAssignment(assignment: Omit<UserSiteAssignment, 'id' | 'assignedAt'>): Promise<void> {
-    try {
-      const response = await apiClient.post('/assignments', assignment);
-      
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to create user site assignment');
-      }
-      
-      } catch (error) {
-      throw error;
-    }
+  async createUserSiteAssignment(assignment: UserSiteAssignment): Promise<ApiResponse<UserSiteAssignment[]>> {
+    const response = await apiClient.post('/assignments', assignment as unknown as Record<string, unknown>);
+    return {
+      success: response.success,
+      data: response.success ? (response.data as UserSiteAssignment[]) : undefined,
+      error: response.error
+    };
   }
 
   async updateUserSiteAssignment(assignmentId: string, updates: Partial<UserSiteAssignment>): Promise<void> {
@@ -480,31 +483,16 @@ export class ApiDatabaseService {
   }
 
   // Chat system methods
-  async getWorkerChat(): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.get('/chat/my-chat');
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to get chat' };
-    }
+  async getWorkerChat(): Promise<ApiResponse<Chat>> {
+    return await apiClient.get('/chat/worker');
   }
 
-  async getForemanChats(): Promise<ApiResponse<any[]>> {
-    try {
-      const response = await apiClient.get('/chat/foreman-chats');
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to get chats' };
-    }
+  async getForemanChats(): Promise<ApiResponse<Chat[]>> {
+    return await apiClient.get('/chat/foreman');
   }
 
-  async getChatMessages(chatId: string, limit: number = 50, offset: number = 0): Promise<ApiResponse<any[]>> {
-    try {
-      const response = await apiClient.get(`/chat/${chatId}/messages?limit=${limit}&offset=${offset}`);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to get messages' };
-    }
+  async getChatMessages(chatId: string, limit: number = 50, offset: number = 0): Promise<ApiResponse<ChatMessage[]>> {
+    return await apiClient.get(`/chat/${chatId}/messages?limit=${limit}&offset=${offset}`);
   }
 
   async sendMessage(messageData: {
@@ -514,225 +502,121 @@ export class ApiDatabaseService {
     photoUri?: string;
     latitude?: number;
     longitude?: number;
-  }): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/chat/send-message', messageData);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to send message' };
-    }
+  }): Promise<ApiResponse<ChatMessage>> {
+    return await apiClient.post(`/chat/${messageData.chatId}/messages`, messageData);
   }
 
   async assignTask(taskData: {
     chatId: string;
     taskDescription: string;
-  }): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/chat/assign-task', taskData);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to assign task' };
-    }
+  }): Promise<ApiResponse<DailyTask>> {
+    return await apiClient.post(`/chat/${taskData.chatId}/task`, taskData);
   }
 
-  async getTodaysTask(chatId: string): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.get(`/chat/${chatId}/todays-task`);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to get today\'s task' };
-    }
+  async getTodaysTask(chatId: string): Promise<ApiResponse<DailyTask | null>> {
+    return await apiClient.get(`/chat/${chatId}/task`);
   }
 
-  async validatePhoto(reportId: string, notes?: string): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/chat/validate-photo', { reportId, notes });
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to validate photo' };
-    }
+  async validatePhoto(reportId: string, notes?: string): Promise<ApiResponse<ValidationResponse>> {
+    return await apiClient.post(`/reports/${reportId}/validate`, { notes });
   }
 
   // Sync methods
-  async getSyncData(lastSyncTimestamp?: Date): Promise<ApiResponse<any>> {
-    try {
-      const params = lastSyncTimestamp ? `?lastSyncTimestamp=${lastSyncTimestamp.toISOString()}` : '';
-      const response = await apiClient.get(`/sync${params}`);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to get sync data' };
-    }
+  async getSyncData(lastSyncTimestamp?: Date): Promise<ApiResponse<SyncDataResponse>> {
+    const params = lastSyncTimestamp ? `?since=${lastSyncTimestamp.toISOString()}` : '';
+    return await apiClient.get(`/sync/data${params}`);
   }
 
-  async postSyncData(syncData: any): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/sync', syncData);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to post sync data' };
-    }
+  async postSyncData(syncData: SyncPayload): Promise<ApiResponse<SyncConflict[]>> {
+    return await apiClient.post('/sync/data', syncData as unknown as Record<string, unknown>);
   }
 
-  async getSyncStatus(): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.get('/sync/status');
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to get sync status' };
-    }
+  async getSyncStatus(): Promise<ApiResponse<SyncStatusResponse>> {
+    return await apiClient.get('/sync/status');
   }
 
-  async performFullSync(deviceId: string): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/sync/full', { deviceId });
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to perform full sync' };
-    }
+  async performFullSync(deviceId: string): Promise<ApiResponse<SyncDataResponse>> {
+    return await apiClient.post('/sync/full', { deviceId });
   }
 
-  async getSyncConflicts(userId: string): Promise<ApiResponse<any[]>> {
-    try {
-      const response = await apiClient.get(`/sync/conflicts/${userId}`);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to get sync conflicts' };
-    }
+  async getSyncConflicts(userId: string): Promise<ApiResponse<SyncConflict[]>> {
+    return await apiClient.get(`/sync/conflicts?userId=${userId}`);
   }
 
-  async resolveSyncConflict(conflictId: string, resolution: any): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/sync/resolve-conflict', { conflictId, resolution });
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to resolve sync conflict' };
-    }
+  async resolveSyncConflict(conflictId: string, resolution: SyncConflict): Promise<ApiResponse<boolean>> {
+    return await apiClient.post(`/sync/conflicts/${conflictId}/resolve`, resolution as unknown as Record<string, unknown>);
   }
 
-  async getSyncMetrics(): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.get('/sync/metrics');
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to get sync metrics' };
-    }
+  async getSyncMetrics(): Promise<ApiResponse<SyncMetricsResponse>> {
+    return await apiClient.get('/sync/metrics');
   }
 
-  async forceGlobalSync(): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/sync/force-all');
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to force global sync' };
-    }
+  async forceGlobalSync(): Promise<ApiResponse<boolean>> {
+    return await apiClient.post('/sync/force-global');
   }
 
   // Notification methods
-  async registerPushToken(token: string): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/notifications/register-token', { token });
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to register push token' };
-    }
+  async registerPushToken(token: string): Promise<ApiResponse<boolean>> {
+    return await apiClient.post('/notifications/register-token', { token });
   }
 
-  async sendTestNotification(): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/notifications/send-test');
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to send test notification' };
-    }
+  async sendTestNotification(): Promise<ApiResponse<boolean>> {
+    return await apiClient.post('/notifications/test');
   }
 
-  async sendViolationAlert(violationData: any): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/notifications/violation-alert', violationData);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to send violation alert' };
-    }
+  async sendViolationAlert(violationData: ViolationAlertData): Promise<ApiResponse<NotificationDeliveryReceipt>> {
+    return await apiClient.post('/notifications/violation-alert', violationData as unknown as Record<string, unknown>);
   }
 
-  async sendAssignmentNotification(assignmentData: any): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/notifications/assignment-notification', assignmentData);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to send assignment notification' };
-    }
+  async sendAssignmentNotification(assignmentData: AssignmentNotificationData): Promise<ApiResponse<NotificationDeliveryReceipt>> {
+    return await apiClient.post('/notifications/assignment', assignmentData as unknown as Record<string, unknown>);
   }
 
-  async sendShiftReminder(reminderData: any): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/notifications/shift-reminder', reminderData);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to send shift reminder' };
-    }
+  async sendShiftReminder(reminderData: ShiftReminderData): Promise<ApiResponse<NotificationDeliveryReceipt>> {
+    return await apiClient.post('/notifications/shift-reminder', reminderData as unknown as Record<string, unknown>);
   }
 
-  async sendBroadcastNotification(notificationData: any): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/notifications/broadcast', notificationData);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to send broadcast notification' };
-    }
+  async sendBroadcastNotification(notificationData: BroadcastNotificationData): Promise<ApiResponse<NotificationDeliveryReceipt>> {
+    return await apiClient.post('/notifications/broadcast', notificationData as unknown as Record<string, unknown>);
   }
 
-  async sendOvertimeAlert(overtimeData: any): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/notifications/overtime-alert', overtimeData);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to send overtime alert' };
-    }
+  async sendOvertimeAlert(overtimeData: OvertimeAlertData): Promise<ApiResponse<NotificationDeliveryReceipt>> {
+    return await apiClient.post('/notifications/overtime-alert', overtimeData as unknown as Record<string, unknown>);
   }
 
-  async validatePushToken(token: string): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/notifications/validate-token', { token });
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to validate push token' };
-    }
+  async validatePushToken(token: string): Promise<ApiResponse<ValidationResponse>> {
+    return await apiClient.post('/notifications/validate-token', { token });
   }
 
-  async getDeliveryReceipts(receiptIds: string[]): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post('/notifications/delivery-receipts', { receiptIds });
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to get delivery receipts' };
-    }
+  async getDeliveryReceipts(receiptIds: string[]): Promise<ApiResponse<NotificationDeliveryReceipt[]>> {
+    return await apiClient.post('/notifications/delivery-receipts', { receiptIds });
   }
 
   // Additional site methods
   async getMySites(): Promise<ConstructionSite[]> {
     try {
       const response = await apiClient.get('/sites/my');
-      return response.success ? response.data : [];
+      if (response.success && Array.isArray(response.data)) {
+        return response.data as ConstructionSite[];
+      }
+      return [];
     } catch (error) {
       return [];
     }
   }
 
-  async checkSiteLocation(siteId: string, latitude: number, longitude: number): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.post(`/sites/${siteId}/check-location`, { latitude, longitude });
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to check site location' };
-    }
+  async checkSiteLocation(siteId: string, latitude: number, longitude: number): Promise<ApiResponse<LocationCheckResponse>> {
+    return await apiClient.post(`/sites/${siteId}/check-location`, { latitude, longitude });
   }
 
   // Additional assignment methods
   async getMyAssignments(): Promise<UserSiteAssignment[]> {
     try {
       const response = await apiClient.get('/assignments/my');
-      return response.success ? response.data : [];
+      if (response.success && Array.isArray(response.data)) {
+        return response.data as UserSiteAssignment[];
+      }
+      return [];
     } catch (error) {
       return [];
     }
@@ -741,7 +625,7 @@ export class ApiDatabaseService {
   async getAllAssignments(): Promise<UserSiteAssignment[]> {
     try {
       const response = await apiClient.get('/assignments');
-      return response.success ? response.data : [];
+      return response.success ? (response.data as UserSiteAssignment[]) : [];
     } catch (error) {
       return [];
     }
@@ -751,7 +635,10 @@ export class ApiDatabaseService {
   async getMyShifts(): Promise<WorkShift[]> {
     try {
       const response = await apiClient.get('/shifts/my');
-      return response.success ? response.data : [];
+      if (response.success && Array.isArray(response.data)) {
+        return response.data as WorkShift[];
+      }
+      return [];
     } catch (error) {
       return [];
     }
@@ -760,57 +647,41 @@ export class ApiDatabaseService {
   async getShiftById(shiftId: string): Promise<WorkShift | null> {
     try {
       const response = await apiClient.get(`/shifts/${shiftId}`);
-      return response.success ? response.data : null;
+      return response.success ? (response.data as WorkShift) : null;
     } catch (error) {
       return null;
     }
   }
 
-  async updateShift(shiftId: string, updates: any): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.put(`/shifts/${shiftId}`, updates);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to update shift' };
-    }
+  async updateShift(shiftId: string, updates: Partial<WorkShift>): Promise<ApiResponse<WorkShift>> {
+    return await apiClient.put(`/shifts/${shiftId}`, updates);
   }
 
-  async deleteShift(shiftId: string): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.delete(`/shifts/${shiftId}`);
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to delete shift' };
-    }
+  async deleteShift(shiftId: string): Promise<ApiResponse<boolean>> {
+    return await apiClient.delete(`/shifts/${shiftId}`);
   }
 
   // Auth status method
-  async getAuthStatus(): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.get('/auth/status');
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to get auth status' };
-    }
+  async getAuthStatus(): Promise<ApiResponse<{ isAuthenticated: boolean; user?: AuthUser }>> {
+    return await apiClient.get('/auth/status');
   }
 
   // Site assignments methods
   async getSiteAssignments(siteId: string): Promise<ApiResponse<UserSiteAssignment[]>> {
     try {
       const response = await apiClient.get(`/assignments/site/${siteId}`);
-      return response;
+      return {
+        success: response.success,
+        data: response.success && Array.isArray(response.data) ? response.data as UserSiteAssignment[] : undefined,
+        error: response.error
+      };
     } catch (error) {
       return { success: false, error: 'Failed to get site assignments' };
     }
   }
 
-  async getAssignmentStats(): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.get('/assignments/stats');
-      return response;
-    } catch (error) {
-      return { success: false, error: 'Failed to get assignment stats' };
-    }
+  async getAssignmentStats(): Promise<ApiResponse<AssignmentStatsResponse>> {
+    return await apiClient.get('/assignments/stats');
   }
 
   async bulkAssignUsersToSite(assignmentData: {
@@ -819,12 +690,47 @@ export class ApiDatabaseService {
     validFrom?: Date;
     validTo?: Date;
     notes?: string;
-  }): Promise<ApiResponse<any>> {
+  }): Promise<ApiResponse<UserSiteAssignment[]>> {
+    return await apiClient.post('/assignments/bulk', assignmentData);
+  }
+
+  async getAssignedSitesToUser(userId: string): Promise<ConstructionSite[]> {
     try {
-      const response = await apiClient.post('/assignments/bulk', assignmentData);
-      return response;
+      const response = await apiClient.get(`/assignments/user/${userId}/sites`);
+      if (response.success && Array.isArray(response.data)) {
+        return response.data as ConstructionSite[];
+      }
+      return [];
     } catch (error) {
-      return { success: false, error: 'Failed to bulk assign users' };
+      return [];
     }
+  }
+
+  async getAssignmentsForSite(siteId: string): Promise<UserSiteAssignment[]> {
+    try {
+      const response = await apiClient.get(`/assignments/site/${siteId}`);
+      if (response.success && Array.isArray(response.data)) {
+        return response.data as UserSiteAssignment[];
+      }
+      return [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async getCurrentUserShifts(): Promise<WorkShift[]> {
+    try {
+      const response = await apiClient.get('/shifts/current');
+      if (response.success && Array.isArray(response.data)) {
+        return response.data as WorkShift[];
+      }
+      return [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async resolveConflict(conflictId: string, resolution: SyncConflict): Promise<ApiResponse<unknown>> {
+    return await apiClient.post(`/sync/conflicts/${conflictId}/resolve`, resolution as unknown as Record<string, unknown>);
   }
 } 

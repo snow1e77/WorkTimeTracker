@@ -11,6 +11,7 @@
     "migrate": "ts-node src/database/migrate.ts",
     "migrate:prod": "set NODE_ENV=production && ts-node src/database/migrate.ts",
     "seed": "ts-node src/database/seed.ts",
+    "create-test-worker": "ts-node src/database/create-test-worker.ts",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "lint": "eslint src/**/*.ts",
@@ -20,7 +21,6 @@
     "build:only": "tsc"
   },
   "dependencies": {
-    "@types/socket.io": "^3.0.1",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
     "cors": "^2.8.5",

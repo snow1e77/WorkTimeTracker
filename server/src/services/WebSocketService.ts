@@ -3,6 +3,34 @@ import { Server as HTTPServer } from 'http';
 import jwt from 'jsonwebtoken';
 import { User } from '../types';
 
+type SocketMiddleware = (socket: AuthenticatedSocket, next: (err?: Error) => void) => void;
+
+interface SyncRequestData {
+  lastSyncTimestamp?: string;
+  entityTypes?: string[];
+}
+
+interface ShiftData {
+  shiftId: string;
+  siteId: string;
+  siteName: string;
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+  duration?: number;
+}
+
+interface AssignmentData {
+  assignmentId: string;
+  userId: string;
+  siteId: string;
+  siteName: string;
+  validFrom?: string;
+  validTo?: string;
+  notes?: string;
+}
+
 interface AuthenticatedSocket extends Socket {
   user?: User;
 }
@@ -29,7 +57,7 @@ export class WebSocketService {
 
   private setupMiddleware(): void {
     // Аутентификация через WebSocket
-    this.io.use(async (socket: AuthenticatedSocket, next) => {
+    this.io.use(async (socket: AuthenticatedSocket, next: (err?: Error) => void) => {
       try {
         const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
         
@@ -37,7 +65,10 @@ export class WebSocketService {
           return next(new Error('No token provided'));
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
+        if (!process.env.JWT_SECRET) {
+          throw new Error('JWT_SECRET environment variable is required');
+        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
         
         // В реальном приложении здесь была бы проверка пользователя в БД
         socket.user = {
@@ -75,19 +106,19 @@ export class WebSocketService {
       }
 
       // Обработчики событий синхронизации
-      socket.on('sync_request', async (data) => {
+      socket.on('sync_request', async (data: SyncRequestData) => {
         await this.handleSyncRequest(socket, data);
       });
 
-      socket.on('shift_started', async (data) => {
+      socket.on('shift_started', async (data: ShiftData) => {
         await this.handleShiftStarted(socket, data);
       });
 
-      socket.on('shift_ended', async (data) => {
+      socket.on('shift_ended', async (data: ShiftData) => {
         await this.handleShiftEnded(socket, data);
       });
 
-      socket.on('assignment_created', async (data) => {
+      socket.on('assignment_created', async (data: AssignmentData) => {
         await this.handleAssignmentCreated(socket, data);
       });
 
@@ -107,7 +138,7 @@ export class WebSocketService {
   }
 
   // Обработка запроса синхронизации
-  private async handleSyncRequest(socket: AuthenticatedSocket, data: any): Promise<void> {
+  private async handleSyncRequest(socket: AuthenticatedSocket, data: SyncRequestData): Promise<void> {
     try {
       // Здесь была бы логика синхронизации
       // Пока отправляем подтверждение
@@ -124,7 +155,7 @@ export class WebSocketService {
   }
 
   // Обработка начала смены
-  private async handleShiftStarted(socket: AuthenticatedSocket, data: any): Promise<void> {
+  private async handleShiftStarted(socket: AuthenticatedSocket, data: ShiftData): Promise<void> {
     try {
       // Уведомляем всех админов о начале смены
       this.io.to('admins').emit('user_shift_started', {
@@ -150,7 +181,7 @@ export class WebSocketService {
   }
 
   // Обработка окончания смены
-  private async handleShiftEnded(socket: AuthenticatedSocket, data: any): Promise<void> {
+  private async handleShiftEnded(socket: AuthenticatedSocket, data: ShiftData): Promise<void> {
     try {
       // Уведомляем админов об окончании смены
       this.io.to('admins').emit('user_shift_ended', {
@@ -175,7 +206,7 @@ export class WebSocketService {
   }
 
   // Обработка создания назначения
-  private async handleAssignmentCreated(socket: AuthenticatedSocket, data: any): Promise<void> {
+  private async handleAssignmentCreated(socket: AuthenticatedSocket, data: AssignmentData): Promise<void> {
     try {
       // Уведомляем конкретного пользователя о новом назначении
       if (data.userId) {
@@ -205,7 +236,7 @@ export class WebSocketService {
   }
 
   // Отправка уведомления конкретному пользователю
-  public notifyUser(userId: string, event: string, data: any): void {
+  public notifyUser(userId: string, event: string, data: Record<string, unknown>): void {
     this.io.to(`user_${userId}`).emit(event, {
       ...data,
       timestamp: new Date()
@@ -213,7 +244,7 @@ export class WebSocketService {
   }
 
   // Отправка уведомления всем админам
-  public notifyAdmins(event: string, data: any): void {
+  public notifyAdmins(event: string, data: Record<string, unknown>): void {
     this.io.to('admins').emit(event, {
       ...data,
       timestamp: new Date()
@@ -221,7 +252,7 @@ export class WebSocketService {
   }
 
   // Широковещательное уведомление всем подключенным пользователям
-  public broadcast(event: string, data: any): void {
+  public broadcast(event: string, data: Record<string, unknown>): void {
     this.io.emit(event, {
       ...data,
       timestamp: new Date()

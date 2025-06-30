@@ -32,10 +32,18 @@ if (missingEnvVars.length > 0 && process.env.NODE_ENV === 'production') {
   process.exit(1);
 }
 
-// Проверяем силу JWT секрета
-if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
+// Проверяем наличие и силу JWT секрета
+if (!process.env.JWT_SECRET) {
+  logger.error('JWT_SECRET environment variable is required');
+  process.exit(1);
+}
+
+if (process.env.JWT_SECRET.length < 32) {
+  logger.error('JWT_SECRET must be at least 32 characters long for security');
   if (process.env.NODE_ENV === 'production') {
     process.exit(1);
+  } else {
+    logger.warn('JWT_SECRET is too short - this is acceptable only in development');
   }
 }
 
@@ -120,7 +128,7 @@ app.use(compression());
 // Ограничиваем размер тела запроса
 app.use(express.json({ 
   limit: '1mb',
-  verify: (req, res, buf) => {
+  verify: (req: express.Request, res: express.Response, buf: Buffer) => {
     // Проверяем на потенциально опасный JSON
     const body = buf.toString();
     if (body.includes('<script') || body.includes('javascript:')) {
@@ -152,7 +160,7 @@ const globalLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
+  skip: (req: express.Request) => {
     // Пропускаем health check
     return req.path === '/health';
   }
@@ -161,7 +169,7 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 // Middleware для логирования всех запросов с расширенной информацией
-app.use((req, res, next) => {
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const start = Date.now();
   const requestId = Math.random().toString(36).substring(7);
   

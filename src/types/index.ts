@@ -255,9 +255,11 @@ export interface MapCoordinate {
   longitude: number;
 }
 
-// Новые типы для фотоотчётов
+// Фото отчёты
 export interface PhotoReport {
   id: string;
+  chatId?: string;
+  messageId?: string;
   userId: string;
   siteId: string;
   shiftId?: string;
@@ -266,6 +268,8 @@ export interface PhotoReport {
   longitude: number;
   timestamp: Date;
   isValidated: boolean;
+  validatedBy?: string;
+  validatedAt?: Date;
   notes?: string;
 }
 
@@ -341,19 +345,107 @@ export interface DailyTask {
   completedAt?: Date;
 }
 
-export interface PhotoReport {
-  id: string;
-  chatId: string;
-  messageId: string;
-  userId: string;
-  photoUri: string;
-  latitude: number;
-  longitude: number;
+// API Response types for specific endpoints
+export interface SyncDataResponse {
+  users: AuthUser[];
+  sites: ConstructionSite[];
+  assignments: UserSiteAssignment[];
+  shifts: WorkShift[];
+  lastSyncTimestamp: Date;
+  version: number;
+}
+
+export interface SyncStatusResponse {
+  isOnline: boolean;
+  lastSync: Date | null;
+  pendingCount: number;
+  conflictCount: number;
+  deviceId: string;
+}
+
+export interface SyncMetricsResponse {
+  syncCount: number;
+  lastSyncDuration: number;
+  averageSyncDuration: number;
+  errorCount: number;
+  totalDataSize: number;
+}
+
+export interface ValidationResponse {
+  isValid: boolean;
+  message: string;
   timestamp: Date;
-  isValidated: boolean;
-  validatedBy?: string;
-  validatedAt?: Date;
+}
+
+export interface LocationCheckResponse {
+  isWithinSite: boolean;
+  distance: number;
+  siteName: string;
+  siteRadius: number;
+}
+
+export interface AssignmentStatsResponse {
+  totalAssignments: number;
+  activeAssignments: number;
+  completedToday: number;
+  averageHoursPerDay: number;
+  mostActiveWorker: string;
+}
+
+export interface NotificationDeliveryReceipt {
+  id: string;
+  status: 'delivered' | 'failed' | 'pending';
+  timestamp: Date;
+  errorMessage?: string;
+}
+
+export interface ViolationAlertData {
+  userId: string;
+  userName: string;
+  siteId: string;
+  siteName: string;
+  violationType: string;
+  severity: 'low' | 'medium' | 'high';
+  description: string;
+  timestamp: Date;
+}
+
+export interface AssignmentNotificationData {
+  workerId: string;
+  workerName: string;
+  siteId: string;
+  siteName: string;
+  startDate: Date;
+  endDate?: Date;
   notes?: string;
+}
+
+export interface ShiftReminderData {
+  workerId: string;
+  workerName: string;
+  siteId: string;
+  siteName: string;
+  scheduledStartTime: Date;
+  reminderType: 'start' | 'end' | 'break';
+}
+
+export interface BroadcastNotificationData {
+  title: string;
+  message: string;
+  targetRole?: 'worker' | 'admin';
+  targetSiteId?: string;
+  priority: 'low' | 'normal' | 'high';
+}
+
+export interface OvertimeAlertData {
+  workerId: string;
+  workerName: string;
+  siteId: string;
+  siteName: string;
+  regularHours: number;
+  overtimeHours: number;
+  totalHours: number;
+  date: Date;
 }
 
 // Navigation types

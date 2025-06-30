@@ -1,15 +1,48 @@
 ﻿import { query } from '../config/database';
-import { SyncPayload, SyncConflict, User, ConstructionSite, UserSiteAssignment, WorkShift } from '../types';
+import logger from '../utils/logger';
+import { User, ConstructionSite, UserSiteAssignment, WorkShift, SyncConflict } from '../types';
 import { ShiftService } from './ShiftService';
+import { UserService } from './UserService';
+import { SiteService } from './SiteService';
 import { AssignmentService } from './AssignmentService';
-import logger, { logSyncEvent, logDatabaseError } from '../utils/logger';
 
-// Импортируем WebSocketService (будет инициализирован позже)
-let getWebSocketServiceInstance: () => any;
+// Типы для данных синхронизации
+interface SyncedItem {
+  type: 'shift' | 'assignment' | 'user' | 'site';
+  action: 'created' | 'updated' | 'deleted';
+  id: string;
+}
 
-// Устанавливаем функцию получения WebSocket сервиса
-export const setWebSocketServiceGetter = (getter: () => any) => {
-  getWebSocketServiceInstance = getter;
+interface SyncHistoryItem {
+  id: string;
+  deviceId: string;
+  syncType: string;
+  timestamp: Date;
+  success: boolean;
+  errorMessage?: string;
+}
+
+interface SyncDataInput {
+  shifts?: Partial<WorkShift>[];
+  assignments?: Partial<UserSiteAssignment>[];
+  users?: Partial<User>[];
+  sites?: Partial<ConstructionSite>[];
+}
+
+interface WebSocketData {
+  userId?: string;
+  shiftId?: string;
+  siteId?: string;
+  location?: { latitude: number; longitude: number };
+  endTime?: Date;
+  [key: string]: unknown;
+}
+
+// Получить getter для WebSocket сервиса
+let getWebSocketService: () => unknown;
+
+export const setWebSocketServiceGetter = (getter: () => unknown) => {
+  getWebSocketService = getter;
 };
 
 export class SyncService {
@@ -28,93 +61,65 @@ export class SyncService {
   }> {
     const { lastSyncTimestamp } = options;
 
-    // Получаем данные пользователя
-    const userResult = await query('SELECT * FROM users WHERE id = $1', [userId]);
-    const user = userResult.rows[0];
+    try {
+      // Получаем пользователей
+      const usersResult = await UserService.getAllUsers();
+      const users = Array.isArray(usersResult) ? usersResult : usersResult.users || [];
+      
+      // Получаем сайты
+      const sitesResult = await SiteService.getAllSites();
+      const sites = Array.isArray(sitesResult) ? sitesResult : sitesResult.sites || [];
+      
+      // Получаем назначения пользователя
+      const assignments = await AssignmentService.getUserAssignments(userId);
+      
+      // Получаем смены пользователя
+      const shiftsResult = await ShiftService.getUserShifts(userId, {
+        ...(lastSyncTimestamp && { startDate: lastSyncTimestamp })
+      });
+      const shifts = Array.isArray(shiftsResult) ? shiftsResult : shiftsResult.shifts || [];
 
-    if (!user) {
-      throw new Error('User not found');
+      return {
+        users,
+        sites,
+        assignments,
+        shifts,
+        metadata: {
+          timestamp: new Date(),
+          version: 1,
+        }
+      };
+    } catch (error) {
+      logger.error('Error getting sync data', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        lastSyncTimestamp
+      });
+      throw error;
     }
-
-    const userData: User = {
-      id: user.id,
-      phoneNumber: user.phone_number,
-      name: user.name,
-      role: user.role,
-      companyId: user.company_id,
-      isVerified: user.is_verified,
-      isActive: user.is_active,
-      createdAt: user.created_at,
-      updatedAt: user.updated_at
-    };
-
-    // Получаем назначения пользователя
-    const assignments = await AssignmentService.getUserAssignments(userId);
-
-    // Получаем сайты, к которым пользователь имеет доступ
-    const siteIds = assignments.map(a => a.siteId);
-    let sites: ConstructionSite[] = [];
-
-    if (siteIds.length > 0) {
-      const sitesResult = await query(
-        `SELECT * FROM construction_sites 
-         WHERE id = ANY($1) AND is_active = true`,
-        [siteIds]
-      );
-
-      sites = sitesResult.rows.map((row: any) => ({
-        id: row.id,
-        name: row.name,
-        address: row.address,
-        latitude: row.latitude,
-        longitude: row.longitude,
-        radius: row.radius,
-        isActive: row.is_active,
-        companyId: row.company_id,
-        createdBy: row.created_by,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
-      }));
-    }
-
-    // Получаем смены пользователя
-    const shiftsFilter: any = {
-      page: 1,
-      limit: 1000,
-      ...(lastSyncTimestamp && { startDate: lastSyncTimestamp })
-    };
-
-    const { shifts } = await ShiftService.getUserShifts(userId, shiftsFilter);
-
-    return {
-      users: [userData],
-      sites,
-      assignments,
-      shifts,
-      metadata: {
-        timestamp: new Date(),
-        version: 1
-      }
-    };
   }
 
   // Обработка синхронизации
   static async processSync(userId: string, syncData: {
     lastSyncTimestamp?: Date;
     deviceId: string;
-    data?: {
-      shifts?: any[];
-      assignments?: any[];
-      users?: any[];
-      sites?: any[];
-    };
+    data?: SyncDataInput;
   }): Promise<{
-    synced: any[];
+    synced: SyncedItem[];
     conflicts: SyncConflict[];
-    serverData: any;
+    serverData: {
+      users: User[];
+      sites: ConstructionSite[];
+      assignments: UserSiteAssignment[];
+      shifts: WorkShift[];
+      metadata: {
+        timestamp: Date;
+        version: number;
+      };
+    };
   }> {
     const { lastSyncTimestamp, deviceId, data } = syncData;
-    const synced: any[] = [];
+    const synced: SyncedItem[] = [];
     const conflicts: SyncConflict[] = [];
 
     // Записываем информацию о синхронизации
@@ -123,13 +128,15 @@ export class SyncService {
     // Обрабатываем локальные изменения смен
     if (data?.shifts) {
       for (const shift of data.shifts) {
+        if (!shift.id) continue;
+        
         try {
           // Проверяем существование смены на сервере
           const existingShift = await ShiftService.getShiftById(shift.id);
 
           if (!existingShift) {
             // Создаем новую смену
-            if (shift.isActive && !shift.endTime) {
+            if (shift.isActive && !shift.endTime && shift.userId && shift.siteId) {
               const newShift = await ShiftService.startShift({
                 userId: shift.userId,
                 siteId: shift.siteId,
@@ -148,7 +155,7 @@ export class SyncService {
             }
           } else {
             // Проверяем на конфликты
-            if (existingShift.updatedAt > shift.updatedAt) {
+            if (shift.updatedAt && existingShift.updatedAt > shift.updatedAt) {
               conflicts.push({
                 entityType: 'shift',
                 entityId: shift.id,
@@ -201,7 +208,7 @@ export class SyncService {
   static async getSyncStatus(userId: string): Promise<{
     lastSyncTimestamp?: Date;
     pendingChanges: number;
-    syncHistory: any[];
+    syncHistory: SyncHistoryItem[];
   }> {
     // Получаем последнюю синхронизацию
     const lastSyncResult = await query(
@@ -223,7 +230,14 @@ export class SyncService {
     return {
       lastSyncTimestamp: lastSyncResult.rows[0]?.created_at,
       pendingChanges,
-      syncHistory: historyResult.rows.map((row: any) => ({
+      syncHistory: historyResult.rows.map((row: {
+        id: string;
+        device_id: string;
+        sync_type: string;
+        created_at: Date;
+        success: boolean;
+        error_message?: string;
+      }) => ({
         id: row.id,
         deviceId: row.device_id,
         syncType: row.sync_type,
@@ -436,24 +450,30 @@ export class SyncService {
   }
 
   // Уведомление админов через WebSocket
-  private static notifyAdminsViaWebSocket(event: string, data: any): void {
-    if (getWebSocketServiceInstance) {
-      try {
-        const webSocketService = getWebSocketServiceInstance();
-        webSocketService.notifyAdmins(event, data);
-      } catch (error) {
+  private static notifyAdminsViaWebSocket(event: string, data: WebSocketData): void {
+    try {
+      if (getWebSocketService) {
+        const wsService = getWebSocketService() as { notifyAdmins?: (event: string, data: WebSocketData) => void };
+        if (wsService && typeof wsService.notifyAdmins === 'function') {
+          wsService.notifyAdmins(event, data);
         }
+      }
+    } catch (error) {
+      logger.error('Failed to notify admins via WebSocket', { error });
     }
   }
 
   // Уведомление конкретного пользователя через WebSocket
-  private static notifyUserViaWebSocket(userId: string, event: string, data: any): void {
-    if (getWebSocketServiceInstance) {
-      try {
-        const webSocketService = getWebSocketServiceInstance();
-        webSocketService.notifyUser(userId, event, data);
-      } catch (error) {
+  private static notifyUserViaWebSocket(userId: string, event: string, data: WebSocketData): void {
+    try {
+      if (getWebSocketService) {
+        const wsService = getWebSocketService() as { notifyUser?: (userId: string, event: string, data: WebSocketData) => void };
+        if (wsService && typeof wsService.notifyUser === 'function') {
+          wsService.notifyUser(userId, event, data);
         }
+      }
+    } catch (error) {
+      logger.error('Failed to notify user via WebSocket', { error, userId });
     }
   }
 

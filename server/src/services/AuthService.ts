@@ -8,7 +8,15 @@ import { User, AuthTokens, JWTPayload, LoginRequest, RegisterRequest } from '../
 import logger from '../utils/logger';
 
 export class AuthService {
-  private static readonly JWT_SECRET: string = process.env.JWT_SECRET || 'your_super_secret_jwt_key';
+  private static readonly JWT_SECRET: string = (() => {
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET environment variable is required');
+    }
+    if (process.env.JWT_SECRET.length < 32) {
+      throw new Error('JWT_SECRET must be at least 32 characters long for security');
+    }
+    return process.env.JWT_SECRET;
+  })();
   private static readonly JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
   private static readonly REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
   private static readonly BCRYPT_ROUNDS = 12; // High security level

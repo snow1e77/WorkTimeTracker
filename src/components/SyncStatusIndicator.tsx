@@ -76,6 +76,7 @@ export const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({
       return () => pulse.stop();
     } else {
       pulseAnimation.setValue(1);
+      return undefined;
     }
   }, [syncStatus.isInProgress]);
 

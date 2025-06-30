@@ -27,12 +27,33 @@ export interface NotificationChannelConfig {
   enableVibrate?: boolean;
 }
 
+// Типы для данных уведомлений
+export interface NotificationData {
+  type?: NotificationType;
+  shiftId?: string;
+  siteId?: string;
+  siteName?: string;
+  violationId?: string;
+  assignmentId?: string;
+  userId?: string;
+  timestamp?: string;
+  shiftType?: 'start' | 'end';
+  eventType?: 'entry' | 'exit';
+  violationType?: string;
+  severity?: 'low' | 'medium' | 'high';
+  hours?: number;
+  assignmentType?: 'new' | 'updated' | 'removed';
+  details?: string;
+  test?: boolean;
+  [key: string]: unknown;
+}
+
 export interface ScheduledNotificationData {
   id: string;
   title: string;
   body: string;
   type: NotificationType;
-  data?: any;
+  data?: NotificationData;
   trigger: Date | Notifications.TimeIntervalTriggerInput | Notifications.DateTriggerInput;
   categoryId?: string;
 }
@@ -214,7 +235,7 @@ export class NotificationService {
   }
 
   // Обработка нажатия на уведомление
-  private handleNotificationPress(data: any): void {
+  private handleNotificationPress(data: NotificationData): void {
     // Здесь можно добавить навигацию в зависимости от типа уведомления
     switch (data?.type) {
       case 'shift_reminder':
@@ -227,7 +248,7 @@ export class NotificationService {
         // Навигация к экрану нарушений
         break;
       default:
-        // Навигация к главному экрану
+        // Общие уведомления
         break;
     }
   }
@@ -237,23 +258,26 @@ export class NotificationService {
     title: string,
     body: string,
     type: NotificationType = 'general',
-    data?: any
+    data?: NotificationData
   ): Promise<string> {
     try {
       const channelId = this.getChannelIdByType(type);
       
+      const notificationData: NotificationData = {
+        type,
+        timestamp: new Date().toISOString(),
+        ...data,
+      };
+
       const identifier = await Notifications.scheduleNotificationAsync({
         content: {
           title,
           body,
-          data: { type, ...data },
+          data: notificationData,
           sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.HIGH,
         },
-        trigger: { 
-          seconds: 1,
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL
-        } as Notifications.TimeIntervalTriggerInput,
-        ...(Platform.OS === 'android' && { channelId }),
+        trigger: null, // Мгновенное уведомление
       });
 
       return identifier;

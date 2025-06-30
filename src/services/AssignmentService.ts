@@ -50,17 +50,19 @@ export class AssignmentService {
       }
 
       // Создать назначение через API
-      const assignment: Omit<UserSiteAssignment, 'id' | 'assignedAt'> = {
+      const newAssignment: UserSiteAssignment = {
+        id: `assignment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         userId,
         siteId,
         assignedBy,
         isActive: true,
+        assignedAt: new Date(),
         validFrom,
         validTo,
         notes
       };
 
-      await this.dbService.createUserSiteAssignment(assignment);
+      const result = await this.dbService.createUserSiteAssignment(newAssignment);
 
       return { success: true };
     } catch (error) {
@@ -205,10 +207,10 @@ export class AssignmentService {
       const response = await this.dbService.getAssignmentStats();
       if (response.success && response.data) {
         return {
-          totalAssignments: response.data.total || 0,
-          activeAssignments: response.data.active || 0,
-          usersWithAssignments: response.data.usersWithAssignments || 0,
-          sitesWithAssignments: response.data.sitesWithAssignments || 0
+          totalAssignments: response.data.totalAssignments || 0,
+          activeAssignments: response.data.activeAssignments || 0,
+          usersWithAssignments: response.data.completedToday || 0,
+          sitesWithAssignments: response.data.averageHoursPerDay ? Math.floor(response.data.averageHoursPerDay) : 0
         };
       }
       return {
@@ -241,6 +243,11 @@ export class AssignmentService {
         for (let j = i + 1; j < activeAssignments.length; j++) {
           const assignment1 = activeAssignments[i];
           const assignment2 = activeAssignments[j];
+          
+          // Проверяем что назначения не undefined
+          if (!assignment1 || !assignment2) {
+            continue;
+          }
           
           // Проверяем временные пересечения
           const start1 = assignment1.validFrom || new Date(0);
@@ -285,8 +292,8 @@ export class AssignmentService {
       if (response.success && response.data) {
         return {
           success: true,
-          assignments: response.data.assignments || [],
-          errors: response.data.errors || []
+          assignments: Array.isArray(response.data) ? response.data : [],
+          errors: []
         };
       } else {
         return {

@@ -10,6 +10,10 @@ import {
 } from '../types';
 import { ApiDatabaseService } from './ApiDatabaseService';
 import { WebSocketService } from './WebSocketService';
+import { notificationService } from './NotificationService';
+
+// Типы для данных синхронизации
+type SyncEntityData = AuthUser | ConstructionSite | UserSiteAssignment | WorkShift | Record<string, unknown>;
 
 // Новые типы для улучшенной синхронизации
 interface SyncOperation {
@@ -17,7 +21,7 @@ interface SyncOperation {
   type: 'create' | 'update' | 'delete';
   entityType: 'user' | 'site' | 'assignment' | 'shift';
   entityId: string;
-  data: any;
+  data: SyncEntityData;
   timestamp: Date;
   attempts: number;
   maxAttempts: number;
@@ -36,6 +40,27 @@ interface SyncStatus {
   failedOperations: number;
   isInProgress: boolean;
   error?: string;
+}
+
+// Интерфейсы для WebSocket данных
+interface WebSocketSyncData {
+  type: 'sync_update' | 'assignment_created' | 'assignment_updated';
+  payload: SyncEntityData;
+  timestamp: Date;
+}
+
+interface NewAssignmentData {
+  assignmentId: string;
+  userId: string;
+  siteId: string;
+  siteName: string;
+  validFrom?: Date;
+  validTo?: Date;
+}
+
+interface AssignmentUpdateData {
+  assignmentId: string;
+  updates: Partial<UserSiteAssignment>;
 }
 
 export class SyncService {
@@ -132,7 +157,7 @@ export class SyncService {
     type: SyncOperation['type'],
     entityType: SyncOperation['entityType'],
     entityId: string,
-    data: any
+    data: SyncEntityData
   ): Promise<void> {
     const operation: SyncOperation = {
       id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -784,51 +809,63 @@ export class SyncService {
   // Настройка WebSocket подключения
   private async setupWebSocketConnection(): Promise<void> {
     try {
-      // Подключаемся к WebSocket серверу
-      const connected = await this.webSocketService.connect();
+      // Подключение к WebSocket
+      this.webSocketService.connect();
       
-      if (connected) {
-        // Подписываемся на события синхронизации
-        this.webSocketService.on('sync_response', (data) => {
-          this.handleWebSocketSyncResponse(data);
-        });
-
-        this.webSocketService.on('new_assignment', (data) => {
-          this.handleNewAssignmentFromWebSocket(data);
-        });
-
-        this.webSocketService.on('assignment_updated', (data) => {
-          this.handleAssignmentUpdateFromWebSocket(data);
-        });
-      }
+      // Подписка на события синхронизации
+      this.webSocketService.on('sync_update', (data: Record<string, unknown>) => {
+        this.handleWebSocketSyncResponse(data as unknown as WebSocketSyncData);
+      });
+      
+      this.webSocketService.on('new_assignment', (data: Record<string, unknown>) => {
+        this.handleNewAssignmentFromWebSocket(data as unknown as NewAssignmentData);
+      });
+      
+      this.webSocketService.on('assignment_update', (data: Record<string, unknown>) => {
+        this.handleAssignmentUpdateFromWebSocket(data as unknown as AssignmentUpdateData);
+      });
+      
     } catch (error) {
-      }
-  }
-
-  // Обработка ответа синхронизации через WebSocket
-  private async handleWebSocketSyncResponse(data: any): Promise<void> {
-    if (data.success) {
-      // Принудительная синхронизация при получении уведомления
-      await this.sync(true);
+      console.error('Error setting up WebSocket connection:', error);
     }
   }
 
-  // Обработка нового назначения через WebSocket
-  private async handleNewAssignmentFromWebSocket(data: any): Promise<void> {
+  private async handleWebSocketSyncResponse(data: WebSocketSyncData): Promise<void> {
     try {
-      // Принудительная синхронизация для получения полных данных
-      await this.sync(true);
-    } catch (error) {
+      if (data.type === 'sync_update') {
+        // Обрабатываем обновление данных синхронизации
+        await this.sync(true);
       }
+    } catch (error) {
+      console.error('Error handling WebSocket sync response:', error);
+    }
   }
 
-  // Обработка обновления назначения через WebSocket
-  private async handleAssignmentUpdateFromWebSocket(data: any): Promise<void> {
+  private async handleNewAssignmentFromWebSocket(data: NewAssignmentData): Promise<void> {
     try {
-      // Принудительная синхронизация для получения обновленных данных
+      // Создаём локальное уведомление о новом назначении
+      await notificationService.sendLocalNotification(
+        'Новое назначение',
+        `Вы назначены на объект: ${data.siteName}`,
+        'assignment_update',
+        { 
+          type: 'assignment_update',
+          assignmentId: data.assignmentId,
+          siteName: data.siteName 
+        }
+      );
+    } catch (error) {
+      console.error('Error handling new assignment from WebSocket:', error);
+    }
+  }
+
+  private async handleAssignmentUpdateFromWebSocket(data: AssignmentUpdateData): Promise<void> {
+    try {
+      // Обрабатываем обновление назначения
       await this.sync(true);
     } catch (error) {
-      }
+      console.error('Error handling assignment update from WebSocket:', error);
+    }
   }
 
   // Уведомление о начале смены через WebSocket

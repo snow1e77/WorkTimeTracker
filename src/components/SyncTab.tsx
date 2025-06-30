@@ -5,9 +5,33 @@ interface SyncTabProps {
   onRefresh?: () => void;
 }
 
+// Интерфейсы для статуса синхронизации
+interface SyncStatus {
+  lastSync: Date | null;
+  nextSync?: Date | null;
+  isInProgress: boolean;
+  deviceCount?: number;
+  conflictCount?: number;
+  errorCount?: number;
+}
+
+interface SyncHistoryItem {
+  id: string;
+  timestamp: Date;
+  type: 'full' | 'incremental' | 'assignments';
+  status: 'success' | 'error' | 'partial';
+  deviceId?: string;
+  userName?: string;
+  syncType?: string;
+  itemsCount: number;
+  errorMessage?: string;
+  duration: number; // в миллисекундах
+  success?: boolean;
+}
+
 const SyncTab: React.FC<SyncTabProps> = ({ onRefresh }) => {
-  const [syncStatus, setSyncStatus] = useState<any>(null);
-  const [syncHistory, setSyncHistory] = useState<any[]>([]);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
+  const [syncHistory, setSyncHistory] = useState<SyncHistoryItem[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [serverConnected, setServerConnected] = useState(false);
 
@@ -34,7 +58,8 @@ const SyncTab: React.FC<SyncTabProps> = ({ onRefresh }) => {
       setSyncStatus(status);
       setSyncHistory(history);
     } catch (error) {
-      }
+      console.error('Failed to load sync data:', error);
+    }
   };
 
   const checkServerConnection = async () => {
@@ -141,17 +166,17 @@ const SyncTab: React.FC<SyncTabProps> = ({ onRefresh }) => {
           <div style={styles.statusItem}>
             <div style={styles.statusLabel}>Last Sync</div>
             <div style={styles.statusValue}>
-              {formatTime(syncStatus?.lastSync)}
+              {formatTime(syncStatus?.lastSync || null)}
             </div>
             <div style={styles.statusDetail}>
-              {getTimeSince(syncStatus?.lastSync)}
+              {getTimeSince(syncStatus?.lastSync || null)}
             </div>
           </div>
 
           <div style={styles.statusItem}>
             <div style={styles.statusLabel}>Next Sync</div>
             <div style={styles.statusValue}>
-              {formatTime(syncStatus?.nextSync)}
+              {formatTime(syncStatus?.nextSync || null)}
             </div>
             <div style={styles.statusDetail}>
               Auto-sync every 5 minutes
@@ -225,30 +250,35 @@ const SyncTab: React.FC<SyncTabProps> = ({ onRefresh }) => {
           <div style={styles.historyList}>
             {syncHistory.slice(0, 10).map((entry, index) => (
               <div key={index} style={styles.historyItem}>
-                <div style={styles.historyHeader}>
-                  <div style={styles.historyUser}>
-                    <strong>{entry.userName || 'Unknown User'}</strong>
-                    <span style={styles.historyDevice}>
-                      Device: {entry.deviceId}
-                    </span>
+                <div style={styles.historyItemHeader}>
+                  <div style={styles.historyItemUser}>
+                    {entry.userName || 'System'}
                   </div>
-                  <div style={styles.historyTime}>
+                  <div style={styles.historyItemTime}>
                     {formatTime(entry.timestamp)}
                   </div>
                 </div>
-                <div style={styles.historyDetails}>
-                  <span style={{
-                    ...styles.historyType,
-                    ...(entry.syncType === 'full' ? styles.fullSyncType : styles.incrementalSyncType)
-                  }}>
-                    {entry.syncType.toUpperCase()}
-                  </span>
-                  <span style={{
-                    ...styles.historyStatus,
-                    ...(entry.success ? styles.successStatus : styles.errorStatus)
-                  }}>
-                    {entry.success ? 'SUCCESS' : 'FAILED'}
-                  </span>
+                <div style={styles.historyItemType}>
+                  {entry.syncType || entry.type} sync
+                  {entry.deviceId && ` from device ${entry.deviceId}`}
+                </div>
+                <div style={styles.historyItemStatus}>
+                  {entry.success !== undefined ? (
+                    entry.success ? (
+                      <span style={styles.successStatus}>✓ Success</span>
+                    ) : (
+                      <span style={styles.errorStatus}>✗ Failed</span>
+                    )
+                  ) : (
+                    <span style={{
+                      ...styles.statusBadge,
+                      ...(entry.status === 'success' ? styles.successStatus : 
+                          entry.status === 'error' ? styles.errorStatus :
+                          styles.warningStatus)
+                    }}>
+                      {entry.status}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -487,53 +517,33 @@ const styles = {
     backgroundColor: '#fafafa',
   } as React.CSSProperties,
 
-  historyHeader: {
+  historyItemHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: '10px',
   } as React.CSSProperties,
 
-  historyUser: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  } as React.CSSProperties,
-
-  historyDevice: {
-    fontSize: '12px',
-    color: '#666',
-  } as React.CSSProperties,
-
-  historyTime: {
-    fontSize: '12px',
-    color: '#666',
-  } as React.CSSProperties,
-
-  historyDetails: {
-    display: 'flex',
-    gap: '10px',
-  } as React.CSSProperties,
-
-  historyType: {
-    padding: '4px 8px',
-    borderRadius: '4px',
-    fontSize: '10px',
+  historyItemUser: {
     fontWeight: '600',
-    textTransform: 'uppercase',
   } as React.CSSProperties,
 
-  fullSyncType: {
-    backgroundColor: '#e3f2fd',
-    color: '#1976d2',
+  historyItemTime: {
+    fontSize: '12px',
+    color: '#666',
   } as React.CSSProperties,
 
-  incrementalSyncType: {
-    backgroundColor: '#f3e5f5',
-    color: '#7b1fa2',
+  historyItemType: {
+    fontSize: '12px',
+    color: '#666',
   } as React.CSSProperties,
 
-  historyStatus: {
+  historyItemStatus: {
+    fontSize: '12px',
+    color: '#666',
+  } as React.CSSProperties,
+
+  statusBadge: {
     padding: '4px 8px',
     borderRadius: '4px',
     fontSize: '10px',
@@ -548,7 +558,12 @@ const styles = {
 
   errorStatus: {
     backgroundColor: '#ffebee',
-    color: '#f44336',
+    color: '#c62828',
+  } as React.CSSProperties,
+
+  warningStatus: {
+    backgroundColor: '#fff3e0',
+    color: '#f57c00',
   } as React.CSSProperties,
 
   statsCard: {

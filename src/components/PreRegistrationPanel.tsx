@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { WebDatabaseService } from '../services/WebDatabaseService';
+import { AuthUser } from '../types';
 
 interface PreRegisteredUser {
   id: string;
@@ -18,7 +19,7 @@ interface PreRegisteredUser {
 }
 
 interface PreRegistrationPanelProps {
-  currentUser?: any;
+  currentUser?: AuthUser;
 }
 
 const PreRegistrationPanel: React.FC<PreRegistrationPanelProps> = ({ currentUser }) => {

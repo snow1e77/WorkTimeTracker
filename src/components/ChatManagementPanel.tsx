@@ -59,6 +59,7 @@ export default function ChatManagementPanel({ visible, onClose }: ChatManagement
       const interval = setInterval(loadMessages, 5000);
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [selectedChat]);
 
   const loadChats = async () => {
