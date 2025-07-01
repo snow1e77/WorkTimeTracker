@@ -320,6 +320,21 @@ export class AuthService {
     code: string, 
     type: 'login' | 'registration' | 'password_reset'
   ): Promise<boolean> {
+    // Для тестового номера делаем код бесконечным
+    const isTestAccount = phoneNumber === '+79999999999' && code === '123456';
+    
+    if (isTestAccount) {
+      // Для тестового аккаунта проверяем код без учета времени истечения
+      const result = await query(
+        `SELECT id FROM sms_verifications 
+         WHERE phone_number = $1 AND code = $2 AND type = $3 
+         AND is_used = false`,
+        [phoneNumber, code, type]
+      );
+      return result.rows.length > 0;
+    }
+    
+    // Для обычных пользователей проверяем с учетом времени истечения
     const result = await query(
       `SELECT id FROM sms_verifications 
        WHERE phone_number = $1 AND code = $2 AND type = $3 
@@ -332,10 +347,15 @@ export class AuthService {
 
   // Mark code as used
   private static async markCodeAsUsed(phoneNumber: string, code: string): Promise<void> {
-    await query(
-      'UPDATE sms_verifications SET is_used = true WHERE phone_number = $1 AND code = $2',
-      [phoneNumber, code]
-    );
+    // Для тестового номера не помечаем код как использованный, чтобы он был многоразовым
+    const isTestAccount = phoneNumber === '+79999999999' && code === '123456';
+    
+    if (!isTestAccount) {
+      await query(
+        'UPDATE sms_verifications SET is_used = true WHERE phone_number = $1 AND code = $2',
+        [phoneNumber, code]
+      );
+    }
   }
 
   // Cleanup expired tokens and codes
