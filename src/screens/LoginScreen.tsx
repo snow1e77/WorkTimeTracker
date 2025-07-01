@@ -43,7 +43,10 @@ export default function LoginScreen() {
     setError('');
     try {
       const cleanPhone = getCleanInternationalPhoneNumber(phoneNumber, selectedCountry);
+      console.log('Sending SMS code to:', cleanPhone);
+      
       const result = await authService.sendLoginCode(cleanPhone);
+      console.log('SMS send result:', result);
 
       if (result.success) {
         setUserExists(result.userExists);
@@ -57,8 +60,10 @@ export default function LoginScreen() {
         }
       }
     } catch (error) {
-      setError('An error occurred while sending code');
-      } finally {
+      console.log('SMS send error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while sending code';
+      setError(errorMessage);
+    } finally {
       setLoading(false);
     }
   };

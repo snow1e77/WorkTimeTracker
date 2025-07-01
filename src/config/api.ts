@@ -5,10 +5,12 @@ export const API_CONFIG = {
   // Базовый URL для API
   BASE_URL: Platform.OS === 'web' 
     ? 'http://localhost:3001/api'  // Для веб-версии
-    : 'http://192.168.0.4:3001/api',  // Для физических устройств Android/iOS
+    : __DEV__ 
+      ? 'http://localhost:3001/api'  // Для эмулятора в режиме разработки
+      : 'http://192.168.0.4:3001/api',  // Для физических устройств
     
   // Таймауты
-  TIMEOUT: 30000, // 30 секунд
+  TIMEOUT: 15000, // 15 секунд
   
   // Endpoints
   ENDPOINTS: {
@@ -155,10 +157,16 @@ export const getHealthUrl = (): string => {
 // Функция для проверки доступности сервера
 export const checkServerHealth = async (): Promise<boolean> => {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5 секунд для health check
+    
     const response = await fetch(getHealthUrl(), {
       method: 'GET',
       headers: API_CONFIG.DEFAULT_HEADERS,
+      signal: controller.signal
     });
+    
+    clearTimeout(timeout);
     return response.ok;
   } catch (error) {
     return false;

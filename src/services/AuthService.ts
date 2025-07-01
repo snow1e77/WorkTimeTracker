@@ -34,17 +34,36 @@ export class AuthService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(getApiUrl(endpoint), {
-      ...options,
-      headers,
-    });
+    // Создаем AbortController для timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15 секунд timeout
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(errorData.error || `API Error: ${response.status}`);
+    try {
+      const response = await fetch(getApiUrl(endpoint), {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `API Error: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      clearTimeout(timeout);
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Request timeout. Please check your connection and try again');
+        }
+        throw error;
+      }
+      throw new Error('Network error');
     }
-
-    return await response.json();
   }
 
   // Generate 6-digit SMS code
