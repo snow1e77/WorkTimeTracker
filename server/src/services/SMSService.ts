@@ -48,8 +48,17 @@ export class SMSService {
     message: string
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
-      // В режиме разработки просто логируем сообщение
-      if (process.env.NODE_ENV !== 'production' || !this.isInitialized || !this.twilioClient) {
+      // Проверяем, является ли это тестовым аккаунтом
+      const isTestAccount = phoneNumber === '+79999999999';
+      
+      // В режиме разработки или для тестового аккаунта просто логируем сообщение
+      if (process.env.NODE_ENV !== 'production' || isTestAccount || !this.isInitialized || !this.twilioClient) {
+        if (isTestAccount) {
+          console.log('🚫 SMS blocked for test account:', { phoneNumber, message: message.substring(0, 50) + '...' });
+        } else {
+          console.log('📱 SMS demo mode:', { phoneNumber, message: message.substring(0, 50) + '...' });
+        }
+        
         return { 
           success: true, 
           messageId: `demo_${Date.now()}` 

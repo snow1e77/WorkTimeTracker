@@ -61,21 +61,29 @@ export class AuthService {
   // Отправка кода для входа/регистрации
   static async sendLoginCode(phoneNumber: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Для демо-версии используем фиксированный код
-      const code = process.env.NODE_ENV === 'production' ? 
+      // Проверяем, является ли это тестовым аккаунтом
+      const isTestAccount = phoneNumber === '+79999999999';
+      
+      // Для демо-версии и тестового аккаунта используем фиксированный код
+      const code = (process.env.NODE_ENV === 'production' && !isTestAccount) ? 
         Math.floor(100000 + Math.random() * 900000).toString() : '123456';
 
       // Сохраняем код в базе данных
       await this.saveSMSVerification(phoneNumber, code, 'login');
 
-      if (process.env.NODE_ENV === 'production') {
-        // В продакшене отправляем реальную SMS
+      if (process.env.NODE_ENV === 'production' && !isTestAccount) {
+        // В продакшене отправляем реальную SMS только для обычных аккаунтов
         const smsResult = await SMSService.sendSMS(phoneNumber, `Ваш код для входа: ${code}`);
         if (!smsResult.success) {
           return { success: false, error: smsResult.error || 'Failed to send SMS' };
         }
       } else {
-        logger.info('SMS code sent (dev mode)', { phoneNumber, code });
+        // Для режима разработки или тестового аккаунта только логируем
+        if (isTestAccount) {
+          logger.info('SMS code generated for test account (no SMS sent)', { phoneNumber, code });
+        } else {
+          logger.info('SMS code sent (dev mode)', { phoneNumber, code });
+        }
       }
 
       return { success: true };
