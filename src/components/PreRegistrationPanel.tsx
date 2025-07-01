@@ -99,7 +99,7 @@ const PreRegistrationPanel: React.FC<PreRegistrationPanelProps> = ({ currentUser
         await loadPreRegisteredUsers();
         setNewUserData({ phoneNumber: '', name: '', role: 'worker' });
         setShowAddForm(false);
-        alert('User added successfully. SMS with download link has been sent.');
+        alert('User added successfully.');
       } else {
         setError(data.error || 'Error adding user');
       }
@@ -291,7 +291,7 @@ const PreRegistrationPanel: React.FC<PreRegistrationPanelProps> = ({ currentUser
                     <div><strong>Activated:</strong> {formatDate(user.activatedAt)}</div>
                   )}
                   <div>
-                    <strong>SMS sent:</strong> {user.appDownloadSent ? 'Yes' : 'No'}
+                    <strong>Added to system:</strong> {user.appDownloadSent ? 'Yes' : 'No'}
                     {user.appDownloadSentAt && ` (${formatDate(user.appDownloadSentAt)})`}
                   </div>
                 </div>

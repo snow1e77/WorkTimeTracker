@@ -1,6 +1,5 @@
 ﻿import { v4 as uuidv4 } from 'uuid';
 import { query } from '../config/database';
-import { SMSService } from './SMSService';
 
 export interface PreRegisteredUser {
   id: string;
@@ -55,8 +54,13 @@ export class PreRegistrationService {
 
     const preRegisteredUser = this.mapRowToPreRegisteredUser(result.rows[0]);
 
-    // Send SMS with app download link
-    await this.sendAppDownloadLink(phoneNumber, name);
+    // Auto-mark app download as sent since we're not using SMS anymore
+    await query(
+      `UPDATE pre_registered_users 
+       SET app_download_sent = true, app_download_sent_at = CURRENT_TIMESTAMP 
+       WHERE id = $1`,
+      [id]
+    );
 
     return preRegisteredUser;
   }
@@ -137,47 +141,6 @@ export class PreRegistrationService {
     return result.rowCount > 0;
   }
 
-  // Send app download link
-  static async sendAppDownloadLink(phoneNumber: string, name?: string): Promise<void> {
-    try {
-      const appStoreLink = process.env.APP_STORE_LINK || 'https://apps.apple.com/app/worktime-tracker';
-      const playStoreLink = process.env.PLAY_STORE_LINK || 'https://play.google.com/store/apps/details?id=com.worktimetracker';
-      
-      let message = `Welcome to WorkTime Tracker!`;
-      if (name) {
-        message = `Welcome to WorkTime Tracker, ${name}!`;
-      }
-      
-      message += `\n\nYou have been added to the time tracking system. Download the app:\n\n`;
-      message += `📱 iOS: ${appStoreLink}\n`;
-      message += `🤖 Android: ${playStoreLink}\n\n`;
-      message += `After installation, sign in using this phone number.`;
-
-      await SMSService.sendSMS(phoneNumber, message);
-
-      // Update send status
-      await query(
-        `UPDATE pre_registered_users 
-         SET app_download_sent = true, app_download_sent_at = CURRENT_TIMESTAMP 
-         WHERE phone_number = $1`,
-        [phoneNumber]
-      );
-
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Resend app download link
-  static async resendAppDownloadLink(phoneNumber: string): Promise<void> {
-    const preRegisteredUser = await this.getPreRegisteredUserByPhone(phoneNumber);
-    if (!preRegisteredUser) {
-      throw new Error('User not found in pre-registration');
-    }
-
-    await this.sendAppDownloadLink(phoneNumber, preRegisteredUser.name);
-  }
-
   // Check if user can login
   static async canUserLogin(phoneNumber: string): Promise<{
     canLogin: boolean;
@@ -199,26 +162,26 @@ export class PreRegistrationService {
       };
     }
 
-    // Check if user exists in pre-registration
+    // Check pre-registration
     const preRegisteredUser = await this.getPreRegisteredUserByPhone(phoneNumber);
     
-    if (preRegisteredUser) {
+    if (!preRegisteredUser) {
       return {
-        canLogin: true,
-        isPreRegistered: true,
-        isActivated: preRegisteredUser.isActivated
+        canLogin: false,
+        isPreRegistered: false,
+        isActivated: false,
+        needsContact: true
       };
     }
 
-    // User not found - need to contact management
     return {
-      canLogin: false,
-      isPreRegistered: false,
-      isActivated: false,
-      needsContact: true
+      canLogin: preRegisteredUser.isActivated,
+      isPreRegistered: true,
+      isActivated: preRegisteredUser.isActivated
     };
   }
 
+  // Map database row to PreRegisteredUser object
   private static mapRowToPreRegisteredUser(row: any): PreRegisteredUser {
     return {
       id: row.id,
@@ -228,11 +191,11 @@ export class PreRegistrationService {
       companyId: row.company_id,
       addedBy: row.added_by,
       isActivated: row.is_activated,
-      activatedAt: row.activated_at ? new Date(row.activated_at) : undefined,
+      activatedAt: row.activated_at,
       appDownloadSent: row.app_download_sent,
-      appDownloadSentAt: row.app_download_sent_at ? new Date(row.app_download_sent_at) : undefined,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at)
+      appDownloadSentAt: row.app_download_sent_at,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   }
 } 

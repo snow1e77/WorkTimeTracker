@@ -276,7 +276,7 @@ app.get('/api/info', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     features: [
       'JWT Authentication',
-      'SMS Verification',
+              'Phone Authentication',
       'User Management',
       'Site Management',
       'Work Shifts Tracking',
@@ -386,8 +386,7 @@ const startServer = async () => {
       if (process.env.NODE_ENV !== 'production') {
         logger.debug('Available endpoints', {
           endpoints: [
-            'POST /api/auth/send-code - Send SMS verification code',
-            'POST /api/auth/login - Login with phone and code',
+                          'POST /api/auth/login - Simple phone login (no SMS)',
             'POST /api/auth/register - Register new user',
             'POST /api/auth/refresh - Refresh access token',
             'POST /api/auth/logout - Logout user',

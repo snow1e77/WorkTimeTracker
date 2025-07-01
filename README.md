@@ -30,7 +30,7 @@
 - **PostgreSQL** - основная база данных
 - **Socket.IO** - WebSocket-сервер для реального времени
 - **JWT** - аутентификация и авторизация
-- **Twilio** - SMS-верификация
+- **Simple Phone Auth** - Вход по номеру телефона
 - **Helmet** - безопасность
 - **Winston** - логирование
 - **Expo Server SDK** - Push-уведомления
@@ -142,7 +142,7 @@ npm run server:dev
 
 ### 📱 Данные для входа
 - **Номер телефона**: `+79999999999`
-- **SMS код**: `123456` (в режиме разработки)
+- **Вход**: Только номер телефона (без SMS)
 
 ### 🚀 Создание тестового аккаунта
 
@@ -192,7 +192,7 @@ npm run create-test-worker
 ### Аутентификация
 - `POST /api/auth/register` - Регистрация пользователя
 - `POST /api/auth/login` - Вход в систему
-- `POST /api/auth/verify-phone` - Верификация телефона
+
 - `POST /api/auth/refresh` - Обновление JWT токена
 
 ### Пользователи
@@ -263,10 +263,8 @@ DB_PASSWORD=your_password
 JWT_SECRET=your_jwt_secret
 JWT_EXPIRES_IN=7d
 
-# Twilio SMS
-TWILIO_ACCOUNT_SID=your_sid
-TWILIO_AUTH_TOKEN=your_token
-TWILIO_PHONE_NUMBER=your_phone
+# Simple Authentication (no SMS needed)
+# Users login with phone number only
 
 # Порт сервера
 PORT=3001

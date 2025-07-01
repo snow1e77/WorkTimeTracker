@@ -16,7 +16,6 @@ import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 // Authentication screens
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
-import VerifyPhoneScreen from './src/screens/VerifyPhoneScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 
 // Main screens
@@ -98,11 +97,6 @@ const AppNavigator = () => {
               name="Register" 
               component={RegisterScreen} 
               options={{ title: 'Register', headerShown: false }}
-            />
-            <Stack.Screen 
-              name="VerifyPhone" 
-              component={VerifyPhoneScreen} 
-              options={{ title: 'Verify Phone Number' }}
             />
             <Stack.Screen 
               name="ResetPassword" 

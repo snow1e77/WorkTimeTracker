@@ -622,7 +622,7 @@ router.post('/resend-app-link', authenticateToken, requireRole('admin'), validat
       });
     }
 
-    await PreRegistrationService.resendAppDownloadLink(phoneNumber);
+    // SMS функциональность удалена - больше не отправляем ссылки
 
     return res.json({
       success: true,

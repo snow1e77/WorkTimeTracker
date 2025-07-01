@@ -5,18 +5,17 @@ import WebWelcomeScreen from './WebWelcomeScreen';
 import WebPrivacyAgreementScreen from './WebPrivacyAgreementScreen';
 import AdminWebPanel from '../components/AdminWebPanel';
 
-const WebLoginForm: React.FC<{ onLogin: (phone: string, password: string) => Promise<void> }> = ({ onLogin }) => {
+const WebLoginForm: React.FC<{ onLogin: (phone: string) => Promise<void> }> = ({ onLogin }) => {
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await onLogin(phone, password);
+      await onLogin(phone);
     } catch (error) {
-      alert('Login failed. Please check your credentials.');
+      alert('Login failed. Please check your phone number.');
     } finally {
       setLoading(false);
     }
@@ -29,17 +28,9 @@ const WebLoginForm: React.FC<{ onLogin: (phone: string, password: string) => Pro
         <form onSubmit={handleSubmit}>
           <input
             type="tel"
-            placeholder="Phone Number"
+            placeholder="Phone Number (+1234567890)"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            style={webStyles.input}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             style={webStyles.input}
             required
           />
@@ -72,8 +63,8 @@ const WebAppContent: React.FC = () => {
     }
   }, []);
 
-  const handleLogin = async (phone: string, password: string) => {
-    await login(phone, password);
+  const handleLogin = async (phone: string) => {
+    await login(phone);
   };
 
   const handleLogout = () => {

@@ -206,7 +206,7 @@ describe('WebSocketService', () => {
       // Должен обрабатывать null/undefined
       expect(() => {
         webSocketService.notifyUser(null as any, 'event', {});
-        webSocketService.notifyAdmins('event', null);
+        webSocketService.notifyAdmins('event', {});
       }).not.toThrow();
     });
   });

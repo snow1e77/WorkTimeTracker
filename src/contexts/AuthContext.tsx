@@ -4,20 +4,12 @@ import { AuthService } from '../services/AuthService';
 import { ApiDatabaseService } from '../services/ApiDatabaseService';
 
 interface AuthContextType extends AuthState {
-  // Новые методы для SMS-аутентификации
-  sendLoginCode: (phoneNumber: string) => Promise<{ success: boolean; userExists: boolean; error?: string }>;
-  verifyLoginCode: (phoneNumber: string, code: string) => Promise<{ success: boolean; user?: AuthUser; error?: string; needsProfile?: boolean }>;
-  createUserProfile: (phoneNumber: string, name: string, smsCode: string) => Promise<{ success: boolean; user?: AuthUser; error?: string }>;
+  // Основные методы аутентификации
+  login: (phoneNumber: string) => Promise<{ success: boolean; user?: AuthUser; error?: string; needsContact?: boolean }>;
+  register: (phoneNumber: string, name: string) => Promise<{ success: boolean; user?: AuthUser; error?: string }>;
   
   // Утилитарные методы
   refreshToken: () => Promise<{ success: boolean; error?: string }>;
-  
-  // Устаревшие методы - оставляем для совместимости
-  /** @deprecated Используйте sendLoginCode + verifyLoginCode */
-  login: (phoneNumber: string, password: string) => Promise<boolean>;
-  /** @deprecated Используйте sendLoginCode + createUserProfile */
-  register: (data: { name: string; phoneNumber: string; password: string }) => Promise<boolean>;
-  
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
 }
@@ -78,21 +70,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Новые методы для SMS-аутентификации
-  const sendLoginCode = async (phoneNumber: string) => {
+  // Основные методы аутентификации
+  const login = async (phoneNumber: string) => {
     try {
-      return await authService.sendLoginCode(phoneNumber);
-    } catch (error) {
-      return { success: false, userExists: false, error: 'Failed to send code' };
-    }
-  };
-
-  const verifyLoginCode = async (phoneNumber: string, code: string) => {
-    try {
-      const result = await authService.verifyLoginCode(phoneNumber, code);
+      const result = await authService.login(phoneNumber);
       
       if (result.success && result.user) {
-        // Пользователь вошел в систему
         setAuthState({
           isAuthenticated: true,
           user: result.user,
@@ -102,16 +85,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       return result;
     } catch (error) {
-      return { success: false, error: 'Failed to verify code' };
+      return { success: false, error: 'Ошибка входа в систему' };
     }
   };
 
-  const createUserProfile = async (phoneNumber: string, name: string, smsCode: string) => {
+  const register = async (phoneNumber: string, name: string) => {
     try {
-      const result = await authService.createUserProfile(phoneNumber, name, smsCode);
+      const result = await authService.register(phoneNumber, name);
       
       if (result.success && result.user) {
-        // Новый пользователь создан и вошел в систему
         setAuthState({
           isAuthenticated: true,
           user: result.user,
@@ -121,7 +103,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       return result;
     } catch (error) {
-      return { success: false, error: 'Failed to create profile' };
+      return { success: false, error: 'Ошибка регистрации' };
     }
   };
 
@@ -158,44 +140,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Устаревшие методы - оставляем для совместимости
-  const login = async (phoneNumber: string, password: string): Promise<boolean> => {
-    try {
-      const result = await authService.login({ phoneNumber, password });
-      
-      if (result.success && result.user) {
-        setAuthState({
-          isAuthenticated: true,
-          user: result.user,
-          isLoading: false,
-        });
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      return false;
-    }
-  };
 
-  const register = async (data: { name: string; phoneNumber: string; password: string }): Promise<boolean> => {
-    try {
-      const result = await authService.register(data);
-      
-      if (result.success && result.user) {
-        setAuthState({
-          isAuthenticated: true,
-          user: result.user,
-          isLoading: false,
-        });
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      return false;
-    }
-  };
 
   const logout = async (): Promise<void> => {
     try {
@@ -221,14 +166,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const value: AuthContextType = {
     ...authState,
-    // Новые методы
-    sendLoginCode,
-    verifyLoginCode,
-    createUserProfile,
-    refreshToken,
-    // Устаревшие методы
     login,
     register,
+    refreshToken,
     logout,
     checkAuthStatus,
   };

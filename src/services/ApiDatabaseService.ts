@@ -1,5 +1,5 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthUser, SMSVerification, ConstructionSite, WorkShift, UserSiteAssignment, Violation, Chat, ChatMessage, DailyTask, SyncDataResponse, SyncStatusResponse, SyncMetricsResponse, ValidationResponse, LocationCheckResponse, AssignmentStatsResponse, NotificationDeliveryReceipt, ViolationAlertData, AssignmentNotificationData, ShiftReminderData, BroadcastNotificationData, OvertimeAlertData, WorkReport, SyncPayload, SyncConflict, LocationEvent, WorkerLocation } from '../types';
+import { AuthUser, ConstructionSite, WorkShift, UserSiteAssignment, Violation, Chat, ChatMessage, DailyTask, SyncDataResponse, SyncStatusResponse, SyncMetricsResponse, ValidationResponse, LocationCheckResponse, AssignmentStatsResponse, NotificationDeliveryReceipt, ViolationAlertData, AssignmentNotificationData, ShiftReminderData, BroadcastNotificationData, OvertimeAlertData, WorkReport, SyncPayload, SyncConflict, LocationEvent, WorkerLocation } from '../types';
 import { notificationService } from './NotificationService';
 import { API_CONFIG, getApiUrl, getHealthUrl, ApiResponse } from '../config/api';
 import { apiClient } from './ApiClient';
@@ -125,24 +125,6 @@ export class ApiDatabaseService {
       throw error;
     }
   }
-
-  // SMS Verification methods
-  async saveSMSVerification(verification: SMSVerification): Promise<void> {
-    // SMS verification is handled on the server side
-    }
-
-  async getSMSVerification(phoneNumber: string, type: 'registration' | 'login'): Promise<SMSVerification | null> {
-    // SMS verification is handled on the server side
-    return null;
-  }
-
-  async markSMSVerificationAsUsed(verificationId: string): Promise<void> {
-    // SMS verification is handled on the server side
-    }
-
-  async cleanupExpiredVerifications(): Promise<void> {
-    // Cleanup is handled on the server side
-    }
 
   // Construction Sites methods
   async getConstructionSites(): Promise<ConstructionSite[]> {

@@ -51,10 +51,8 @@ JWT_REFRESH_SECRET=your_super_secret_refresh_key
 JWT_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 
-# SMS (Twilio)
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=your_twilio_phone_number
+# Authentication (Simple phone number login)
+# No SMS configuration needed
 
 # CORS
 CORS_ORIGINS=http://localhost:19006,http://localhost:3000,http://localhost:8081

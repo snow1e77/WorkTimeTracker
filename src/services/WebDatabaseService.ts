@@ -1,4 +1,4 @@
-﻿import { AuthUser, SMSVerification, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation, ConstructionSite, WorkReport, LocationEvent, Chat, ChatMessage } from '../types';
+﻿import { AuthUser, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation, ConstructionSite, WorkReport, LocationEvent, Chat, ChatMessage } from '../types';
 
 // Веб-версия DatabaseService для работы с localStorage
 export class WebDatabaseService {
@@ -131,23 +131,6 @@ export class WebDatabaseService {
     const passwords = JSON.parse(localStorage.getItem('worktime_passwords') || '{}');
     delete passwords[userId];
     localStorage.setItem('worktime_passwords', JSON.stringify(passwords));
-  }
-
-  // Методы для SMS верификации (заглушка для веб версии)
-  async saveSMSVerification(verification: SMSVerification): Promise<void> {
-    // В веб версии SMS не используется
-  }
-
-  async getSMSVerification(phoneNumber: string, type: 'registration' | 'login'): Promise<SMSVerification | null> {
-    return null;
-  }
-
-  async markSMSVerificationAsUsed(verificationId: string): Promise<void> {
-    // В веб версии SMS не используется
-  }
-
-  async cleanupExpiredVerifications(): Promise<void> {
-    // В веб версии SMS не используется
   }
 
   // Методы для строительных площадок (заглушка)

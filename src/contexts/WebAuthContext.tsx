@@ -6,7 +6,7 @@ interface WebAuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (phoneNumber: string, password: string) => Promise<void>;
+  login: (phoneNumber: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -41,10 +41,10 @@ export const WebAuthProvider: React.FC<WebAuthProviderProps> = ({ children }) =>
     }
   };
 
-  const login = async (phoneNumber: string, password: string) => {
+  const login = async (phoneNumber: string) => {
     try {
       setIsLoading(true);
-      const result = await authService.login(phoneNumber, password);
+      const result = await authService.login(phoneNumber);
       
       if (result.success && result.user) {
         setUser(result.user);

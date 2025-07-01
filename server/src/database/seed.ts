@@ -10,7 +10,7 @@ const seedDatabase = async (): Promise<void> => {
     await client.query('TRUNCATE TABLE work_shifts CASCADE');
     await client.query('TRUNCATE TABLE user_site_assignments CASCADE');
     await client.query('TRUNCATE TABLE violations CASCADE');
-    await client.query('TRUNCATE TABLE sms_verifications CASCADE');
+
     await client.query('TRUNCATE TABLE refresh_tokens CASCADE');
     await client.query('TRUNCATE TABLE sync_metadata CASCADE');
     await client.query('TRUNCATE TABLE construction_sites CASCADE');
@@ -120,18 +120,7 @@ const seedDatabase = async (): Promise<void> => {
       'low'
     ]);
     
-    // Создание SMS верификаций (для тестирования)
-    await client.query(`
-      INSERT INTO sms_verifications (id, phone_number, code, type, is_used, expires_at)
-      VALUES ($1, $2, $3, $4, $5, $6)
-    `, [
-      uuidv4(),
-      '+1234567893',
-      '123456',
-      'registration',
-      false,
-      new Date(now.getTime() + 10 * 60 * 1000) // истекает через 10 минут
-    ]);
+    // SMS верификации больше не используются
     
     // Вывод информации о созданных данных
     } catch (error) {

@@ -104,15 +104,6 @@ export class WebAuthService {
   }
 
   // Устаревшие методы для совместимости
-  async sendVerificationCode(phoneNumber: string): Promise<boolean> {
-    // В веб версии не используем SMS
-    return false;
-  }
-
-  async verifyCode(phoneNumber: string, code: string): Promise<boolean> {
-    // В веб версии не используем SMS
-    return false;
-  }
 
   async register(data: Record<string, unknown>): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
     // В веб версии регистрация не поддерживается

@@ -202,7 +202,6 @@ export const INTERNATIONAL_LOCALIZATION = {
     CONFIRM_PASSWORD: 'Confirm password',
     FORGOT_PASSWORD: 'Forgot password?',
     RESET_PASSWORD: 'Reset password',
-    VERIFY_PHONE: 'Verify phone',
     VERIFICATION_CODE: 'Verification code',
     SEND_CODE: 'Send code',
     RESEND_CODE: 'Resend code',

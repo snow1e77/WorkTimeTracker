@@ -1,9 +1,5 @@
 // Глобальная конфигурация приложения для международного использования
 import {
-  TWILIO_ACCOUNT_SID,
-  TWILIO_AUTH_TOKEN,
-  TWILIO_VERIFY_SID,
-  TWILIO_FROM_NUMBER,
   APP_NAME,
   VERSION,
   ENVIRONMENT
@@ -19,35 +15,6 @@ export const APP_CONFIG = {
   DEFAULT_LOCALE: 'en-US',
   DEFAULT_TIMEZONE: 'UTC',
   DEFAULT_CURRENCY: 'USD',
-  
-  // Twilio конфигурация для SMS
-  TWILIO_CONFIG: {
-    ACCOUNT_SID: TWILIO_ACCOUNT_SID || '',
-    AUTH_TOKEN: TWILIO_AUTH_TOKEN || '',
-    VERIFY_SID: TWILIO_VERIFY_SID || '',
-    FROM_NUMBER: TWILIO_FROM_NUMBER || '',
-    
-    // Настройки отправки SMS
-    SMS_CONFIG: {
-      MAX_RETRIES: 3,
-      TIMEOUT: 30000,
-      VERIFY_WEBHOOK: false, // Включите для production
-    },
-    
-    // Поддерживаемые регионы (нужно включить в Twilio Console)
-    SUPPORTED_REGIONS: [
-      'US', // United States (включено по умолчанию)
-      'CA', // Canada
-      'RU', // Russia - включите в Twilio Console → Messaging → Geo Permissions
-      'SE', // Sweden - включите в Twilio Console → Messaging → Geo Permissions
-      'NO', // Norway - включите в Twilio Console → Messaging → Geo Permissions
-      'EE', // Estonia - включите в Twilio Console → Messaging → Geo Permissions
-      'FI', // Finland - включите в Twilio Console → Messaging → Geo Permissions
-      // Добавьте другие регионы после включения в Twilio Console:
-      // 'GB', // United Kingdom
-      // 'DE', // Germany
-    ]
-  },
   
   // Международные телефонные номера
   PHONE_CONFIG: {
@@ -147,19 +114,7 @@ export const APP_CONFIG = {
   API_CONFIG: {
     BASE_URL: 'https://api.worktimetracker.global',
     TIMEOUT: 30000,
-    RETRY_ATTEMPTS: 3,
-    
-    // Международные SMS провайдеры
-    SMS_PROVIDERS: {
-      PRIMARY: 'twilio_international',
-      FALLBACK: 'aws_sns_international',
-      REGIONS: {
-        'US': 'twilio_us',
-        'EU': 'twilio_eu',
-        'ASIA': 'twilio_asia',
-        'GLOBAL': 'twilio_international'
-      }
-    }
+    RETRY_ATTEMPTS: 3
   },
   
   // Локализация и интернационализация
@@ -198,34 +153,34 @@ export const APP_CONFIG = {
       'EUROPE': ['GB', 'DE', 'FR', 'ES', 'IT', 'SE', 'NO', 'FI', 'DK', 'NL', 'BE', 'CH', 'AT', 'PL', 'CZ'],
       'ASIA_PACIFIC': ['CN', 'JP', 'KR', 'AU', 'IN', 'SG', 'HK', 'TW'],
       'LATIN_AMERICA': ['BR', 'AR', 'CL', 'CO', 'PE'],
-      'MIDDLE_EAST_AFRICA': ['AE', 'SA', 'ZA', 'EG', 'IL'],
-      'EASTERN_EUROPE': ['RU', 'UA', 'BY', 'KZ'],
+      'AFRICA': ['ZA', 'NG', 'EG', 'KE'],
+      'MIDDLE_EAST': ['AE', 'SA', 'IL', 'TR']
     }
   }
 };
 
-// Функция для получения конфигурации по ключу
+// Utility functions
 export const getConfig = (key: string): unknown => {
   const keys = key.split('.');
-  let value: unknown = APP_CONFIG;
+  let current: unknown = APP_CONFIG;
   
   for (const k of keys) {
-    if (value && typeof value === 'object' && k in (value as Record<string, unknown>)) {
-      value = (value as Record<string, unknown>)[k];
+    if (current && typeof current === 'object' && k in current) {
+      current = (current as Record<string, unknown>)[k];
     } else {
       return undefined;
     }
   }
   
-  return value;
+  return current;
 };
 
-// Функция для проверки включенной функции
 export const isFeatureEnabled = (feature: string): boolean => {
-  return getConfig(`FEATURES.${feature}`) === true;
+  const featureConfig = getConfig(feature);
+  return Boolean(featureConfig);
 };
 
-// Функция для получения URL-ов
 export const getApiUrl = (endpoint: string = ''): string => {
-  return `${APP_CONFIG.API_CONFIG.BASE_URL}${endpoint}`;
+  const baseUrl = getConfig('API_CONFIG.BASE_URL') as string;
+  return `${baseUrl}${endpoint}`;
 }; 

@@ -8,7 +8,7 @@ This document outlines the security measures implemented in the WorkTime Tracker
 
 ### 1. Authentication & Authorization
 
-- **SMS-based Authentication**: Secure phone number verification
+- **Phone-based Authentication**: Simple phone number login
 - **JWT Tokens**: Short-lived access tokens (2h) with refresh tokens (7d)
 - **bcrypt Password Hashing**: 12 rounds for maximum security
 - **Role-based Access Control**: Worker and Admin roles

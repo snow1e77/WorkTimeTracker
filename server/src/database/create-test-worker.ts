@@ -53,15 +53,8 @@ const createTestWorker = async (): Promise<void> => {
       [preRegId, testPhoneNumber, testWorkerName, 'worker', adminId, false]
     );
 
-    // Добавляем SMS код для входа (в dev режиме используется код 123456)
-    const smsVerificationId = uuidv4();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // действителен 24 часа
-
-    await client.query(
-      `INSERT INTO sms_verifications (id, phone_number, code, type, is_used, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [smsVerificationId, testPhoneNumber, '123456', 'login', false, expiresAt]
-    );
+          // SMS верификации больше не используются
+      console.log('SMS верификации отключены - используется простой вход по номеру телефона');
 
     console.log('✅ Тестовый аккаунт рабочего успешно создан!');
     console.log('');
