@@ -18,94 +18,65 @@ export default function LoginScreen() {
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const authService = AuthService.getInstance();
 
-  const [step, setStep] = useState<'phone' | 'code' | 'profile'>('phone');
+  const [step, setStep] = useState<'phone' | 'register'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>('US');
-  const [smsCode, setSmsCode] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [userExists, setUserExists] = useState(false);
   const [error, setError] = useState('');
+  const [needsRegistration, setNeedsRegistration] = useState(false);
 
   const validatePhoneNumber = () => {
     if (!isValidInternationalPhoneNumber(phoneNumber, selectedCountry)) {
-      setError('Enter a valid phone number');
+      setError('Введите корректный номер телефона');
       return false;
     }
     setError('');
     return true;
   };
 
-  const handleSendCode = async () => {
+  const handleLogin = async () => {
     if (!validatePhoneNumber()) return;
 
     setLoading(true);
     setError('');
     try {
       const cleanPhone = getCleanInternationalPhoneNumber(phoneNumber, selectedCountry);
-      console.log('Sending SMS code to:', cleanPhone);
+      console.log('Попытка входа:', cleanPhone);
       
-      const result = await authService.sendLoginCode(cleanPhone);
-      console.log('SMS send result:', result);
+      const result = await authService.login(cleanPhone);
+      console.log('Результат входа:', result);
 
-      if (result.success) {
-        setUserExists(result.userExists);
-        setStep('code');
+      if (result.success && result.user) {
+        // Успешный вход
+        navigation.navigate('Home');
+      } else if (result.needsContact) {
+        // Пользователь не найден - нужно обратиться к бригадиру
+        setError(result.error || 'Ваш номер телефона не найден в системе. Обратитесь к прорабу или бригадиру для добавления в базу данных.');
+      } else if (result.error?.includes('предварительно зарегистрированы')) {
+        // Нужно создать профиль
+        setNeedsRegistration(true);
+        setStep('register');
       } else {
-        if (result.needsContact) {
-          // Show special message about contacting management
-          setError(result.error || 'Contact your foreman or supervisor to be added to the database');
-        } else {
-          setError(result.error || 'Failed to send code');
-        }
+        setError(result.error || 'Ошибка входа в систему');
       }
     } catch (error) {
-      console.log('SMS send error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred while sending code';
+      console.log('Ошибка входа:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при входе';
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerifyCode = async () => {
-    if (!smsCode || smsCode.length !== 6) {
-      setError('Enter the 6-digit code from SMS');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    try {
-      const cleanPhone = getCleanInternationalPhoneNumber(phoneNumber, selectedCountry);
-      const result = await authService.verifyLoginCode(cleanPhone, smsCode);
-
-      if (result.success) {
-        if (result.user) {
-          // User existed and logged in
-          navigation.navigate('Home');
-        } else if (result.needsProfile) {
-          // New user - need to create profile
-          setStep('profile');
-        }
-      } else {
-        setError(result.error || 'Invalid code');
-      }
-    } catch (error) {
-      setError('An error occurred while verifying code');
-      } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateProfile = async () => {
+  const handleRegister = async () => {
     if (!name.trim()) {
-      setError('Please enter your full name');
+      setError('Пожалуйста, введите ваше полное имя');
       return;
     }
 
     if (name.trim().length < 2) {
-      setError('Name must be at least 2 characters long');
+      setError('Имя должно содержать минимум 2 символа');
       return;
     }
 
@@ -113,35 +84,35 @@ export default function LoginScreen() {
     setError('');
     try {
       const cleanPhone = getCleanInternationalPhoneNumber(phoneNumber, selectedCountry);
-      const result = await authService.createUserProfile(cleanPhone, name.trim(), smsCode);
+      const result = await authService.register(cleanPhone, name.trim());
 
       if (result.success && result.user) {
         navigation.navigate('Home');
       } else {
-        setError(result.error || 'Failed to create profile');
+        setError(result.error || 'Ошибка регистрации');
       }
     } catch (error) {
-      setError('An error occurred while creating profile');
-      } finally {
+      setError('Произошла ошибка при регистрации');
+    } finally {
       setLoading(false);
     }
   };
 
   const renderPhoneStep = () => (
     <>
-      <Title style={styles.title}>Sign In</Title>
+      <Title style={styles.title}>Вход в систему</Title>
       
       <Text style={styles.description}>
-        Enter your phone number to receive an SMS code
+        Введите номер телефона для входа в систему
       </Text>
 
       <InternationalPhoneInput
-        label="Phone number"
+        label="Номер телефона"
         value={phoneNumber}
         onChangeText={setPhoneNumber}
         onCountryChange={setSelectedCountry}
         selectedCountry={selectedCountry}
-        placeholder="Enter phone number"
+        placeholder="Введите номер телефона"
         autoFocus={true}
         autoDetectCountry={true}
         error={!!error}
@@ -155,27 +126,22 @@ export default function LoginScreen() {
 
       <Button
         mode="contained"
-        onPress={handleSendCode}
+        onPress={handleLogin}
         loading={loading}
         disabled={loading}
         style={styles.button}
       >
-        Get Code
+        Войти
       </Button>
     </>
   );
 
-  const renderCodeStep = () => (
+  const renderRegisterStep = () => (
     <>
-      <Title style={styles.title}>
-        {userExists ? 'Sign In' : 'Phone Verification'}
-      </Title>
+      <Title style={styles.title}>Создание профиля</Title>
       
       <Text style={styles.description}>
-        {userExists 
-          ? 'Enter the SMS code to sign in to your account'
-          : 'Enter the SMS code to verify your phone number'
-        }
+        Вы предварительно зарегистрированы. Создайте свой профиль.
       </Text>
 
       <Text style={styles.phoneNumber}>
@@ -183,21 +149,16 @@ export default function LoginScreen() {
       </Text>
       
       <TextInput
-        label="SMS Code"
-        value={smsCode}
-        onChangeText={(text) => setSmsCode(text.replace(/\D/g, '').slice(0, 6))}
-        keyboardType="numeric"
+        label="Полное имя"
+        value={name}
+        onChangeText={setName}
         mode="outlined"
         style={styles.input}
-        placeholder="Enter SMS code"
-        maxLength={6}
-        textAlign="center"
+        placeholder="Введите ваше полное имя"
         autoFocus={true}
         error={!!error}
       />
-      <HelperText type="info" visible={!error}>
-        Enter the 6-digit code from SMS
-      </HelperText>
+
       {error ? (
         <HelperText type="error" visible={true}>
           {error}
@@ -206,61 +167,28 @@ export default function LoginScreen() {
 
       <Button
         mode="contained"
-        onPress={handleVerifyCode}
+        onPress={handleRegister}
         loading={loading}
-        disabled={loading || smsCode.length !== 6}
+        disabled={loading}
         style={styles.button}
       >
-        {userExists ? 'Sign In' : 'Verify'}
+        Создать профиль
       </Button>
 
       <View style={styles.linkContainer}>
         <Button
           mode="text"
-          onPress={() => setStep('phone')}
+          onPress={() => {
+            setStep('phone');
+            setNeedsRegistration(false);
+            setName('');
+            setError('');
+          }}
           style={styles.link}
         >
-          Change phone number
+          Изменить номер телефона
         </Button>
       </View>
-    </>
-  );
-
-  const renderProfileStep = () => (
-    <>
-      <Title style={styles.title}>Create Profile</Title>
-      
-      <Text style={styles.description}>
-        Welcome! Enter your full name to complete registration
-      </Text>
-
-      <TextInput
-        label="Full name"
-        value={name}
-        onChangeText={setName}
-        mode="outlined"
-        style={styles.input}
-        placeholder="Enter your full name"
-        autoCapitalize="words"
-        autoFocus={true}
-        error={!!error}
-      />
-
-      {error ? (
-        <HelperText type="error" visible={true}>
-          {error}
-        </HelperText>
-      ) : null}
-
-      <Button
-        mode="contained"
-        onPress={handleCreateProfile}
-        loading={loading}
-        disabled={loading || !name.trim()}
-        style={styles.button}
-      >
-        Create Profile
-      </Button>
     </>
   );
 
@@ -269,9 +197,7 @@ export default function LoginScreen() {
       <View style={styles.container}>
         <Card style={styles.card}>
           <Card.Content>
-            {step === 'phone' ? renderPhoneStep() : null}
-            {step === 'code' ? renderCodeStep() : null}
-            {step === 'profile' ? renderProfileStep() : null}
+            {step === 'phone' ? renderPhoneStep() : renderRegisterStep()}
           </Card.Content>
         </Card>
       </View>
@@ -304,9 +230,9 @@ const styles = StyleSheet.create({
   },
   phoneNumber: {
     textAlign: 'center',
-    marginBottom: 16,
     fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 20,
     color: '#2196F3',
   },
   input: {
@@ -317,12 +243,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   linkContainer: {
-    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 16,
   },
   link: {
-    marginLeft: -8,
+    marginVertical: 5,
   },
 }); 

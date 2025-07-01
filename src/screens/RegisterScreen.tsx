@@ -18,18 +18,22 @@ export default function RegisterScreen() {
     <View style={styles.container}>
       <Card style={styles.card}>
         <Card.Content>
-          <Title style={styles.title}>Welcome!</Title>
+          <Title style={styles.title}>Добро пожаловать!</Title>
           
           <Text style={styles.description}>
-            Sign in and registration now happen on one screen using SMS codes.
+            Теперь регистрация пользователей происходит только через администраторов.
           </Text>
 
           <Text style={styles.steps}>
-            How it works:
-            {'\n'}• Enter your phone number
-            {'\n'}• Receive an SMS code  
-            {'\n'}• If you have an account - sign in
-            {'\n'}• If not - create your profile
+            Как это работает:
+            {'\n'}• Администратор или прораб добавляет ваш номер телефона в систему
+            {'\n'}• Вы получаете уведомление о добавлении
+            {'\n'}• Просто введите номер телефона для входа
+            {'\n'}• При первом входе создайте свой профиль
+          </Text>
+
+          <Text style={styles.contactInfo}>
+            Если у вас нет доступа к системе, обратитесь к вашему прорабу или бригадиру.
           </Text>
 
           <Button
@@ -37,7 +41,7 @@ export default function RegisterScreen() {
             onPress={handleGoToLogin}
             style={styles.button}
           >
-            Continue
+            Попробовать войти
           </Button>
         </Card.Content>
       </Card>
@@ -58,23 +62,32 @@ const styles = StyleSheet.create({
   },
   title: {
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
     fontSize: 24,
     fontWeight: 'bold',
   },
   description: {
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
     color: '#666',
     fontSize: 16,
-    lineHeight: 24,
   },
   steps: {
-    marginBottom: 32,
-    color: '#555',
-    fontSize: 16,
+    textAlign: 'left',
+    marginBottom: 20,
+    color: '#333',
+    fontSize: 15,
     lineHeight: 22,
-    paddingHorizontal: 16,
+  },
+  contactInfo: {
+    textAlign: 'center',
+    marginBottom: 30,
+    color: '#2196F3',
+    fontSize: 16,
+    fontWeight: '500',
+    backgroundColor: '#E3F2FD',
+    padding: 15,
+    borderRadius: 8,
   },
   button: {
     paddingVertical: 8,

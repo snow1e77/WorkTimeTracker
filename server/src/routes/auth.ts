@@ -1,7 +1,6 @@
 ﻿import express from 'express';
 import Joi from 'joi';
 import { AuthService } from '../services/AuthService';
-import { SMSService } from '../services/SMSService';
 import { authenticateToken, validateJSON } from '../middleware/auth';
 import { LoginRequest, RegisterRequest } from '../types';
 import logger from '../utils/logger';
@@ -19,20 +18,6 @@ const phoneSchema = Joi.object({
     })
 });
 
-const loginSchema = Joi.object({
-  phoneNumber: Joi.string()
-    .pattern(/^\+[1-9]\d{1,14}$/)
-    .required(),
-  code: Joi.string()
-    .length(6)
-    .pattern(/^\d+$/)
-    .required()
-    .messages({
-      'string.length': 'Verification code must be 6 digits',
-      'string.pattern.base': 'Verification code must contain only numbers'
-    })
-});
-
 const registerSchema = Joi.object({
   phoneNumber: Joi.string()
     .pattern(/^\+[1-9]\d{1,14}$/)
@@ -44,77 +29,17 @@ const registerSchema = Joi.object({
     .messages({
       'string.min': 'Name must be at least 2 characters long',
       'string.max': 'Name must not exceed 100 characters'
-    }),
-  code: Joi.string()
-    .length(6)
-    .pattern(/^\d+$/)
-    .required()
+    })
 });
 
 const refreshTokenSchema = Joi.object({
   refreshToken: Joi.string().required()
 });
 
-// POST /api/auth/send-code - Отправка SMS кода
-router.post('/send-code', validateJSON, async (req, res) => {
-  try {
-    const { error, value } = phoneSchema.validate(req.body);
-    
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        error: error.details[0]?.message || 'Validation error'
-      });
-    }
-
-    const { phoneNumber } = value;
-
-    // Импортируем PreRegistrationService
-    const { PreRegistrationService } = await import('../services/PreRegistrationService');
-    
-    // Проверяем, может ли пользователь войти в систему
-    const loginCheck = await PreRegistrationService.canUserLogin(phoneNumber);
-    
-    if (!loginCheck.canLogin) {
-      return res.status(403).json({
-        success: false,
-        error: 'Ваш номер телефона не найден в системе. Обратитесь к прорабу, бригадиру или начальнику для добавления в базу данных.',
-        needsContact: true
-      });
-    }
-
-    const result = await AuthService.sendLoginCode(phoneNumber);
-
-    if (result.success) {
-      return res.json({
-        success: true,
-        message: 'Verification code sent successfully',
-        data: {
-          phoneNumber,
-          expiresIn: 600, // 10 минут в секундах
-          isPreRegistered: loginCheck.isPreRegistered,
-          isActivated: loginCheck.isActivated
-        }
-      });
-    } else {
-      return res.status(400).json({
-        success: false,
-        error: result.error
-      });
-    }
-  } catch (error) {
-    logger.error('Send code error', { error });
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to send verification code'
-    });
-  }
-});
-
-// POST /api/auth/login - Вход в систему
+// POST /api/auth/login - Простой вход только по номеру телефона
 router.post('/login', validateJSON, async (req, res) => {
   try {
-    const { error, value } = loginSchema.validate(req.body);
+    const { error, value } = phoneSchema.validate(req.body);
     
     if (error) {
       return res.status(400).json({
@@ -126,32 +51,21 @@ router.post('/login', validateJSON, async (req, res) => {
     const loginData: LoginRequest = value;
     const result = await AuthService.login(loginData);
 
-    if (result.success) {
-      if (result.isNewUser) {
-        // Новый пользователь - нужна регистрация
-        return res.json({
-          success: true,
-          isNewUser: true,
-          message: 'Phone number verified. Please complete registration.',
-          data: {
-            phoneNumber: loginData.phoneNumber
-          }
-        });
-      } else {
-        // Существующий пользователь - возвращаем токены
-        return res.json({
-          success: true,
-          message: 'Login successful',
-          data: {
-            user: result.user,
-            tokens: result.tokens
-          }
-        });
-      }
+    if (result.success && result.user && result.tokens) {
+      return res.json({
+        success: true,
+        message: 'Login successful',
+        data: {
+          user: result.user,
+          tokens: result.tokens
+        }
+      });
     } else {
-      return res.status(400).json({
+      const statusCode = result.needsContact ? 403 : 400;
+      return res.status(statusCode).json({
         success: false,
-        error: result.error
+        error: result.error,
+        needsContact: result.needsContact || false
       });
     }
   } catch (error) {
@@ -163,7 +77,7 @@ router.post('/login', validateJSON, async (req, res) => {
   }
 });
 
-// POST /api/auth/register - Регистрация нового пользователя
+// POST /api/auth/register - Регистрация нового пользователя (только для предварительно зарегистрированных)
 router.post('/register', validateJSON, async (req, res) => {
   try {
     const { error, value } = registerSchema.validate(req.body);
@@ -202,7 +116,7 @@ router.post('/register', validateJSON, async (req, res) => {
   }
 });
 
-// POST /api/auth/refresh - Обновление токена доступа
+// POST /api/auth/refresh - Обновление токена
 router.post('/refresh', validateJSON, async (req, res) => {
   try {
     const { error, value } = refreshTokenSchema.validate(req.body);
@@ -221,9 +135,7 @@ router.post('/refresh', validateJSON, async (req, res) => {
       return res.json({
         success: true,
         message: 'Token refreshed successfully',
-        data: {
-          tokens: result.tokens
-        }
+        data: result.tokens
       });
     } else {
       return res.status(401).json({
@@ -232,6 +144,7 @@ router.post('/refresh', validateJSON, async (req, res) => {
       });
     }
   } catch (error) {
+    logger.error('Token refresh error', { error });
     return res.status(500).json({
       success: false,
       error: 'Token refresh failed'
@@ -239,26 +152,26 @@ router.post('/refresh', validateJSON, async (req, res) => {
   }
 });
 
-// POST /api/auth/logout - Выход из системы
+// POST /api/auth/logout - Выход
 router.post('/logout', validateJSON, async (req, res) => {
   try {
-    const { error, value } = refreshTokenSchema.validate(req.body);
-    
-    if (error) {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
       return res.status(400).json({
         success: false,
-        error: error.details[0]?.message || 'Validation error'
+        error: 'Refresh token is required'
       });
     }
 
-    const { refreshToken } = value;
-    const result = await AuthService.logout(refreshToken);
+    await AuthService.logout(refreshToken);
 
     return res.json({
       success: true,
       message: 'Logout successful'
     });
   } catch (error) {
+    logger.error('Logout error', { error });
     return res.status(500).json({
       success: false,
       error: 'Logout failed'
@@ -266,59 +179,20 @@ router.post('/logout', validateJSON, async (req, res) => {
   }
 });
 
-// GET /api/auth/me - Получение информации о текущем пользователе
-router.get('/me', authenticateToken, (req, res) => {
+// GET /api/auth/me - Получение текущего пользователя
+router.get('/me', authenticateToken, async (req, res) => {
   try {
-    res.json({
+    return res.json({
       success: true,
       data: {
         user: req.user
       }
     });
-      } catch (error) {
-      logger.error('Get user info error', { error });
-      res.status(500).json({
+  } catch (error) {
+    logger.error('Get current user error', { error });
+    return res.status(500).json({
       success: false,
-      error: 'Failed to get user information'
-    });
-  }
-});
-
-// GET /api/auth/verify-token - Проверка валидности токена
-router.get('/verify-token', authenticateToken, (req, res) => {
-  res.json({
-    success: true,
-    message: 'Token is valid',
-    data: {
-      userId: req.jwt?.userId,
-      role: req.jwt?.role,
-      expiresAt: req.jwt?.exp ? new Date(req.jwt.exp * 1000) : null
-    }
-  });
-});
-
-// GET /api/auth/status - Получение статуса сервисов аутентификации
-router.get('/status', (req, res) => {
-  try {
-    const smsStatus = SMSService.getStatus();
-    
-    res.json({
-      success: true,
-      data: {
-        environment: process.env.NODE_ENV || 'development',
-        features: {
-          smsVerification: smsStatus.configured,
-          jwtAuth: true,
-          refreshTokens: true
-        },
-        sms: smsStatus
-      }
-    });
-      } catch (error) {
-      logger.error('Status check error', { error });
-      res.status(500).json({
-      success: false,
-      error: 'Failed to get status'
+      error: 'Failed to get user info'
     });
   }
 });

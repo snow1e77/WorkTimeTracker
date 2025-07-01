@@ -4,15 +4,14 @@ import { query } from '../config/database';
 import { User, UserWithPassword, UserRow } from '../types';
 
 export class UserService {
-  // Создание нового пользователя
+  // Создание нового пользователя (без пароля)
   static async createUser(userData: {
     phoneNumber: string;
     name: string;
-    password: string;
     role?: 'worker' | 'admin';
     companyId?: string;
   }): Promise<User> {
-    const { phoneNumber, name, password, role = 'worker', companyId } = userData;
+    const { phoneNumber, name, role = 'worker', companyId } = userData;
     
     // Проверяем, не существует ли уже пользователь с таким номером
     const existingUser = await this.getUserByPhoneNumber(phoneNumber);
@@ -21,13 +20,12 @@ export class UserService {
     }
 
     const userId = uuidv4();
-    const passwordHash = await bcrypt.hash(password, 10);
 
     const result = await query(
-      `INSERT INTO users (id, phone_number, name, role, company_id, password_hash, is_verified, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO users (id, phone_number, name, role, company_id, is_verified, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, phone_number, name, role, company_id, is_verified, is_active, created_at, updated_at`,
-      [userId, phoneNumber, name, role, companyId || null, passwordHash, true, true]
+      [userId, phoneNumber, name, role, companyId || null, true, true]
     );
 
     return this.mapRowToUser(result.rows[0]);
@@ -243,7 +241,7 @@ export class UserService {
   private static mapRowToUserWithPassword(row: UserRow): UserWithPassword {
     return {
       ...this.mapRowToUser(row),
-      passwordHash: row.password_hash,
+      passwordHash: undefined, // Пароли больше не используются
     };
   }
 } 

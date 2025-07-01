@@ -424,4 +424,28 @@ $$ language 'plpgsql';
 
 CREATE TRIGGER update_shift_hours 
     BEFORE INSERT OR UPDATE ON work_shifts 
-    FOR EACH ROW EXECUTE FUNCTION update_shift_total_hours(); 
+    FOR EACH ROW EXECUTE FUNCTION update_shift_total_hours();
+
+-- ===== МИГРАЦИЯ: Упрощение аутентификации =====
+-- Убираем SMS верификацию и пароли, оставляем только вход по номеру телефона
+
+-- Убираем таблицу SMS верификации
+DROP TABLE IF EXISTS sms_verifications;
+
+-- Убираем колонку password_hash из таблицы users  
+ALTER TABLE users DROP COLUMN IF EXISTS password_hash;
+
+-- Убираем индексы для SMS верификации
+DROP INDEX IF EXISTS idx_sms_phone;
+DROP INDEX IF EXISTS idx_sms_expires;
+DROP INDEX IF EXISTS idx_sms_used;
+
+-- Добавляем комментарии
+COMMENT ON TABLE users IS 'Пользователи системы. Вход только по номеру телефона без паролей.';
+COMMENT ON COLUMN users.phone_number IS 'Номер телефона пользователя - единственный способ входа в систему';
+
+-- Уведомляем о завершении миграции
+DO $$
+BEGIN
+    RAISE NOTICE 'МИГРАЦИЯ ЗАВЕРШЕНА: SMS верификация и пароли удалены. Теперь вход только по номеру телефона.';
+END $$; 

@@ -14,46 +14,11 @@ export interface AuthUser {
 
 export interface RegisterRequest {
   phoneNumber: string;
-  password: string;
   name: string;
-  verificationCode?: string;
 }
 
 export interface LoginRequest {
   phoneNumber: string;
-  password: string;
-}
-
-export interface ResetPasswordRequest {
-  phoneNumber: string;
-  newPassword: string;
-  verificationCode: string;
-}
-
-export interface SMSVerification {
-  id: string;
-  phoneNumber: string;
-  code: string;
-  type: 'registration' | 'login';
-  isUsed: boolean;
-  expiresAt: Date;
-  createdAt: Date;
-}
-
-// Новые типы для SMS-аутентификации
-export interface LoginCodeRequest {
-  phoneNumber: string;
-}
-
-export interface VerifyCodeRequest {
-  phoneNumber: string;
-  code: string;
-}
-
-export interface CreateProfileRequest {
-  phoneNumber: string;
-  name: string;
-  smsCode: string;
 }
 
 export interface AuthState {
@@ -452,8 +417,6 @@ export interface OvertimeAlertData {
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
-  VerifyPhone: { phoneNumber: string; type: 'registration' | 'password_reset' };
-  ResetPassword: undefined;
   Home: undefined;
   Profile: undefined;
   TimeTracking: undefined;

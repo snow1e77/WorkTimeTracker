@@ -1,4 +1,4 @@
-import { AuthUser, LoginRequest } from '../types';
+import { AuthUser } from '../types';
 import { WebDatabaseService } from './WebDatabaseService';
 import logger from '../utils/logger';
 
@@ -17,11 +17,6 @@ export class WebAuthService {
     return WebAuthService.instance;
   }
 
-  // Простая проверка пароля для веб версии (без хеширования для демонстрации)
-  private verifyPassword(password: string, storedPassword: string): boolean {
-    return password === storedPassword;
-  }
-
   // Сохранение токена аутентификации в localStorage
   private async saveAuthToken(userId: string): Promise<void> {
     localStorage.setItem('authToken', userId);
@@ -37,8 +32,8 @@ export class WebAuthService {
     localStorage.removeItem('authToken');
   }
 
-  // Простой логин для веб админ панели
-  async login(phoneNumber: string, password: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+  // Простой логин для веб админ панели - только по номеру телефона
+  async login(phoneNumber: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
     try {
       logger.auth('WebAuthService: Авторизация для пользователя', { phoneNumber });
       
@@ -49,32 +44,30 @@ export class WebAuthService {
       const user = await this.dbService.getUserByPhone(phoneNumber);
       
       if (!user) {
-        return { success: false, error: 'User not found' };
+        return { success: false, error: 'Пользователь не найден. Обратитесь к администратору для добавления в систему.' };
       }
 
-      // Проверяем пароль
-      const storedPassword = await this.dbService.getUserPassword(user.id);
-      
-      if (!storedPassword || !this.verifyPassword(password, storedPassword)) {
-        return { success: false, error: 'Invalid credentials' };
+      // Проверяем, что пользователь - админ
+      if (user.role !== 'admin') {
+        return { success: false, error: 'Доступ разрешен только администраторам' };
       }
 
       // Проверяем, активен ли пользователь
       if (!user.isActive) {
-        return { success: false, error: 'Account is deactivated' };
+        return { success: false, error: 'Аккаунт деактивирован' };
       }
 
       // Сохраняем токен
       await this.saveAuthToken(user.id);
       
-      logger.auth('Успешная авторизация', { userName: user.name, userId: user.id });
+      logger.auth('Успешная авторизация администратора', { userName: user.name, userId: user.id });
       return { success: true, user };
     } catch (error) {
       logger.error('Ошибка авторизации', { 
         error: error instanceof Error ? error.message : 'Unknown error',
         phoneNumber 
       });
-      return { success: false, error: 'Server error' };
+      return { success: false, error: 'Ошибка сервера' };
     }
   }
 
@@ -90,7 +83,7 @@ export class WebAuthService {
       await this.dbService.initDatabase();
       const user = await this.dbService.getUserById(token);
       
-      return user && user.isActive ? user : null;
+      return user && user.isActive && user.role === 'admin' ? user : null;
     } catch (error) {
       logger.error('Ошибка получения текущего пользователя', { 
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -102,6 +95,12 @@ export class WebAuthService {
   // Выход из системы
   async logout(): Promise<void> {
     await this.removeAuthToken();
+  }
+
+  // Проверка аутентификации
+  async isAuthenticated(): Promise<boolean> {
+    const user = await this.getCurrentUser();
+    return !!user;
   }
 
   // Устаревшие методы для совместимости

@@ -12,7 +12,7 @@ export interface User {
 }
 
 export interface UserWithPassword extends User {
-  passwordHash: string;
+  passwordHash?: string;
 }
 
 // Authentication types
@@ -27,17 +27,6 @@ export interface JWTPayload {
   role: 'worker' | 'admin';
   iat?: number;
   exp?: number;
-}
-
-// SMS Verification types
-export interface SMSVerification {
-  id: string;
-  phoneNumber: string;
-  code: string;
-  type: 'login' | 'registration' | 'password_reset';
-  isUsed: boolean;
-  expiresAt: Date;
-  createdAt: Date;
 }
 
 // Construction Site types
@@ -179,13 +168,11 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 // Request types for API endpoints
 export interface LoginRequest {
   phoneNumber: string;
-  code: string;
 }
 
 export interface RegisterRequest {
   phoneNumber: string;
   name: string;
-  code: string;
 }
 
 export interface CreateSiteRequest {
@@ -236,8 +223,7 @@ export interface UserRow {
   company_id: string | null;
   is_verified: boolean;
   is_active: boolean;
-  password_hash: string;
-  created_at: Date;
+    created_at: Date;
   updated_at: Date;
 }
 
