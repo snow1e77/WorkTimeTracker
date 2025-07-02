@@ -42,10 +42,9 @@ REDIS_PASSWORD=$redisPassword
 JWT_ACCESS_SECRET=$jwtAccessSecret
 JWT_REFRESH_SECRET=$jwtRefreshSecret
 
-# Twilio Configuration (замените на ваши данные)
-TWILIO_ACCOUNT_SID=AC1ca01ae7f52d19196a0f443a7003c534
-TWILIO_AUTH_TOKEN=f1d2b4e0817ab3895d09577798810078
-TWILIO_PHONE_NUMBER=+19496666705
+# App Store Links
+APP_STORE_URL=https://apps.apple.com/your-app
+PLAY_STORE_URL=https://play.google.com/store/apps/your-app
 
 # CORS Origins
 CORS_ORIGINS=https://$Domain,https://app.$Domain
@@ -80,10 +79,9 @@ JWT_REFRESH_SECRET=$jwtRefreshSecret
 JWT_EXPIRES_IN=7d
 JWT_REFRESH_EXPIRES_IN=30d
 
-# Twilio Configuration
-TWILIO_ACCOUNT_SID=AC1ca01ae7f52d19196a0f443a7003c534
-TWILIO_AUTH_TOKEN=f1d2b4e0817ab3895d09577798810078
-TWILIO_PHONE_NUMBER=+19496666705
+# App Store Links
+APP_STORE_URL=https://apps.apple.com/your-app
+PLAY_STORE_URL=https://play.google.com/store/apps/your-app
 
 # CORS Origins
 CORS_ORIGINS=https://$Domain
@@ -122,7 +120,7 @@ Write-Host "`n⚠️ ВАЖНО:" -ForegroundColor Red
 Write-Host "1. Сохраните эти секреты в безопасном месте" -ForegroundColor White
 Write-Host "2. НЕ делитесь ими ни с кем" -ForegroundColor White
 Write-Host "3. НЕ загружайте файлы .env в Git" -ForegroundColor White
-Write-Host "4. Обновите Twilio настройки на реальные данные" -ForegroundColor White
+Write-Host "4. Обновите ссылки на магазины приложений" -ForegroundColor White
 Write-Host "5. Замените домен $Domain на ваш реальный домен" -ForegroundColor White
 
 Write-Host "`n🚀 Следующие шаги:" -ForegroundColor Cyan

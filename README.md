@@ -152,7 +152,7 @@ npm run server:dev
 
 ### 📱 Данные для входа
 - **Номер телефона**: `+79999999999`
-- **Вход**: Только номер телефона (без SMS)
+- **Вход**: Только номер телефона
 
 ### 🚀 Создание тестового аккаунта
 
@@ -275,7 +275,7 @@ DB_PASSWORD=your_password
 JWT_SECRET=your_jwt_secret
 JWT_EXPIRES_IN=7d
 
-# Simple Authentication (no SMS needed)
+# Simple Authentication
 # Users login with phone number only
 
 # Порт сервера

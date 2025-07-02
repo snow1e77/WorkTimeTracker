@@ -54,7 +54,7 @@ export class PreRegistrationService {
 
     const preRegisteredUser = this.mapRowToPreRegisteredUser(result.rows[0]);
 
-    // Auto-mark app download as sent since we're not using SMS anymore
+    // Auto-mark app download as sent
     await query(
       `UPDATE pre_registered_users 
        SET app_download_sent = true, app_download_sent_at = CURRENT_TIMESTAMP 

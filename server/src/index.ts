@@ -386,7 +386,7 @@ const startServer = async () => {
       if (process.env.NODE_ENV !== 'production') {
         logger.debug('Available endpoints', {
           endpoints: [
-                          'POST /api/auth/login - Simple phone login (no SMS)',
+                          'POST /api/auth/login - Simple phone login',
             'POST /api/auth/register - Register new user',
             'POST /api/auth/refresh - Refresh access token',
             'POST /api/auth/logout - Logout user',

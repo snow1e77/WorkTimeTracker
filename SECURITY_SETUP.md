@@ -31,10 +31,9 @@ JWT_SECRET=your_generated_jwt_secret_here
 # Установите сильный пароль базы данных
 DB_PASSWORD=your_secure_database_password
 
-# Настройте Twilio для SMS (если используется)
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token
-TWILIO_PHONE_NUMBER=your_twilio_number
+# Настройте ссылки на магазины приложений
+APP_STORE_URL=https://apps.apple.com/your-app
+PLAY_STORE_URL=https://play.google.com/store/apps/your-app
 ```
 
 ### 4. Создание папки secrets (опционально)

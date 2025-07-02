@@ -630,12 +630,6 @@ router.delete('/pre-registered/:id', requireRole('admin'), async (req, res) => {
   });
 });
 
-// POST /api/users/resend-app-link - УСТАРЕЛ - SMS больше не используется
-router.post('/resend-app-link', requireRole('admin'), validateJSON, async (req, res) => {
-  return res.json({
-    success: true,
-    message: 'SMS функциональность отключена. Пользователи входят по номеру телефона без SMS кодов.'
-  });
-});
+
 
 export default router; 

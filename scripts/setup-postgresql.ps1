@@ -145,10 +145,9 @@ JWT_REFRESH_EXPIRES_IN=30d
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
 
-# Twilio Configuration (опционально)
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=your_twilio_phone_number
+# App Store Links (опционально)
+APP_STORE_URL=https://apps.apple.com/your-app
+PLAY_STORE_URL=https://play.google.com/store/apps/your-app
 
 # CORS Origins
 CORS_ORIGINS=http://localhost:19006,http://localhost:3000

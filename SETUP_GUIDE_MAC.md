@@ -238,10 +238,9 @@ NODE_ENV=development
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
 
-# Twilio Configuration (для SMS)
-TWILIO_ACCOUNT_SID=ваш_twilio_account_sid
-TWILIO_AUTH_TOKEN=ваш_twilio_auth_token
-TWILIO_PHONE_NUMBER=ваш_twilio_номер
+# APP STORE LINKS (for information only)
+APP_STORE_URL=https://apps.apple.com/your-app
+PLAY_STORE_URL=https://play.google.com/store/apps/your-app
 
 # CORS Origins
 CORS_ORIGINS=http://localhost:19006,http://localhost:3000

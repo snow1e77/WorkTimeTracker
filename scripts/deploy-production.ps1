@@ -48,10 +48,9 @@ REDIS_PASSWORD=CHANGE_THIS_REDIS_PASSWORD
 JWT_ACCESS_SECRET=CHANGE_THIS_TO_STRONG_SECRET_256_BITS_MINIMUM
 JWT_REFRESH_SECRET=CHANGE_THIS_TO_STRONG_REFRESH_SECRET_256_BITS_MINIMUM
 
-# Twilio Configuration
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=+1234567890
+# App Store Links
+APP_STORE_URL=https://apps.apple.com/your-app
+PLAY_STORE_URL=https://play.google.com/store/apps/your-app
 
 # CORS Origins
 CORS_ORIGINS=https://$Domain,https://app.$Domain

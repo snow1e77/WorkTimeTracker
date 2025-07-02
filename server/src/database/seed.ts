@@ -120,7 +120,7 @@ const seedDatabase = async (): Promise<void> => {
       'low'
     ]);
     
-    // SMS верификации больше не используются
+
     
     console.log('');
     console.log('✅ База данных успешно заполнена тестовыми данными!');
