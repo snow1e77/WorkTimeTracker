@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
+import { scrollViewConfig, scrollContentStyle } from '../config/scrollConfig';
 import { 
   Card, 
   Title, 
@@ -148,7 +149,11 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={[scrollContentStyle, styles.scrollContent]}
+      {...scrollViewConfig}
+    >
       {/* Status Message */}
       {statusMessage ? (
         <Card style={styles.statusCard}>
@@ -469,7 +474,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
     padding: 16,
+    paddingBottom: 40,
   },
   statusCard: {
     marginBottom: 16,

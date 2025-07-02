@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, FlatList } from 'react-native';
+import { View, StyleSheet, FlatList } from 'react-native';
 import { 
   Card, 
   Title, 
@@ -178,69 +178,8 @@ export default function HistoryScreen() {
 
   const stats = calculateStats();
 
-  const renderShiftItem = ({ item }: { item: WorkShift }) => (
-    <Card style={styles.shiftCard}>
-      <Card.Content>
-        <View style={styles.shiftHeader}>
-          <Text style={styles.shiftDate}>
-            {item.startTime.toLocaleDateString('en-US', { 
-              weekday: 'short', 
-              day: 'numeric', 
-              month: 'short' 
-            })}
-          </Text>
-          <Chip 
-            style={[styles.statusChip, { backgroundColor: getStatusColor(item.status) }]}
-            textStyle={{ color: 'white', fontSize: 12 }}
-          >
-            {getStatusText(item.status)}
-          </Chip>
-        </View>
-
-        <View style={styles.timeRow}>
-          <View style={styles.timeInfo}>
-            <Text style={styles.timeText}>
-              {item.startTime.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}
-            </Text>
-          </View>
-          
-          <Text style={styles.timeSeparator}>—</Text>
-          
-          <View style={styles.timeInfo}>
-            <Text style={styles.timeText}>
-              {item.endTime?.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              }) || '—'}
-            </Text>
-          </View>
-        </View>
-
-        {item.totalMinutes ? (
-          <View style={styles.durationRow}>
-            <Text style={styles.durationText}>
-              Worked: {formatDuration(item.totalMinutes)}
-            </Text>
-            {!item.adminConfirmed ? (
-              <Chip icon="clock-alert" mode="outlined" style={styles.pendingChip}>
-                Pending approval
-              </Chip>
-            ) : null}
-          </View>
-        ) : null}
-
-        {item.notes ? (
-          <Paragraph style={styles.notes}>{item.notes}</Paragraph>
-        ) : null}
-      </Card.Content>
-    </Card>
-  );
-
-  return (
-    <View style={styles.container}>
+  const renderListHeader = () => (
+    <View>
       {/* Statistics */}
       <Card style={styles.statsCard}>
         <Card.Content>
@@ -328,32 +267,100 @@ export default function HistoryScreen() {
         </Card.Content>
       </Card>
 
-      {/* Shift List */}
-      <View style={styles.shiftsContainer}>
-        <View style={styles.shiftsHeader}>
-          <Title style={styles.shiftsTitle}>Shift History</Title>
-          <Text style={styles.shiftsCount}>
-            {shifts.length} shift{shifts.length !== 1 ? 's' : ''} found
+      {/* Shift List Header */}
+      <View style={styles.shiftsHeader}>
+        <Title style={styles.shiftsTitle}>Shift History</Title>
+        <Text style={styles.shiftsCount}>
+          {shifts.length} shift{shifts.length !== 1 ? 's' : ''} found
+        </Text>
+      </View>
+    </View>
+  );
+
+  const renderShiftItem = ({ item }: { item: WorkShift }) => (
+    <Card style={styles.shiftCard}>
+      <Card.Content>
+        <View style={styles.shiftHeader}>
+          <Text style={styles.shiftDate}>
+            {item.startTime.toLocaleDateString('en-US', { 
+              weekday: 'short', 
+              day: 'numeric', 
+              month: 'short' 
+            })}
           </Text>
+          <Chip 
+            style={[styles.statusChip, { backgroundColor: getStatusColor(item.status) }]}
+            textStyle={{ color: 'white', fontSize: 12 }}
+          >
+            {getStatusText(item.status)}
+          </Chip>
         </View>
-        
-        {shifts.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No shifts found</Text>
-            <Text style={styles.emptySubtitle}>
-              Try adjusting your filters to see more results
+
+        <View style={styles.timeRow}>
+          <View style={styles.timeInfo}>
+            <Text style={styles.timeText}>
+              {item.startTime.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}
             </Text>
           </View>
-        ) : (
-          <FlatList
-            data={shifts}
-            renderItem={renderShiftItem}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-          />
-        )}
-      </View>
+          
+          <Text style={styles.timeSeparator}>—</Text>
+          
+          <View style={styles.timeInfo}>
+            <Text style={styles.timeText}>
+              {item.endTime?.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }) || '—'}
+            </Text>
+          </View>
+        </View>
+
+        {item.totalMinutes ? (
+          <View style={styles.durationRow}>
+            <Text style={styles.durationText}>
+              Worked: {formatDuration(item.totalMinutes)}
+            </Text>
+            {!item.adminConfirmed ? (
+              <Chip icon="clock-alert" mode="outlined" style={styles.pendingChip}>
+                Pending approval
+              </Chip>
+            ) : null}
+          </View>
+        ) : null}
+
+        {item.notes ? (
+          <Paragraph style={styles.notes}>{item.notes}</Paragraph>
+        ) : null}
+      </Card.Content>
+    </Card>
+  );
+
+  const renderEmptyList = () => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyTitle}>No shifts found</Text>
+      <Text style={styles.emptySubtitle}>
+        Try adjusting your filters to see more results
+      </Text>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={shifts}
+        renderItem={renderShiftItem}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={renderListHeader}
+        ListEmptyComponent={renderEmptyList}
+        showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        contentContainerStyle={styles.listContent}
+        bounces={true}
+        scrollEventThrottle={16}
+      />
     </View>
   );
 }
@@ -362,7 +369,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  listContent: {
     padding: 16,
+    paddingBottom: 40,
   },
   statsCard: {
     marginBottom: 16,
@@ -395,9 +405,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  shiftsContainer: {
-    flex: 1,
   },
   shiftsHeader: {
     flexDirection: 'row',

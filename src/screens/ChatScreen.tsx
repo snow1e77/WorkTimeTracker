@@ -27,6 +27,7 @@ import { Chat, ChatMessage, DailyTask } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { ApiDatabaseService } from '../services/ApiDatabaseService';
+import { flatListConfig } from '../config/scrollConfig';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -326,6 +327,11 @@ export default function ChatScreen() {
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        {...flatListConfig}
+        inverted={false}
+        maintainVisibleContentPosition={{
+          minIndexForVisible: 0,
+        }}
       />
 
       <Divider />
