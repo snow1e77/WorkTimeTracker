@@ -15,7 +15,6 @@ export const API_CONFIG = {
   // Endpoints
   ENDPOINTS: {
     AUTH: {
-      SEND_CODE: '/auth/send-code',
       LOGIN: '/auth/login',
       REGISTER: '/auth/register',
       REFRESH: '/auth/refresh',

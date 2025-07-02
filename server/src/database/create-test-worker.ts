@@ -2,10 +2,24 @@ import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../config/database';
 
 const createTestWorker = async (): Promise<void> => {
+  console.log('🔧 Создание тестового аккаунта рабочего...');
+  
+  // Проверяем подключение к базе данных
+  try {
+    console.log('📡 Проверяем подключение к базе данных...');
+    const testClient = await pool.connect();
+    await testClient.query('SELECT NOW()');
+    testClient.release();
+    console.log('✅ Подключение к базе данных установлено');
+  } catch (dbError) {
+    console.error('❌ Ошибка подключения к базе данных:', dbError);
+    console.log('💡 Убедитесь что Docker контейнеры запущены: docker-compose up -d');
+    throw new Error('Нет подключения к базе данных');
+  }
+  
   const client = await pool.connect();
   
   try {
-    console.log('🔧 Создание тестового аккаунта рабочего...');
 
     // Номер телефона для тестового рабочего
     const testPhoneNumber = '+79999999999';

@@ -32,7 +32,7 @@ interface CountryItem {
   flag?: string;
 }
 
-// Расширенный список стран с флагами (эмодзи)
+// Extended list of countries with flags (emojis)
 const COUNTRIES_WITH_FLAGS: CountryItem[] = [
   { code: 'US', name: 'United States', callingCode: '+1', flag: '🇺🇸' },
   { code: 'CA', name: 'Canada', callingCode: '+1', flag: '🇨🇦' },
@@ -102,17 +102,17 @@ export default function InternationalPhoneInput({
   const [isFocused, setIsFocused] = useState(false);
   const [isDetectingCountry, setIsDetectingCountry] = useState(false);
 
-  // Фильтрация стран по поисковому запросу
+  // Filter countries by search query
   const filteredCountries = COUNTRIES_WITH_FLAGS.filter(country =>
     country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     country.callingCode.includes(searchQuery) ||
     country.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Получение текущей страны
+  // Get current country data
   const currentCountryData = COUNTRIES_WITH_FLAGS.find(c => c.code === currentCountry);
 
-  // Автоопределение страны при загрузке компонента
+  // Auto-detect country on component load
   useEffect(() => {
     if (autoDetectCountry && !isDetectingCountry) {
       setIsDetectingCountry(true);
@@ -130,7 +130,7 @@ export default function InternationalPhoneInput({
   }, [autoDetectCountry, onCountryChange]);
 
   useEffect(() => {
-    // Форматирование номера при изменении
+    // Format number on change
     if (value !== formattedValue) {
       const formatted = formatPhoneNumberAsYouType(value, currentCountry);
       setFormattedValue(formatted);
@@ -143,7 +143,7 @@ export default function InternationalPhoneInput({
     setSearchQuery('');
     onCountryChange?.(country.code);
     
-    // Переформатируем текущий номер для новой страны
+    // Reformat current number for new country
     if (value) {
       const newFormatted = formatPhoneNumberAsYouType(value, country.code);
       setFormattedValue(newFormatted);
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   phoneInputWithCountry: {
-    // Дополнительные стили для поля с селектором страны
+    // Additional styles for input with country selector
   },
   countryPicker: {
     marginTop: 8,

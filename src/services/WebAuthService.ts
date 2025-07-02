@@ -110,8 +110,5 @@ export class WebAuthService {
     return { success: false, error: 'Registration not supported in web version' };
   }
 
-  async resetPassword(data: Record<string, unknown>): Promise<{ success: boolean; error?: string }> {
-    // В веб версии сброс пароля не поддерживается
-    return { success: false, error: 'Password reset not supported in web version' };
-  }
+
 } 

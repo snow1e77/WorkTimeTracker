@@ -202,9 +202,6 @@ export const INTERNATIONAL_LOCALIZATION = {
     CONFIRM_PASSWORD: 'Confirm password',
     FORGOT_PASSWORD: 'Forgot password?',
     RESET_PASSWORD: 'Reset password',
-    VERIFICATION_CODE: 'Verification code',
-    SEND_CODE: 'Send code',
-    RESEND_CODE: 'Resend code',
     FULL_NAME: 'Full name',
     EMAIL: 'Email'
   },
@@ -216,8 +213,7 @@ export const INTERNATIONAL_LOCALIZATION = {
     INVALID_PHONE: 'Invalid phone number format',
     PASSWORD_TOO_SHORT: 'Password too short',
     PASSWORDS_DO_NOT_MATCH: 'Passwords do not match',
-    NAME_TOO_SHORT: 'Name too short',
-    INVALID_CODE: 'Invalid verification code'
+    NAME_TOO_SHORT: 'Name too short'
   },
   
   // Regional settings

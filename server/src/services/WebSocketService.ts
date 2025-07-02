@@ -237,26 +237,38 @@ export class WebSocketService {
 
   // Отправка уведомления конкретному пользователю
   public notifyUser(userId: string, event: string, data: Record<string, unknown>): void {
-    this.io.to(`user_${userId}`).emit(event, {
-      ...data,
-      timestamp: new Date()
-    });
+    try {
+      this.io.to(`user_${userId}`).emit(event, {
+        ...data,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error(`Failed to notify user ${userId}:`, error);
+    }
   }
 
   // Отправка уведомления всем админам
   public notifyAdmins(event: string, data: Record<string, unknown>): void {
-    this.io.to('admins').emit(event, {
-      ...data,
-      timestamp: new Date()
-    });
+    try {
+      this.io.to('admins').emit(event, {
+        ...data,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('Failed to notify admins:', error);
+    }
   }
 
   // Широковещательное уведомление всем подключенным пользователям
   public broadcast(event: string, data: Record<string, unknown>): void {
-    this.io.emit(event, {
-      ...data,
-      timestamp: new Date()
-    });
+    try {
+      this.io.emit(event, {
+        ...data,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('Failed to broadcast message:', error);
+    }
   }
 
   // Получить количество подключенных пользователей

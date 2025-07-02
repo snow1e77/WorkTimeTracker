@@ -16,7 +16,6 @@ import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 // Authentication screens
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
-import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 
 // Main screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -97,11 +96,6 @@ const AppNavigator = () => {
               name="Register" 
               component={RegisterScreen} 
               options={{ title: 'Register', headerShown: false }}
-            />
-            <Stack.Screen 
-              name="ResetPassword" 
-              component={ResetPasswordScreen} 
-              options={{ title: 'Reset Password', headerShown: false }}
             />
           </>
         ) : (

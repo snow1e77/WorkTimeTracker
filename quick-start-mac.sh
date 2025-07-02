@@ -63,20 +63,30 @@ echo ""
 echo "[5/6] Создаем файл окружения..."
 if [ ! -f "server/.env" ]; then
     if [ -f "server/env.example" ]; then
-        echo "📝 Копируем env.example в .env..."
+        echo "📝 Создаем .env файл из env.example..."
         cp server/env.example server/.env
+        
+        # Исправляем настройки для Docker на macOS
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS version of sed
+            sed -i '' 's/^DB_HOST=.*/DB_HOST=localhost/' server/.env
+            sed -i '' 's/^DB_PORT=.*/DB_PORT=5433/' server/.env
+            sed -i '' 's/^DB_PASSWORD=.*/DB_PASSWORD=postgres/' server/.env
+            sed -i '' 's/your_super_secret_jwt_key_here_minimum_32_characters_please_change_this/development_jwt_secret_key_change_in_production_32_chars_minimum/' server/.env
+            sed -i '' 's/^LOG_LEVEL=.*/LOG_LEVEL=debug/' server/.env
+        fi
     else
         echo "📝 Создаем базовый .env файл..."
         cat > server/.env << EOF
 # Database Configuration (Docker)
 DB_HOST=localhost
-DB_PORT=5432
+DB_PORT=5433
 DB_NAME=worktime_tracker
 DB_USER=postgres
 DB_PASSWORD=postgres
 
 # JWT Configuration
-JWT_SECRET=super-secret-jwt-key-for-development-only-change-in-production
+JWT_SECRET=development_jwt_secret_key_change_in_production_32_chars_minimum
 JWT_EXPIRES_IN=7d
 JWT_REFRESH_EXPIRES_IN=30d
 
@@ -89,13 +99,18 @@ RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
 
 # CORS Origins
-CORS_ORIGINS=http://localhost:19006,http://localhost:3000
+CORS_ORIGINS=http://localhost:19006,http://localhost:3000,http://localhost:8081
 
 # Logging
-LOG_LEVEL=info
+LOG_LEVEL=debug
 LOG_FILE=logs/app.log
+
+# Security
+HELMET_CSP_ENABLED=false
+TRUST_PROXY=false
 EOF
     fi
+    echo "✅ Файл .env создан с правильными настройками для Docker"
 fi
 
 echo ""
@@ -117,8 +132,12 @@ fi
 echo "✅ Docker контейнеры запущены"
 
 echo ""
-echo "⏱️  Ждем запуска PostgreSQL (10 секунд)..."
-sleep 10
+echo "⏱️  Ждем запуска PostgreSQL (15 секунд)..."
+sleep 15
+
+echo ""
+echo "📊 Проверяем состояние контейнеров..."
+docker-compose ps
 
 echo ""
 echo "[7/7] Выполняем миграции базы данных..."

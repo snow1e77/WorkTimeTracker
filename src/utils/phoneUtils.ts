@@ -105,14 +105,14 @@ export const detectUserCountryByLocation = async (): Promise<CountryCode | null>
 };
 
 /**
- * Определяет страну пользователя по часовому поясу (fallback метод)
+ * Determines user's country by timezone (fallback method)
  */
 export const detectUserCountryByTimezone = (): CountryCode | null => {
   try {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    // Расширенное сопоставление часовых поясов со странами
+    // Extended mapping of timezones to countries
     const timezoneToCountry: Record<string, CountryCode> = {
-      // США
+      // USA
       'America/New_York': 'US',
       'America/Los_Angeles': 'US',
       'America/Chicago': 'US',
@@ -121,18 +121,18 @@ export const detectUserCountryByTimezone = (): CountryCode | null => {
       'America/Anchorage': 'US',
       'Pacific/Honolulu': 'US',
       
-      // Канада
+      // Canada
       'America/Toronto': 'CA',
       'America/Vancouver': 'CA',
       'America/Montreal': 'CA',
       'America/Winnipeg': 'CA',
       'America/Halifax': 'CA',
       
-      // Великобритания и Ирландия
+      // United Kingdom and Ireland
       'Europe/London': 'GB',
       'Europe/Dublin': 'GB',
       
-      // Западная Европа
+      // Western Europe
       'Europe/Berlin': 'DE',
       'Europe/Paris': 'FR',
       'Europe/Madrid': 'ES',
@@ -146,18 +146,18 @@ export const detectUserCountryByTimezone = (): CountryCode | null => {
       'Europe/Helsinki': 'FI',
       'Europe/Copenhagen': 'DK',
       
-      // Восточная Европа
+      // Eastern Europe
       'Europe/Warsaw': 'PL',
       'Europe/Prague': 'CZ',
       'Europe/Kiev': 'UA',
-      'Europe/Bucharest': 'RU', // Ближе к России по часовому поясу
+      'Europe/Bucharest': 'RU', // Closer to Russia by timezone
       
-      // Россия - все основные часовые пояса
+      // Russia - all main timezones
       'Europe/Moscow': 'RU',
       'Europe/Kaliningrad': 'RU',
       'Europe/Volgograd': 'RU',
       'Europe/Samara': 'RU',
-      'Asia/Yekaterinburg': 'RU',    // ← Это твой часовой пояс!
+      'Asia/Yekaterinburg': 'RU',    // ← This is your timezone!
       'Asia/Omsk': 'RU',
       'Asia/Novosibirsk': 'RU',
       'Asia/Krasnoyarsk': 'RU',
@@ -169,7 +169,7 @@ export const detectUserCountryByTimezone = (): CountryCode | null => {
       'Asia/Sakhalin': 'RU',
       'Asia/Chukotka': 'RU',
       
-      // Азия
+      // Asia
       'Asia/Shanghai': 'CN',
       'Asia/Beijing': 'CN',
       'Asia/Hong_Kong': 'HK',
@@ -185,23 +185,23 @@ export const detectUserCountryByTimezone = (): CountryCode | null => {
       'Asia/Ho_Chi_Minh': 'VN',
       'Asia/Taipei': 'TW',
       
-      // Ближний Восток
+      // Middle East
       'Asia/Dubai': 'AE',
       'Asia/Riyadh': 'SA',
       'Asia/Tel_Aviv': 'IL',
       'Europe/Istanbul': 'TR',
       
-      // Африка
+      // Africa
       'Africa/Cairo': 'EG',
       'Africa/Johannesburg': 'ZA',
       
-      // Океания
+      // Oceania
       'Australia/Sydney': 'AU',
       'Australia/Melbourne': 'AU',
       'Australia/Perth': 'AU',
       'Pacific/Auckland': 'NZ',
       
-      // Южная Америка
+      // South America
       'America/Sao_Paulo': 'BR',
       'America/Buenos_Aires': 'AR',
       'America/Santiago': 'CL',
@@ -214,13 +214,14 @@ export const detectUserCountryByTimezone = (): CountryCode | null => {
       return timezoneToCountry[timezone];
     }
 
-    // Дополнительная логика для российских часовых поясов
+    // Additional logic for Russian timezones
     if (timezone.includes('Asia/') && (timezone.includes('Russia') || timezone.includes('Yekaterinburg') || timezone.includes('Omsk') || timezone.includes('Novosibirsk'))) {
       return 'RU';
     }
-          return null;
-    } catch (error) {
-      return null;
+    
+    return null;
+  } catch (error) {
+    return null;
   }
 };
 
@@ -441,7 +442,7 @@ export const getExamplePhoneNumber = (countryCode?: CountryCode): string => {
 };
 
 /**
- * Популярные коды стран для быстрого доступа
+ * Popular country codes for quick access
  */
 export const POPULAR_COUNTRY_CODES: Array<{code: CountryCode, name: string, callingCode: string}> = [
   { code: 'US', name: 'United States', callingCode: '+1' },

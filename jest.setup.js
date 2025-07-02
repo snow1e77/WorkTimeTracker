@@ -65,7 +65,28 @@ jest.mock('react-native-paper', () => ({
   Modal: 'Modal',
   Provider: ({ children }) => children,
   DefaultTheme: {},
+  HelperText: 'HelperText',
 }));
+
+// Мокируем InternationalPhoneInput
+jest.mock('./src/components/InternationalPhoneInput', () => {
+  const React = require('react');
+  const { TextInput } = require('react-native');
+  
+  const MockInternationalPhoneInput = (props) => {
+    return React.createElement(TextInput, {
+      placeholder: props.placeholder,
+      value: props.value,
+      onChangeText: props.onChangeText,
+      testID: 'phone-input'
+    });
+  };
+  
+  return {
+    __esModule: true,
+    default: MockInternationalPhoneInput,
+  };
+});
 
 // Мокируем Maps
 jest.mock('react-native-maps', () => {

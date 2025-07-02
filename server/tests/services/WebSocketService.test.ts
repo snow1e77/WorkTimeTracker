@@ -1,6 +1,7 @@
 import { WebSocketService } from '../../src/services/WebSocketService';
-import { Server as SocketIOServer } from 'socket.io';
+import { Server as SocketIOServer, BroadcastOperator, DefaultEventsMap } from 'socket.io';
 import { createServer, Server as HTTPServer } from 'http';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 
 // Мокируем зависимости
 jest.mock('../../src/utils/logger');
@@ -34,10 +35,13 @@ describe('WebSocketService', () => {
 
   describe('notifyUser', () => {
     it('должен отправлять уведомление пользователю', () => {
-      const mockTo = jest.fn().mockReturnValue({
-        emit: jest.fn()
-      });
-      io.to = mockTo;
+      const mockEmit = jest.fn();
+      const mockBroadcastOperator = {
+        emit: mockEmit
+      } as unknown as BroadcastOperator<DefaultEventsMap, any>;
+      
+      const mockTo = jest.fn().mockReturnValue(mockBroadcastOperator);
+      io.to = mockTo as any;
 
       const userId = 'user-123';
       const event = 'notification';
@@ -46,7 +50,7 @@ describe('WebSocketService', () => {
       webSocketService.notifyUser(userId, event, data);
 
       expect(mockTo).toHaveBeenCalledWith(`user_${userId}`);
-      expect(mockTo().emit).toHaveBeenCalledWith(event, expect.objectContaining({
+      expect(mockEmit).toHaveBeenCalledWith(event, expect.objectContaining({
         message: 'Hello',
         timestamp: expect.any(Date)
       }));
@@ -55,10 +59,13 @@ describe('WebSocketService', () => {
 
   describe('notifyAdmins', () => {
     it('должен отправлять уведомление админам', () => {
-      const mockTo = jest.fn().mockReturnValue({
-        emit: jest.fn()
-      });
-      io.to = mockTo;
+      const mockEmit = jest.fn();
+      const mockBroadcastOperator = {
+        emit: mockEmit
+      } as unknown as BroadcastOperator<DefaultEventsMap, any>;
+      
+      const mockTo = jest.fn().mockReturnValue(mockBroadcastOperator);
+      io.to = mockTo as any;
 
       const event = 'admin-notification';
       const data = { message: 'Admin message' };
@@ -66,7 +73,7 @@ describe('WebSocketService', () => {
       webSocketService.notifyAdmins(event, data);
 
       expect(mockTo).toHaveBeenCalledWith('admins');
-      expect(mockTo().emit).toHaveBeenCalledWith(event, expect.objectContaining({
+      expect(mockEmit).toHaveBeenCalledWith(event, expect.objectContaining({
         message: 'Admin message',
         timestamp: expect.any(Date)
       }));
@@ -133,27 +140,29 @@ describe('WebSocketService', () => {
       };
 
       // Эмулируем событие подключения
-      io.on = jest.fn().mockReturnValue(io);
+      const mockOn = jest.fn().mockReturnValue(io);
+      io.on = mockOn as any;
       
       // Инициализируем обработчики событий вручную
       (webSocketService as any).setupEventHandlers();
       
       // Проверяем, что io.on был вызван
-      expect(io.on).toHaveBeenCalledWith('connection', expect.any(Function));
+      expect(mockOn).toHaveBeenCalledWith('connection', expect.any(Function));
       done();
     });
   });
 
   describe('broadcast', () => {
     it('должен отправлять широковещательное сообщение', () => {
-      io.emit = jest.fn();
+      const mockEmit = jest.fn().mockReturnValue(true);
+      io.emit = mockEmit as any;
 
       const event = 'global-announcement';
       const data = { message: 'Global message' };
 
       webSocketService.broadcast(event, data);
 
-      expect(io.emit).toHaveBeenCalledWith(event, expect.objectContaining({
+      expect(mockEmit).toHaveBeenCalledWith(event, expect.objectContaining({
         message: 'Global message',
         timestamp: expect.any(Date)
       }));
@@ -184,12 +193,15 @@ describe('WebSocketService', () => {
 
   describe('обработка ошибок', () => {
     it('должен обрабатывать ошибки при отправке уведомлений', () => {
-      const mockTo = jest.fn().mockReturnValue({
-        emit: jest.fn().mockImplementation(() => {
-          throw new Error('Socket error');
-        })
+      const mockEmit = jest.fn().mockImplementation(() => {
+        throw new Error('Socket error');
       });
-      io.to = mockTo;
+      const mockBroadcastOperator = {
+        emit: mockEmit
+      } as unknown as BroadcastOperator<DefaultEventsMap, any>;
+      
+      const mockTo = jest.fn().mockReturnValue(mockBroadcastOperator);
+      io.to = mockTo as any;
 
       // Должен не падать при ошибке
       expect(() => {
@@ -198,10 +210,13 @@ describe('WebSocketService', () => {
     });
 
     it('должен обрабатывать некорректные данные', () => {
-      const mockTo = jest.fn().mockReturnValue({
-        emit: jest.fn()
-      });
-      io.to = mockTo;
+      const mockEmit = jest.fn();
+      const mockBroadcastOperator = {
+        emit: mockEmit
+      } as unknown as BroadcastOperator<DefaultEventsMap, any>;
+      
+      const mockTo = jest.fn().mockReturnValue(mockBroadcastOperator);
+      io.to = mockTo as any;
 
       // Должен обрабатывать null/undefined
       expect(() => {
@@ -222,10 +237,13 @@ describe('WebSocketService', () => {
       expect(webSocketService.getConnectedUsersCount()).toBe(1);
       
       // Отправляем уведомление пользователю
-      const mockTo = jest.fn().mockReturnValue({
-        emit: jest.fn()
-      });
-      io.to = mockTo;
+      const mockEmit = jest.fn();
+      const mockBroadcastOperator = {
+        emit: mockEmit
+      } as unknown as BroadcastOperator<DefaultEventsMap, any>;
+      
+      const mockTo = jest.fn().mockReturnValue(mockBroadcastOperator);
+      io.to = mockTo as any;
       
       webSocketService.notifyUser('user1', 'message', { text: 'Hello' });
       

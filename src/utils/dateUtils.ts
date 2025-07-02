@@ -95,14 +95,14 @@ export const formatRelativeDate = (date: Date): string => {
 /**
  * Gets month name in English
  */
-export const getMonthName = (monthIndex: number): string => {
+export const getMonthName = (monthIndex: number): string | undefined => {
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
   
   if (monthIndex < 0 || monthIndex >= months.length) {
-    return 'Unknown';
+    return undefined;
   }
   
   return months[monthIndex]!;
@@ -111,13 +111,13 @@ export const getMonthName = (monthIndex: number): string => {
 /**
  * Gets day name in English
  */
-export const getDayName = (dayIndex: number): string => {
+export const getDayName = (dayIndex: number): string | undefined => {
   const days = [
     'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
   ];
   
   if (dayIndex < 0 || dayIndex >= days.length) {
-    return 'Unknown';
+    return undefined;
   }
   
   return days[dayIndex]!;

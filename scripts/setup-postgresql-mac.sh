@@ -120,10 +120,12 @@ if [ "$USE_DOCKER" = true ]; then
     echo "✅ PostgreSQL запущен в Docker!"
     echo "📝 Параметры подключения:"
     echo "   Host: localhost"
-    echo "   Port: 5432"
+    echo "   Port: 5433 (внешний порт Docker)"
     echo "   Database: worktime_tracker"
     echo "   User: postgres"
     echo "   Password: postgres"
+    echo ""
+    echo "💡 Для .env файла используйте порт 5433 (внешний порт Docker)"
 else
     echo "🔧 Настройка существующего PostgreSQL..."
     

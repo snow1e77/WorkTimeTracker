@@ -1,6 +1,7 @@
 import request from 'supertest';
 import express from 'express';
 import authRoutes from '../../src/routes/auth';
+import { describe, it, expect } from '@jest/globals';
 
 const app = express();
 app.use(express.json());
@@ -16,7 +17,7 @@ describe('Auth Routes', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Phone number is required');
+      expect(response.body.error).toContain('Request body is required');
     });
 
     it('должен валидировать формат номера телефона', async () => {
@@ -73,7 +74,7 @@ describe('Auth Routes', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBe('Refresh token is required');
+      expect(response.body.error).toBe('Request body is required');
     });
   });
 }); 

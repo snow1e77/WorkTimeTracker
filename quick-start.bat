@@ -15,10 +15,20 @@ set COMPOSE_DOCKER_CLI_BUILD=0
 echo.
 echo 🐳 Запускаем Docker контейнеры...
 docker-compose up -d
+if errorlevel 1 (
+    echo ❌ Ошибка запуска Docker контейнеров
+    echo 💡 Убедитесь что Docker Desktop запущен
+    pause
+    exit /b 1
+)
 
 echo.
-echo ⏳ Ожидание инициализации... (5 сек)
-timeout /t 5 /nobreak >nul
+echo ⏳ Ожидание инициализации... (10 сек)
+timeout /t 10 /nobreak >nul
+
+echo.
+echo 📊 Проверяем состояние контейнеров...
+docker-compose ps
 
 echo.
 echo 🚀 Запускаем Expo...

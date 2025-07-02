@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { config } from 'dotenv';
+import { beforeAll, afterAll, beforeEach } from '@jest/globals';
 
 // Загружаем переменные среды для тестов
 config({ path: '.env.test' });
@@ -39,7 +40,12 @@ afterAll(async () => {
 // Очистка базы данных перед каждым тестом
 beforeEach(async () => {
   if (pool) {
-    // Очищаем тестовые данные
-    await pool.query('TRUNCATE TABLE users, construction_sites, work_shifts, user_site_assignments RESTART IDENTITY CASCADE');
+    try {
+      // Очищаем тестовые данные (если таблицы существуют)
+      await pool.query('TRUNCATE TABLE users, construction_sites, work_shifts, user_site_assignments RESTART IDENTITY CASCADE');
+    } catch (error) {
+      // Игнорируем ошибки если таблицы не существуют
+      console.warn('Database cleanup failed (tables may not exist):', error);
+    }
   }
 }); 

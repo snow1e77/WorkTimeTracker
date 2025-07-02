@@ -11,6 +11,7 @@ import {
   isValidInternationalPhoneNumber 
 } from '../utils/phoneUtils';
 import InternationalPhoneInput from '../components/InternationalPhoneInput';
+import { t } from '../constants/localization';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -42,27 +43,27 @@ export default function LoginScreen() {
     setError('');
     try {
       const cleanPhone = getCleanInternationalPhoneNumber(phoneNumber, selectedCountry);
-      console.log('Попытка входа:', cleanPhone);
+      console.log('Login attempt:', cleanPhone);
       
       const result = await authService.login(cleanPhone);
-      console.log('Результат входа:', result);
+      console.log('Login result:', result);
 
       if (result.success && result.user) {
-        // Успешный вход
+        // Successful login
         navigation.navigate('Home');
       } else if (result.needsContact) {
-        // Пользователь не найден - нужно обратиться к бригадиру
-        setError(result.error || 'Ваш номер телефона не найден в системе. Обратитесь к прорабу или бригадиру для добавления в базу данных.');
+        // User not found - need to contact supervisor
+        setError(result.error || 'Your phone number is not found in the system. Please contact your supervisor or team leader to be added to the database.');
       } else if (result.error?.includes('предварительно зарегистрированы')) {
-        // Нужно создать профиль
+        // Need to create profile
         setNeedsRegistration(true);
         setStep('register');
       } else {
-        setError(result.error || 'Ошибка входа в систему');
+        setError(result.error || 'Login error');
       }
     } catch (error) {
-      console.log('Ошибка входа:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при входе';
+      console.log('Login error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred during login';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -71,12 +72,12 @@ export default function LoginScreen() {
 
   const handleRegister = async () => {
     if (!name.trim()) {
-      setError('Пожалуйста, введите ваше полное имя');
+      setError('Please enter your full name');
       return;
     }
 
     if (name.trim().length < 2) {
-      setError('Имя должно содержать минимум 2 символа');
+      setError('Name must contain at least 2 characters');
       return;
     }
 
@@ -89,10 +90,10 @@ export default function LoginScreen() {
       if (result.success && result.user) {
         navigation.navigate('Home');
       } else {
-        setError(result.error || 'Ошибка регистрации');
+        setError(result.error || 'Registration error');
       }
     } catch (error) {
-      setError('Произошла ошибка при регистрации');
+      setError('An error occurred during registration');
     } finally {
       setLoading(false);
     }
@@ -138,10 +139,10 @@ export default function LoginScreen() {
 
   const renderRegisterStep = () => (
     <>
-      <Title style={styles.title}>Создание профиля</Title>
+      <Title style={styles.title}>Create Profile</Title>
       
       <Text style={styles.description}>
-        Вы предварительно зарегистрированы. Создайте свой профиль.
+        You are pre-registered. Create your profile.
       </Text>
 
       <Text style={styles.phoneNumber}>
@@ -149,12 +150,12 @@ export default function LoginScreen() {
       </Text>
       
       <TextInput
-        label="Полное имя"
+        label="Full name"
         value={name}
         onChangeText={setName}
         mode="outlined"
         style={styles.input}
-        placeholder="Введите ваше полное имя"
+        placeholder="Enter your full name"
         autoFocus={true}
         error={!!error}
       />
@@ -172,7 +173,7 @@ export default function LoginScreen() {
         disabled={loading}
         style={styles.button}
       >
-        Создать профиль
+        Create Profile
       </Button>
 
       <View style={styles.linkContainer}>
@@ -186,7 +187,7 @@ export default function LoginScreen() {
           }}
           style={styles.link}
         >
-          Изменить номер телефона
+          Change phone number
         </Button>
       </View>
     </>

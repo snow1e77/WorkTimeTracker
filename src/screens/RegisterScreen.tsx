@@ -18,22 +18,22 @@ export default function RegisterScreen() {
     <View style={styles.container}>
       <Card style={styles.card}>
         <Card.Content>
-          <Title style={styles.title}>Добро пожаловать!</Title>
+          <Title style={styles.title}>Welcome!</Title>
           
           <Text style={styles.description}>
-            Теперь регистрация пользователей происходит только через администраторов.
+            User registration is now only done through administrators.
           </Text>
 
           <Text style={styles.steps}>
-            Как это работает:
-            {'\n'}• Администратор или прораб добавляет ваш номер телефона в систему
-            {'\n'}• Вы получаете уведомление о добавлении
-            {'\n'}• Просто введите номер телефона для входа
-            {'\n'}• При первом входе создайте свой профиль
+            How it works:
+            {'\n'}• Administrator or supervisor adds your phone number to the system
+            {'\n'}• You receive a notification about being added
+            {'\n'}• Simply enter your phone number to login
+            {'\n'}• On first login, create your profile
           </Text>
 
           <Text style={styles.contactInfo}>
-            Если у вас нет доступа к системе, обратитесь к вашему прорабу или бригадиру.
+            If you don't have access to the system, contact your supervisor or team leader.
           </Text>
 
           <Button
@@ -41,7 +41,7 @@ export default function RegisterScreen() {
             onPress={handleGoToLogin}
             style={styles.button}
           >
-            Попробовать войти
+            Try to login
           </Button>
         </Card.Content>
       </Card>

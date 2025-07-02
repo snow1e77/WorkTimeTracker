@@ -1,4 +1,4 @@
-// Глобальная конфигурация приложения для международного использования
+// Global application configuration for international use
 import {
   APP_NAME,
   VERSION,
@@ -6,41 +6,41 @@ import {
 } from '@env';
 
 export const APP_CONFIG = {
-  // Основные настройки
+  // Basic settings
   APP_NAME: APP_NAME || 'WorkTime Tracker',
   VERSION: VERSION || '1.0.0',
   ENVIRONMENT: ENVIRONMENT || 'production',
   
-  // Локализация - по умолчанию международная
+  // Localization - default international
   DEFAULT_LOCALE: 'en-US',
   DEFAULT_TIMEZONE: 'UTC',
   DEFAULT_CURRENCY: 'USD',
   
-  // Международные телефонные номера
+  // International phone numbers
   PHONE_CONFIG: {
-    // Поддержка международных форматов
+    // Support for international formats
     INTERNATIONAL_SUPPORT: true,
-    DEFAULT_COUNTRY_CODE: null, // Автоопределение
-    REQUIRE_COUNTRY_CODE: true, // Обязательный код страны
+    DEFAULT_COUNTRY_CODE: null, // Auto-detection
+    REQUIRE_COUNTRY_CODE: true, // Required country code
     FORMAT_EXAMPLE: '+1 555 123 4567',
-    MIN_LENGTH: 7, // Минимальная длина номера (без кода страны)
-    MAX_LENGTH: 15, // Максимальная длина согласно ITU-T E.164
+    MIN_LENGTH: 7, // Minimum length of the number (without country code)
+    MAX_LENGTH: 15, // Maximum length according to ITU-T E.164
     
-    // Популярные страны для быстрого доступа
+    // Popular countries for quick access
     POPULAR_COUNTRIES: [
       'US', 'CA', 'GB', 'DE', 'FR', 'ES', 'IT', 'RU', 'CN', 'JP', 
       'KR', 'AU', 'IN', 'BR', 'MX', 'SE', 'NO', 'FI', 'DK', 'NL'
     ],
     
-    // Настройки валидации
+    // Validation settings
     VALIDATION: {
-      STRICT_MODE: false, // Строгая валидация (только существующие номера)
-      ALLOW_INCOMPLETE: true, // Разрешить неполные номера при вводе
-      AUTO_FORMAT: true, // Автоматическое форматирование при вводе
+      STRICT_MODE: false, // Strict validation (only existing numbers)
+      ALLOW_INCOMPLETE: true, // Allow incomplete numbers when entering
+      AUTO_FORMAT: true, // Automatic formatting when entering
     }
   },
   
-  // Форматирование дат (адаптивное в зависимости от локали)
+  // Date formatting (adaptive depending on locale)
   DATE_CONFIG: {
     SHORT_FORMAT: 'YYYY-MM-DD',
     LONG_FORMAT: 'dddd, D MMMM YYYY',
@@ -50,7 +50,7 @@ export const APP_CONFIG = {
     AUTO_DETECT_LOCALE: true
   },
   
-  // Валюта (будет адаптироваться по геолокации)
+  // Currency (will adapt to location)
   CURRENCY_CONFIG: {
     CODE: 'USD',
     SYMBOL: '$',
@@ -61,16 +61,16 @@ export const APP_CONFIG = {
     AUTO_DETECT_BY_LOCATION: true
   },
   
-  // Рабочее время (международные стандарты)
+  // Work time (international standards)
   WORK_TIME_CONFIG: {
     STANDARD_WORK_DAY_HOURS: 8,
     STANDARD_WORK_WEEK_HOURS: 40,
-    OVERTIME_THRESHOLD: 8, // часов в день
+    OVERTIME_THRESHOLD: 8, // hours per day
     BREAK_TIME_MINUTES: 30,
     LUNCH_BREAK_MINUTES: 60,
     MAX_DAILY_HOURS: 12,
     
-    // Адаптация под местные законы
+    // Adaptation to local laws
     COUNTRY_SPECIFIC_RULES: {
       'US': { maxDailyHours: 12, overtimeThreshold: 8 },
       'DE': { maxDailyHours: 10, overtimeThreshold: 8 },
@@ -81,19 +81,19 @@ export const APP_CONFIG = {
     }
   },
   
-  // GPS настройки
+  // GPS settings
   GPS_CONFIG: {
-    DEFAULT_ACCURACY: 10, // метров
-    UPDATE_INTERVAL: 5000, // миллисекунд
-    GEOFENCE_RADIUS: 100, // метров
+    DEFAULT_ACCURACY: 10, // meters
+    UPDATE_INTERVAL: 5000, // milliseconds
+    GEOFENCE_RADIUS: 100, // meters
     BACKGROUND_TRACKING: true,
     HIGH_ACCURACY: true
   },
   
-  // Expo Project ID для push уведомлений
+  // Expo Project ID for push notifications
   EXPO_PROJECT_ID: process.env.EXPO_PROJECT_ID || 'your-project-id',
 
-  // Уведомления
+  // Notifications
   NOTIFICATION_CONFIG: {
     ENABLED: true,
     SOUND_ENABLED: true,
@@ -110,41 +110,41 @@ export const APP_CONFIG = {
     }
   },
   
-  // API настройки
+  // API settings
   API_CONFIG: {
     BASE_URL: 'https://api.worktimetracker.global',
     TIMEOUT: 30000,
     RETRY_ATTEMPTS: 3
   },
   
-  // Локализация и интернационализация
+  // Localization and internationalization
   I18N_CONFIG: {
     SUPPORTED_LANGUAGES: [
       'en', // English
-      'ru', // Русский
-      'de', // Deutsch
-      'fr', // Français
-      'es', // Español
-      'it', // Italiano
-      'pt', // Português
-      'zh', // 中文
-      'ja', // 日本語
-      'ko', // 한국어
-      'sv', // Svenska
-      'no', // Norsk
-      'fi', // Suomi
-      'da', // Dansk
-      'nl', // Nederlands
-      'pl', // Polski
-      'cs', // Čeština
-      'uk', // Українська
+      'ru', // Russian
+      'de', // German
+      'fr', // French
+      'es', // Spanish
+      'it', // Italian
+      'pt', // Portuguese
+      'zh', // Chinese
+      'ja', // Japanese
+      'ko', // Korean
+      'sv', // Swedish
+      'no', // Norwegian
+      'fi', // Finnish
+      'da', // Danish
+      'nl', // Dutch
+      'pl', // Polish
+      'cs', // Czech
+      'uk', // Ukrainian
     ],
     DEFAULT_LANGUAGE: 'en',
     AUTO_DETECT_LANGUAGE: true,
     FALLBACK_LANGUAGE: 'en'
   },
   
-  // Региональные настройки
+  // Regional settings
   REGIONAL_CONFIG: {
     AUTO_DETECT_REGION: true,
     DEFAULT_REGION: 'GLOBAL',
