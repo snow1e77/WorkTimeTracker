@@ -420,6 +420,9 @@ export type RootStackParamList = {
   Home: undefined;
   Profile: undefined;
   TimeTracking: undefined;
+  Schedule: undefined;
+  Documents: undefined;
+  Assignments: undefined;
   History: undefined;
   Settings: undefined;
   Admin: undefined;

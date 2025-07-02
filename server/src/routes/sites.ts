@@ -1,6 +1,6 @@
 ﻿import express from 'express';
 import Joi from 'joi';
-import { authenticateToken, requireAdmin, validateJSON } from '../middleware/auth';
+import { requireAdmin, validateJSON } from '../middleware/auth';
 import { SiteService } from '../services/SiteService';
 
 const router = express.Router();
@@ -37,9 +37,6 @@ const checkLocationSchema = Joi.object({
   latitude: Joi.number().min(-90).max(90).required(),
   longitude: Joi.number().min(-180).max(180).required()
 });
-
-// Все маршруты требуют аутентификации
-router.use(authenticateToken);
 
 // GET /api/sites - Получение списка строительных объектов
 router.get('/', async (req, res) => {

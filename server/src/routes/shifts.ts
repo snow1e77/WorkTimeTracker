@@ -44,7 +44,7 @@ const getShiftsQuerySchema = Joi.object({
 });
 
 // Все маршруты требуют аутентификации
-router.use(authenticateToken);
+// router.use(authenticateToken);
 
 // GET /api/shifts - Получение списка смен
 router.get('/', async (req, res) => {

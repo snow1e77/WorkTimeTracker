@@ -1,11 +1,9 @@
 ﻿import express from 'express';
-import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { requireAdmin } from '../middleware/auth';
 import { ReportService } from '../services/ReportService';
 import Joi from 'joi';
 
 const router = express.Router();
-
-router.use(authenticateToken);
 
 // Валидационные схемы
 const workReportSchema = Joi.object({

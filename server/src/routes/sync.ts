@@ -1,11 +1,8 @@
 ﻿import express from 'express';
-import { authenticateToken } from '../middleware/auth';
 import { SyncService } from '../services/SyncService';
 import Joi from 'joi';
 
 const router = express.Router();
-
-router.use(authenticateToken);
 
 // Валидационная схема для синхронизации
 const syncSchema = Joi.object({

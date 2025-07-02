@@ -1,6 +1,6 @@
 ﻿import express from 'express';
 import Joi from 'joi';
-import { authenticateToken, requireAdmin, requireOwnershipOrAdmin, validateJSON, requireRole } from '../middleware/auth';
+import { requireAdmin, requireOwnershipOrAdmin, validateJSON, requireRole } from '../middleware/auth';
 import { UserService } from '../services/UserService';
 import { PreRegistrationService } from '../services/PreRegistrationService';
 
@@ -35,8 +35,8 @@ const addPreRegisteredUserSchema = Joi.object({
   role: Joi.string().valid('worker', 'admin').default('worker')
 });
 
-// Все маршруты требуют аутентификации
-router.use(authenticateToken);
+// Убираем требование аутентификации - теперь все роуты доступны
+// router.use(authenticateToken);
 
 // GET /api/users - Получение списка пользователей (только для админов)
 router.get('/', requireAdmin, async (req, res) => {
@@ -504,7 +504,7 @@ router.post('/bulk-update', requireAdmin, validateJSON, async (req, res) => {
 });
 
 // POST /api/users/register-user - Прямая регистрация пользователя (только админы)
-router.post('/register-user', authenticateToken, requireRole('admin'), validateJSON, async (req, res) => {
+router.post('/register-user', requireRole('admin'), validateJSON, async (req, res) => {
   try {
     const registerUserSchema = Joi.object({
       phoneNumber: Joi.string()
@@ -574,7 +574,7 @@ router.post('/register-user', authenticateToken, requireRole('admin'), validateJ
 });
 
 // GET /api/users/all - Получение всех пользователей (только админы)
-router.get('/all', authenticateToken, requireRole('admin'), async (req, res) => {
+router.get('/all', requireRole('admin'), async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -607,7 +607,7 @@ router.get('/all', authenticateToken, requireRole('admin'), async (req, res) => 
 // DEPRECATED ENDPOINTS - оставляем для обратной совместимости, но они возвращают ошибку
 
 // POST /api/users/pre-register - УСТАРЕЛ - Теперь используйте /api/users/register-user для прямой регистрации пользователей
-router.post('/pre-register', authenticateToken, requireRole('admin'), validateJSON, async (req, res) => {
+router.post('/pre-register', requireRole('admin'), validateJSON, async (req, res) => {
   return res.status(400).json({
     success: false,
     error: 'Этот endpoint устарел. Используйте /api/users/register-user для прямой регистрации пользователей'
@@ -615,7 +615,7 @@ router.post('/pre-register', authenticateToken, requireRole('admin'), validateJS
 });
 
 // GET /api/users/pre-registered - УСТАРЕЛ - Теперь используйте /api/users/all
-router.get('/pre-registered', authenticateToken, requireRole('admin'), async (req, res) => {
+router.get('/pre-registered', requireRole('admin'), async (req, res) => {
   return res.status(400).json({
     success: false,
     error: 'Этот endpoint устарел. Используйте /api/users/all для получения всех пользователей'
@@ -623,7 +623,7 @@ router.get('/pre-registered', authenticateToken, requireRole('admin'), async (re
 });
 
 // DELETE /api/users/pre-registered/:id - УСТАРЕЛ - Теперь используйте /api/users/:id
-router.delete('/pre-registered/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+router.delete('/pre-registered/:id', requireRole('admin'), async (req, res) => {
   return res.status(400).json({
     success: false,
     error: 'Этот endpoint устарел. Используйте /api/users/:id для удаления пользователей'
@@ -631,7 +631,7 @@ router.delete('/pre-registered/:id', authenticateToken, requireRole('admin'), as
 });
 
 // POST /api/users/resend-app-link - УСТАРЕЛ - SMS больше не используется
-router.post('/resend-app-link', authenticateToken, requireRole('admin'), validateJSON, async (req, res) => {
+router.post('/resend-app-link', requireRole('admin'), validateJSON, async (req, res) => {
   return res.json({
     success: true,
     message: 'SMS функциональность отключена. Пользователи входят по номеру телефона без SMS кодов.'

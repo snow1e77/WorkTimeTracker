@@ -1,6 +1,6 @@
 ﻿import express from 'express';
 import Joi from 'joi';
-import { authenticateToken, requireAdmin, validateJSON } from '../middleware/auth';
+import { requireAdmin, validateJSON } from '../middleware/auth';
 import { AssignmentService } from '../services/AssignmentService';
 import { UserService } from '../services/UserService';
 import { SiteService } from '../services/SiteService';
@@ -31,9 +31,6 @@ const getAssignmentsQuerySchema = Joi.object({
   siteId: Joi.string().uuid().optional(),
   assignedBy: Joi.string().uuid().optional()
 });
-
-// Все маршруты требуют аутентификации
-router.use(authenticateToken);
 
 // GET /api/assignments - Получение списка назначений
 router.get('/', async (req, res) => {

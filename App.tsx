@@ -20,6 +20,9 @@ import RegisterScreen from './src/screens/RegisterScreen';
 // Main screens
 import HomeScreen from './src/screens/HomeScreen';
 import TimeTrackingScreen from './src/screens/TimeTrackingScreen';
+import ScheduleScreen from './src/screens/ScheduleScreen';
+import DocumentsScreen from './src/screens/DocumentsScreen';
+import AssignmentsScreen from './src/screens/AssignmentsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ChatScreen from './src/screens/ChatScreen';
@@ -118,6 +121,21 @@ const AppNavigator = () => {
               name="TimeTracking" 
               component={TimeTrackingScreen} 
               options={{ title: 'Time Tracking' }}
+            />
+            <Stack.Screen 
+              name="Schedule" 
+              component={ScheduleScreen} 
+              options={{ title: 'Work Schedule' }}
+            />
+            <Stack.Screen 
+              name="Documents" 
+              component={DocumentsScreen} 
+              options={{ title: 'Documents & Blueprints' }}
+            />
+            <Stack.Screen 
+              name="Assignments" 
+              component={AssignmentsScreen} 
+              options={{ title: 'My Assignments' }}
             />
             <Stack.Screen 
               name="History" 

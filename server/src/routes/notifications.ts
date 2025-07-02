@@ -1,6 +1,5 @@
 ﻿import { Router } from 'express';
 import { serverNotificationService } from '../services/NotificationService';
-import { authenticateToken } from '../middleware/auth';
 import { Request, Response } from 'express';
 
 const router = Router();
@@ -20,7 +19,7 @@ interface AuthenticatedRequest extends Request {
 }
 
 // Сохранение push токена пользователя
-router.post('/register-token', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/register-token', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { pushToken } = req.body;
     const userId = req.user?.id;
@@ -82,7 +81,7 @@ router.post('/register-token', authenticateToken, async (req: AuthenticatedReque
 });
 
 // Отправка тестового уведомления (только для админов)
-router.post('/send-test', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/send-test', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { pushToken, title, body } = req.body;
     const userRole = req.user?.role;
@@ -127,7 +126,7 @@ router.post('/send-test', authenticateToken, async (req: AuthenticatedRequest, r
 });
 
 // Отправка уведомления о нарушении (только для админов)
-router.post('/violation-alert', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/violation-alert', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { adminTokens, violationType, workerName, siteName, severity } = req.body;
     const userRole = req.user?.role;
@@ -167,7 +166,7 @@ router.post('/violation-alert', authenticateToken, async (req: AuthenticatedRequ
 });
 
 // Отправка уведомления о назначении (только для админов)
-router.post('/assignment-notification', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/assignment-notification', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { workerToken, siteName, assignmentType, details } = req.body;
     const userRole = req.user?.role;
@@ -206,7 +205,7 @@ router.post('/assignment-notification', authenticateToken, async (req: Authentic
 });
 
 // Отправка напоминания о смене (только для админов)
-router.post('/shift-reminder', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/shift-reminder', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { workerToken, siteName, shiftType, minutesUntilShift } = req.body;
     const userRole = req.user?.role;
@@ -245,7 +244,7 @@ router.post('/shift-reminder', authenticateToken, async (req: AuthenticatedReque
 });
 
 // Отправка уведомления о сверхурочной работе (только для админов)
-router.post('/overtime-alert', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/overtime-alert', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { workerToken, hours, siteName } = req.body;
     const userRole = req.user?.role;
@@ -283,7 +282,7 @@ router.post('/overtime-alert', authenticateToken, async (req: AuthenticatedReque
 });
 
 // Массовая отправка уведомлений (только для админов)
-router.post('/broadcast', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/broadcast', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { workerTokens, title, message, data } = req.body;
     const userRole = req.user?.role;
@@ -330,7 +329,7 @@ router.post('/broadcast', authenticateToken, async (req: AuthenticatedRequest, r
 });
 
 // Получение статуса доставки уведомлений (только для админов)
-router.post('/delivery-receipts', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/delivery-receipts', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { receiptIds } = req.body;
     const userRole = req.user?.role;
@@ -365,7 +364,7 @@ router.post('/delivery-receipts', authenticateToken, async (req: AuthenticatedRe
 });
 
 // Валидация push токена
-router.post('/validate-token', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/validate-token', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { pushToken } = req.body;
 
@@ -395,7 +394,7 @@ router.post('/validate-token', authenticateToken, async (req: AuthenticatedReque
 });
 
 // Очистка недействительных токенов (только для админов)
-router.post('/cleanup-tokens', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/cleanup-tokens', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { tokens } = req.body;
     const userRole = req.user?.role;
@@ -435,7 +434,7 @@ router.post('/cleanup-tokens', authenticateToken, async (req: AuthenticatedReque
 });
 
 // Удаление push токена пользователя
-router.delete('/token', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/token', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { pushToken } = req.body;
     const userId = req.user?.id;
@@ -469,7 +468,7 @@ router.delete('/token', authenticateToken, async (req: AuthenticatedRequest, res
 });
 
 // Получение настроек уведомлений пользователя
-router.get('/preferences', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/preferences', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
 
@@ -517,7 +516,7 @@ router.get('/preferences', authenticateToken, async (req: AuthenticatedRequest, 
 });
 
 // Обновление настроек уведомлений пользователя
-router.put('/preferences', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/preferences', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const { isEnabled, sound, vibration, shiftReminders, breakReminders, gpsEvents, violations } = req.body;

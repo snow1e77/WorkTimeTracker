@@ -1,13 +1,49 @@
 ﻿import { Platform } from 'react-native';
 
+// Функция для определения правильного хоста
+const getApiHost = () => {
+  if (Platform.OS === 'web') {
+    return 'http://localhost:3001/api';
+  }
+  
+  if (__DEV__) {
+    // В режиме разработки
+    if (Platform.OS === 'android') {
+      // Приоритет для физических устройств (через USB)
+      // Попробуем сначала IP компьютера, затем эмулятор
+      return 'http://192.168.0.4:3001/api';  // Изменено: сначала физическое устройство
+    }
+    // Для iOS симулятора localhost работает
+    return 'http://localhost:3001/api';
+  }
+  
+  // Для production сборки
+  return 'http://192.168.0.4:3001/api';
+};
+
+// Альтернативные URL для отладки
+export const ALTERNATIVE_URLS = {
+  LOCALHOST: 'http://localhost:3001/api',
+  ANDROID_EMULATOR: 'http://10.0.2.2:3001/api',
+  LOCAL_IP: 'http://192.168.0.4:3001/api',
+};
+
+// Функция для установки кастомного URL
+let customBaseUrl: string | null = null;
+
+export const setCustomBaseUrl = (url: string | null) => {
+  customBaseUrl = url;
+  console.log('Custom base URL set to:', url);
+};
+
+export const getCustomBaseUrl = () => customBaseUrl;
+
 // API Configuration
 export const API_CONFIG = {
   // Базовый URL для API
-  BASE_URL: Platform.OS === 'web' 
-    ? 'http://localhost:3001/api'  // Для веб-версии
-    : __DEV__ 
-      ? 'http://localhost:3001/api'  // Для эмулятора в режиме разработки
-      : 'http://192.168.0.4:3001/api',  // Для физических устройств
+  get BASE_URL() {
+    return customBaseUrl || getApiHost();
+  },
     
   // Таймауты
   TIMEOUT: 15000, // 15 секунд
@@ -159,6 +195,8 @@ export const checkServerHealth = async (): Promise<boolean> => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000); // 5 секунд для health check
     
+    console.log('Checking server health at:', getHealthUrl());
+    
     const response = await fetch(getHealthUrl(), {
       method: 'GET',
       headers: API_CONFIG.DEFAULT_HEADERS,
@@ -166,10 +204,48 @@ export const checkServerHealth = async (): Promise<boolean> => {
     });
     
     clearTimeout(timeout);
+    console.log('Health check response:', response.status, response.ok);
     return response.ok;
   } catch (error) {
+    console.log('Health check error:', error);
     return false;
   }
+};
+
+// Функция для отладки подключения
+export const debugConnection = async (): Promise<{
+  baseUrl: string;
+  healthUrl: string;
+  platform: string;
+  isDev: boolean;
+  healthCheck: boolean;
+  error?: string;
+}> => {
+  const baseUrl = API_CONFIG.BASE_URL;
+  const healthUrl = getHealthUrl();
+  const platform = Platform.OS;
+  const isDev = __DEV__;
+  
+  let healthCheck = false;
+  let error: string | undefined;
+  
+  try {
+    healthCheck = await checkServerHealth();
+  } catch (err) {
+    error = err instanceof Error ? err.message : 'Unknown error';
+  }
+  
+  const debugInfo = {
+    baseUrl,
+    healthUrl,
+    platform,
+    isDev,
+    healthCheck,
+    error
+  };
+  
+  console.log('Connection debug info:', debugInfo);
+  return debugInfo;
 };
 
 // Типы для API ответов

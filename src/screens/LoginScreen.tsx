@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { View, StyleSheet, Keyboard, TouchableWithoutFeedback, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, Keyboard, TouchableWithoutFeedback, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Text, TextInput, Button, Card, Title, HelperText } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,7 +20,7 @@ export default function LoginScreen() {
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const authService = AuthService.getInstance();
 
-  const [step, setStep] = useState<'phone' | 'register'>('phone');
+  const [step, setStep] = useState<'phone' | 'register' | 'restricted'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>('US');
   const [name, setName] = useState('');
@@ -53,8 +53,8 @@ export default function LoginScreen() {
         // Successful login - navigation will happen automatically via App.tsx
         // navigation.navigate('Home'); // Removed to prevent race condition
       } else if (result.needsContact) {
-        // User not found - need to contact supervisor
-        setError(result.error || t('VALIDATION.CONTACT_SUPERVISOR'));
+        // User not found - show restricted screen
+        setStep('restricted');
       } else if (result.error?.includes(t('VALIDATION.PRE_REGISTERED'))) {
         // Need to create profile
         setNeedsRegistration(true);
@@ -103,10 +103,18 @@ export default function LoginScreen() {
 
   const renderPhoneStep = () => (
     <>
-      <Title style={styles.title}>{t('AUTH.LOGIN_TITLE')}</Title>
+      <View style={styles.logoContainer}>
+        <Image
+          source={require('../../assets/login.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
+      
+      <Title style={styles.title}>Welcome to Work Time Tracker</Title>
       
       <Text style={styles.description}>
-        {t('AUTH.LOGIN_DESCRIPTION')}
+        Please enter your phone number to access the system
       </Text>
 
       <InternationalPhoneInput
@@ -195,23 +203,56 @@ export default function LoginScreen() {
     </>
   );
 
+  const renderRestrictedStep = () => (
+    <>
+      <View style={styles.logoContainer}>
+        <Image
+          source={require('../../assets/restricted.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
+      
+      <Title style={styles.title}>Access Restricted</Title>
+      
+      <Text style={styles.description}>
+        Please contact your supervisor to register your account in the system
+      </Text>
+
+      <Button
+        mode="contained"
+        onPress={() => {
+          setStep('phone');
+          setPhoneNumber('');
+          setError('');
+        }}
+        style={styles.button}
+      >
+        Try Another Number
+      </Button>
+    </>
+  );
+
   return (
     <KeyboardAvoidingView 
       style={{ flex: 1 }} 
-      {...keyboardAvoidingConfig}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          style={styles.container}
-          {...scrollViewConfig}
-        >
-          <Card style={styles.card}>
-            <Card.Content>
-              {step === 'phone' ? renderPhoneStep() : renderRegisterStep()}
-            </Card.Content>
-          </Card>
-        </ScrollView>
+        <View style={styles.container}>
+          <ScrollView 
+            {...scrollViewConfig}
+            contentContainerStyle={styles.scrollContent}
+          >
+            <Card style={styles.card}>
+              <Card.Content style={styles.cardContent}>
+                {step === 'phone' && renderPhoneStep()}
+                {step === 'register' && renderRegisterStep()}
+                {step === 'restricted' && renderRestrictedStep()}
+              </Card.Content>
+            </Card>
+          </ScrollView>
+        </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
@@ -230,6 +271,17 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 8,
     elevation: 4,
+  },
+  cardContent: {
+    padding: 20,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logo: {
+    width: 100,
+    height: 100,
   },
   title: {
     textAlign: 'center',

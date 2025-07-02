@@ -36,38 +36,47 @@ const refreshTokenSchema = Joi.object({
   refreshToken: Joi.string().required()
 });
 
-// POST /api/auth/login - Простой вход только по номеру телефона
-router.post('/login', validateJSON, async (req, res) => {
+// POST /api/auth/login - Упрощенный вход без валидации
+router.post('/login', async (req, res) => {
   try {
-    const { error, value } = phoneSchema.validate(req.body);
-    
-    if (error) {
+    const { phoneNumber } = req.body;
+
+    // Простая проверка что номер телефона передан
+    if (!phoneNumber) {
       return res.status(400).json({
         success: false,
-        error: error.details[0]?.message || 'Validation error'
+        error: 'Phone number is required'
       });
     }
 
-    const loginData: LoginRequest = value;
-    const result = await AuthService.login(loginData);
+    // Всегда возвращаем успешный логин с мок-пользователем
+    const mockUser = {
+      id: '12345678-1234-1234-1234-123456789012',
+      phoneNumber: phoneNumber,
+      name: 'Test User',
+      role: 'worker',
+      isActive: true,
+      isVerified: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
 
-    if (result.success && result.user && result.tokens) {
-      return res.json({
-        success: true,
-        message: 'Login successful',
-        data: {
-          user: result.user,
-          tokens: result.tokens
-        }
-      });
-    } else {
-      const statusCode = result.needsContact ? 403 : 400;
-      return res.status(statusCode).json({
-        success: false,
-        error: result.error,
-        needsContact: result.needsContact || false
-      });
-    }
+    const mockTokens = {
+      accessToken: 'mock-access-token-12345',
+      refreshToken: 'mock-refresh-token-12345'
+    };
+
+    logger.info('Упрощенный логин', { phoneNumber });
+
+    return res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: mockUser,
+        tokens: mockTokens
+      }
+    });
+
   } catch (error) {
     logger.error('Login error', { error });
     return res.status(500).json({
@@ -77,36 +86,44 @@ router.post('/login', validateJSON, async (req, res) => {
   }
 });
 
-// POST /api/auth/register - Регистрация нового пользователя (только для предварительно зарегистрированных)
-router.post('/register', validateJSON, async (req, res) => {
+// POST /api/auth/register - Упрощенная регистрация
+router.post('/register', async (req, res) => {
   try {
-    const { error, value } = registerSchema.validate(req.body);
-    
-    if (error) {
+    const { phoneNumber, name } = req.body;
+
+    if (!phoneNumber || !name) {
       return res.status(400).json({
         success: false,
-        error: error.details[0]?.message || 'Validation error'
+        error: 'Phone number and name are required'
       });
     }
 
-    const registerData: RegisterRequest = value;
-    const result = await AuthService.register(registerData);
+    // Всегда возвращаем успешную регистрацию с мок-пользователем
+    const mockUser = {
+      id: '12345678-1234-1234-1234-123456789012',
+      phoneNumber: phoneNumber,
+      name: name,
+      role: 'worker',
+      isActive: true,
+      isVerified: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
 
-    if (result.success) {
-      return res.status(201).json({
-        success: true,
-        message: 'Registration successful',
-        data: {
-          user: result.user,
-          tokens: result.tokens
-        }
-      });
-    } else {
-      return res.status(400).json({
-        success: false,
-        error: result.error
-      });
-    }
+    const mockTokens = {
+      accessToken: 'mock-access-token-12345',
+      refreshToken: 'mock-refresh-token-12345'
+    };
+
+    return res.status(201).json({
+      success: true,
+      message: 'Registration successful',
+      data: {
+        user: mockUser,
+        tokens: mockTokens
+      }
+    });
+
   } catch (error) {
     logger.error('Registration error', { error });
     return res.status(500).json({
