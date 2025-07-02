@@ -1,19 +1,37 @@
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { query } from '../config/database';
 import { UserService } from './UserService';
-import { User, AuthTokens, JWTPayload, LoginRequest, RegisterRequest } from '../types';
+import { User } from '../types';
 import logger from '../utils/logger';
+
+export interface LoginRequest {
+  phoneNumber: string;
+}
+
+export interface RegisterRequest {
+  phoneNumber: string;
+  name: string;
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface JWTPayload {
+  userId: string;
+  phoneNumber: string;
+  role: string;
+}
 
 export class AuthService {
   private static readonly JWT_SECRET: string = (() => {
-    if (!process.env.JWT_SECRET) {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
       throw new Error('JWT_SECRET environment variable is required');
     }
-    if (process.env.JWT_SECRET.length < 32) {
-      throw new Error('JWT_SECRET must be at least 32 characters long for security');
-    }
-    return process.env.JWT_SECRET;
+    return secret;
   })();
   private static readonly JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '7d';
   private static readonly REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
@@ -30,7 +48,7 @@ export class AuthService {
       const { phoneNumber } = data;
 
       // Проверяем, существует ли пользователь в основной таблице
-      let user = await UserService.getUserByPhoneNumber(phoneNumber);
+      const user = await UserService.getUserByPhoneNumber(phoneNumber);
 
       if (user) {
         // Пользователь найден и уже полностью зарегистрирован
@@ -43,27 +61,7 @@ export class AuthService {
         return { success: true, user, tokens };
       }
 
-      // Импортируем PreRegistrationService 
-      const { PreRegistrationService } = await import('./PreRegistrationService');
-      
-      // Проверяем, есть ли пользователь в предварительной регистрации
-      const preRegisteredUser = await PreRegistrationService.getPreRegisteredUserByPhone(phoneNumber);
-      
-      if (preRegisteredUser && preRegisteredUser.isActivated) {
-        // Создаем полного пользователя из предварительной регистрации
-        const newUser = await UserService.createUser({
-          phoneNumber,
-          name: preRegisteredUser.name || 'Новый пользователь',
-          role: preRegisteredUser.role,
-          companyId: preRegisteredUser.companyId
-        });
-
-        const tokens = await this.generateTokens(newUser);
-        logger.info('Пользователь создан из предварительной регистрации', { userId: newUser.id, phoneNumber });
-        return { success: true, user: newUser, tokens };
-      }
-
-      // Пользователь не найден ни в основной таблице, ни в предварительной регистрации
+      // Пользователь не найден в системе
       logger.warn('Попытка входа несуществующего пользователя', { phoneNumber });
       return { 
         success: false, 
@@ -76,7 +74,7 @@ export class AuthService {
     }
   }
 
-  // Регистрация нового пользователя (только для предварительно зарегистрированных)
+  // Регистрация нового пользователя (устаревший endpoint - больше не используется)
   static async register(data: RegisterRequest): Promise<{ 
     success: boolean; 
     user?: User; 
@@ -84,43 +82,7 @@ export class AuthService {
     error?: string;
   }> {
     try {
-      const { phoneNumber, name } = data;
-
-      // Проверяем, не существует ли уже пользователь
-      const existingUser = await UserService.getUserByPhoneNumber(phoneNumber);
-      if (existingUser) {
-        return { success: false, error: 'Пользователь уже существует' };
-      }
-
-      // Импортируем PreRegistrationService
-      const { PreRegistrationService } = await import('./PreRegistrationService');
-      
-      // Проверяем предварительную регистрацию
-      const preRegisteredUser = await PreRegistrationService.getPreRegisteredUserByPhone(phoneNumber);
-      if (!preRegisteredUser) {
-        return { 
-          success: false, 
-          error: 'Ваш номер телефона не найден в системе. Обратитесь к прорабу или бригадиру для добавления в базу данных.' 
-        };
-      }
-
-      if (!preRegisteredUser.isActivated) {
-        return { success: false, error: 'Пользователь не активирован' };
-      }
-
-      // Создаем нового пользователя
-      const user = await UserService.createUser({
-        phoneNumber,
-        name: name || preRegisteredUser.name || 'Новый пользователь',
-        role: preRegisteredUser.role,
-        companyId: preRegisteredUser.companyId
-      });
-
-      // Генерируем токены
-      const tokens = await this.generateTokens(user);
-
-      logger.info('Успешная регистрация пользователя', { userId: user.id, phoneNumber });
-      return { success: true, user, tokens };
+      return { success: false, error: 'Регистрация больше не поддерживается. Пользователей добавляет администратор.' };
     } catch (error) {
       logger.error('Ошибка регистрации', { error, phoneNumber: data.phoneNumber });
       return { success: false, error: 'Ошибка регистрации' };

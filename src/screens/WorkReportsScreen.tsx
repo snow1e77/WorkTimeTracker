@@ -146,7 +146,7 @@ const WorkReportsScreen: React.FC = () => {
         </View>
       ) : null}
 
-      {/* Фильтр периода */}
+      {/* Period filter */}
       <View style={styles.periodSelector}>
         {(['today', 'week', 'month'] as const).map((period) => (
           <TouchableOpacity
@@ -168,7 +168,7 @@ const WorkReportsScreen: React.FC = () => {
         ))}
       </View>
 
-      {/* Сводная статистика */}
+      {/* Summary statistics */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <Text style={styles.statValue}>{stats.totalWorkers}</Text>
@@ -188,7 +188,7 @@ const WorkReportsScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Список отчетов */}
+      {/* Reports list */}
       <ScrollView
         style={styles.content}
         refreshControl={

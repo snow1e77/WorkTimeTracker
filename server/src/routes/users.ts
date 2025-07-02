@@ -503,43 +503,69 @@ router.post('/bulk-update', requireAdmin, validateJSON, async (req, res) => {
   }
 });
 
-// POST /api/users/pre-register - Добавление пользователя для предварительной регистрации (только админы)
-router.post('/pre-register', authenticateToken, requireRole('admin'), validateJSON, async (req, res) => {
+// POST /api/users/register-user - Прямая регистрация пользователя (только админы)
+router.post('/register-user', authenticateToken, requireRole('admin'), validateJSON, async (req, res) => {
   try {
-    const { error, value } = addPreRegisteredUserSchema.validate(req.body);
+    const registerUserSchema = Joi.object({
+      phoneNumber: Joi.string()
+        .pattern(/^\+?[1-9]\d{1,14}$/)
+        .required()
+        .messages({
+          'string.pattern.base': 'Неверный формат номера телефона',
+          'any.required': 'Номер телефона обязателен'
+        }),
+      name: Joi.string()
+        .min(1)
+        .max(255)
+        .required()
+        .messages({
+          'string.min': 'Имя не может быть пустым',
+          'string.max': 'Имя слишком длинное',
+          'any.required': 'Имя обязательно'
+        }),
+      role: Joi.string()
+        .valid('worker', 'admin')
+        .default('worker')
+        .messages({
+          'any.only': 'Роль должна быть worker или admin'
+        })
+    });
+
+    const { error, value } = registerUserSchema.validate(req.body);
     
     if (error) {
       return res.status(400).json({
         success: false,
-        error: error.details[0]?.message || 'Validation error'
+        error: error.details[0]?.message || 'Ошибка валидации'
       });
     }
 
     const { phoneNumber, name, role } = value;
-    const addedBy = req.user?.id;
 
-    if (!addedBy) {
-      return res.status(401).json({
+    // Проверяем, что пользователь не существует
+    const existingUser = await UserService.getUserByPhoneNumber(phoneNumber);
+    if (existingUser) {
+      return res.status(400).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'Пользователь с таким номером телефона уже существует'
       });
     }
 
-    const preRegisteredUser = await PreRegistrationService.addPreRegisteredUser({
+    // Создаем пользователя сразу в основной таблице
+    const newUser = await UserService.createUser({
       phoneNumber,
       name,
-      role,
-      addedBy: addedBy as string
+      role
     });
 
     return res.status(201).json({
       success: true,
-      message: 'Пользователь добавлен для предварительной регистрации',
-      data: preRegisteredUser
+      message: 'Пользователь успешно зарегистрирован',
+      data: newUser
     });
 
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Failed to pre-register user';
+    const errorMessage = error instanceof Error ? error.message : 'Ошибка регистрации пользователя';
     return res.status(400).json({
       success: false,
       error: errorMessage
@@ -547,95 +573,69 @@ router.post('/pre-register', authenticateToken, requireRole('admin'), validateJS
   }
 });
 
-// GET /api/users/pre-registered - Получение списка предварительно зарегистрированных пользователей (только админы)
-router.get('/pre-registered', authenticateToken, requireRole('admin'), async (req, res) => {
+// GET /api/users/all - Получение всех пользователей (только админы)
+router.get('/all', authenticateToken, requireRole('admin'), async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const search = req.query.search as string;
-    const isActivated = req.query.isActivated === 'true' ? true : 
-                       req.query.isActivated === 'false' ? false : undefined;
+    const role = req.query.role as string;
+    const isActive = req.query.isActive === 'true' ? true : 
+                     req.query.isActive === 'false' ? false : undefined;
 
-    const result = await PreRegistrationService.getAllPreRegisteredUsers({
+    const users = await UserService.getAllUsers({
       page,
       limit,
       search,
-      isActivated
+      role: role as 'worker' | 'admin' | undefined,
+      isActive
     });
 
     return res.json({
       success: true,
-      data: result
+      data: users
     });
 
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to get pre-registered users'
+      error: 'Ошибка получения списка пользователей'
     });
   }
 });
 
-// DELETE /api/users/pre-registered/:id - Удаление предварительно зарегистрированного пользователя (только админы)
+// DEPRECATED ENDPOINTS - оставляем для обратной совместимости, но они возвращают ошибку
+
+// POST /api/users/pre-register - УСТАРЕЛ - Теперь используйте /api/users/register-user для прямой регистрации пользователей
+router.post('/pre-register', authenticateToken, requireRole('admin'), validateJSON, async (req, res) => {
+  return res.status(400).json({
+    success: false,
+    error: 'Этот endpoint устарел. Используйте /api/users/register-user для прямой регистрации пользователей'
+  });
+});
+
+// GET /api/users/pre-registered - УСТАРЕЛ - Теперь используйте /api/users/all
+router.get('/pre-registered', authenticateToken, requireRole('admin'), async (req, res) => {
+  return res.status(400).json({
+    success: false,
+    error: 'Этот endpoint устарел. Используйте /api/users/all для получения всех пользователей'
+  });
+});
+
+// DELETE /api/users/pre-registered/:id - УСТАРЕЛ - Теперь используйте /api/users/:id
 router.delete('/pre-registered/:id', authenticateToken, requireRole('admin'), async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      return res.status(400).json({
-        success: false,
-        error: 'ID parameter is required'
-      });
-    }
-
-    const success = await PreRegistrationService.removePreRegisteredUser(id);
-
-    if (success) {
-      return res.json({
-        success: true,
-        message: 'Предварительно зарегистрированный пользователь удален'
-      });
-    } else {
-      return res.status(404).json({
-        success: false,
-        error: 'Пользователь не найден'
-      });
-    }
-
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to remove pre-registered user'
-    });
-  }
+  return res.status(400).json({
+    success: false,
+    error: 'Этот endpoint устарел. Используйте /api/users/:id для удаления пользователей'
+  });
 });
 
-// POST /api/users/resend-app-link - Повторная отправка ссылки на скачивание (только админы)
+// POST /api/users/resend-app-link - УСТАРЕЛ - SMS больше не используется
 router.post('/resend-app-link', authenticateToken, requireRole('admin'), validateJSON, async (req, res) => {
-  try {
-    const { phoneNumber } = req.body;
-
-    if (!phoneNumber) {
-      return res.status(400).json({
-        success: false,
-        error: 'Phone number is required'
-      });
-    }
-
-    // SMS функциональность удалена - больше не отправляем ссылки
-
-    return res.json({
-      success: true,
-      message: 'Ссылка на скачивание отправлена повторно'
-    });
-
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Failed to resend app link';
-    return res.status(400).json({
-      success: false,
-      error: errorMessage
-    });
-  }
+  return res.json({
+    success: true,
+    message: 'SMS функциональность отключена. Пользователи входят по номеру телефона без SMS кодов.'
+  });
 });
 
 export default router; 

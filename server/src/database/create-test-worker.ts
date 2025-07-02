@@ -20,57 +20,30 @@ const createTestWorker = async (): Promise<void> => {
   const client = await pool.connect();
   
   try {
-
     // Номер телефона для тестового рабочего
     const testPhoneNumber = '+79999999999';
     const testWorkerName = 'Тестовый Рабочий';
 
-    // Получаем ID администратора для поля added_by
-    const adminResult = await client.query(
-      'SELECT id FROM users WHERE role = $1 LIMIT 1',
-      ['admin']
-    );
-
-    if (adminResult.rows.length === 0) {
-      throw new Error('Администратор не найден в системе. Сначала запустите seed скрипт.');
-    }
-
-    const adminId = adminResult.rows[0].id;
-
-    // Проверяем, существует ли уже пользователь
+    // Проверяем, существует ли уже пользователь в основной таблице
     const existingUser = await client.query(
       'SELECT id FROM users WHERE phone_number = $1',
       [testPhoneNumber]
     );
 
     if (existingUser.rows.length > 0) {
-      console.log('❌ Пользователь с номером', testPhoneNumber, 'уже существует в основной таблице users');
+      console.log('✅ Пользователь с номером', testPhoneNumber, 'уже существует в системе');
       return;
     }
 
-    // Проверяем предварительную регистрацию
-    const existingPreReg = await client.query(
-      'SELECT id FROM pre_registered_users WHERE phone_number = $1',
-      [testPhoneNumber]
-    );
-
-    if (existingPreReg.rows.length > 0) {
-      console.log('❌ Пользователь с номером', testPhoneNumber, 'уже существует в предварительной регистрации');
-      return;
-    }
-
-    // Создаем предварительную регистрацию
-    const preRegId = uuidv4();
+    // Создаем пользователя сразу в основной таблице users
+    const userId = uuidv4();
     await client.query(
-      `INSERT INTO pre_registered_users (id, phone_number, name, role, added_by, is_activated)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [preRegId, testPhoneNumber, testWorkerName, 'worker', adminId, false]
+      `INSERT INTO users (id, phone_number, name, role, is_verified, is_active, password_hash)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userId, testPhoneNumber, testWorkerName, 'worker', true, true, 'test_hash']
     );
 
-          // SMS верификации больше не используются
-      console.log('SMS верификации отключены - используется простой вход по номеру телефона');
-
-    console.log('✅ Тестовый аккаунт рабочего успешно создан!');
+    console.log('✅ Тестовый аккаунт рабочего успешно создан в основной таблице!');
     console.log('');
     console.log('📱 Данные для входа:');
     console.log('   Номер телефона:', testPhoneNumber);
@@ -81,8 +54,7 @@ const createTestWorker = async (): Promise<void> => {
     console.log('   1. Запустите мобильное приложение');
     console.log('   2. Введите номер телефона:', testPhoneNumber);
     console.log('   3. Введите код подтверждения: 123456');
-    console.log('   4. Приложение предложит создать профиль');
-    console.log('   5. Введите имя (например "Тестовый Рабочий") и завершите регистрацию');
+    console.log('   4. Готово! Можете сразу пользоваться приложением');
     console.log('');
     console.log('💡 В режиме разработки всегда используется код 123456');
 

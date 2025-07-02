@@ -132,7 +132,7 @@ export default function HistoryScreen() {
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hours}ч ${mins}м`;
+    return `${hours}h ${mins}m`;
   };
 
   const getStatusColor = (status: WorkShift['status']) => {

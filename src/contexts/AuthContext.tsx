@@ -85,7 +85,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       return result;
     } catch (error) {
-      return { success: false, error: 'Ошибка входа в систему' };
+      return { success: false, error: 'Login system error' };
     }
   };
 
@@ -103,7 +103,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       return result;
     } catch (error) {
-      return { success: false, error: 'Ошибка регистрации' };
+      return { success: false, error: 'Registration error' };
     }
   };
 

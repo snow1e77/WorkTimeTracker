@@ -29,7 +29,7 @@ export default function LoginScreen() {
 
   const validatePhoneNumber = () => {
     if (!isValidInternationalPhoneNumber(phoneNumber, selectedCountry)) {
-      setError('Введите корректный номер телефона');
+      setError(t('AUTH.ENTER_VALID_PHONE'));
       return false;
     }
     setError('');
@@ -53,13 +53,13 @@ export default function LoginScreen() {
         navigation.navigate('Home');
       } else if (result.needsContact) {
         // User not found - need to contact supervisor
-        setError(result.error || 'Your phone number is not found in the system. Please contact your supervisor or team leader to be added to the database.');
-      } else if (result.error?.includes('предварительно зарегистрированы')) {
+        setError(result.error || t('VALIDATION.CONTACT_SUPERVISOR'));
+      } else if (result.error?.includes(t('VALIDATION.PRE_REGISTERED'))) {
         // Need to create profile
         setNeedsRegistration(true);
         setStep('register');
       } else {
-        setError(result.error || 'Login error');
+        setError(result.error || t('VALIDATION.LOGIN_ERROR'));
       }
     } catch (error) {
       console.log('Login error:', error);
@@ -72,12 +72,12 @@ export default function LoginScreen() {
 
   const handleRegister = async () => {
     if (!name.trim()) {
-      setError('Please enter your full name');
+      setError(t('VALIDATION.ENTER_FULL_NAME'));
       return;
     }
 
     if (name.trim().length < 2) {
-      setError('Name must contain at least 2 characters');
+      setError(t('VALIDATION.NAME_MIN_LENGTH'));
       return;
     }
 
@@ -90,10 +90,10 @@ export default function LoginScreen() {
       if (result.success && result.user) {
         navigation.navigate('Home');
       } else {
-        setError(result.error || 'Registration error');
+        setError(result.error || t('VALIDATION.REGISTRATION_ERROR'));
       }
     } catch (error) {
-      setError('An error occurred during registration');
+      setError(t('VALIDATION.REGISTRATION_ERROR_OCCURRED'));
     } finally {
       setLoading(false);
     }
@@ -101,19 +101,19 @@ export default function LoginScreen() {
 
   const renderPhoneStep = () => (
     <>
-      <Title style={styles.title}>Вход в систему</Title>
+      <Title style={styles.title}>{t('AUTH.LOGIN_TITLE')}</Title>
       
       <Text style={styles.description}>
-        Введите номер телефона для входа в систему
+        {t('AUTH.LOGIN_DESCRIPTION')}
       </Text>
 
       <InternationalPhoneInput
-        label="Номер телефона"
+        label={t('AUTH.PHONE_NUMBER')}
         value={phoneNumber}
         onChangeText={setPhoneNumber}
         onCountryChange={setSelectedCountry}
         selectedCountry={selectedCountry}
-        placeholder="Введите номер телефона"
+        placeholder={t('AUTH.ENTER_PHONE')}
         autoFocus={true}
         autoDetectCountry={true}
         error={!!error}
@@ -132,17 +132,17 @@ export default function LoginScreen() {
         disabled={loading}
         style={styles.button}
       >
-        Войти
+        {t('AUTH.LOGIN')}
       </Button>
     </>
   );
 
   const renderRegisterStep = () => (
     <>
-      <Title style={styles.title}>Create Profile</Title>
+      <Title style={styles.title}>{t('AUTH.CREATE_PROFILE')}</Title>
       
       <Text style={styles.description}>
-        You are pre-registered. Create your profile.
+        {t('AUTH.PROFILE_DESCRIPTION')}
       </Text>
 
       <Text style={styles.phoneNumber}>
@@ -150,12 +150,12 @@ export default function LoginScreen() {
       </Text>
       
       <TextInput
-        label="Full name"
+        label={t('AUTH.FULL_NAME')}
         value={name}
         onChangeText={setName}
         mode="outlined"
         style={styles.input}
-        placeholder="Enter your full name"
+        placeholder={t('VALIDATION.ENTER_FULL_NAME')}
         autoFocus={true}
         error={!!error}
       />
@@ -173,7 +173,7 @@ export default function LoginScreen() {
         disabled={loading}
         style={styles.button}
       >
-        Create Profile
+        {t('AUTH.CREATE_PROFILE')}
       </Button>
 
       <View style={styles.linkContainer}>
@@ -187,7 +187,7 @@ export default function LoginScreen() {
           }}
           style={styles.link}
         >
-          Change phone number
+          {t('AUTH.CHANGE_PHONE')}
         </Button>
       </View>
     </>

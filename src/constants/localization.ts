@@ -143,6 +143,8 @@ export const INTERNATIONAL_LOCALIZATION = {
     HOURS: 'hours',
     MINUTES: 'minutes',
     SECONDS: 'seconds',
+    HOURS_SHORT: 'h',
+    MINUTES_SHORT: 'm',
     OPTIONAL: 'optional',
     REQUIRED: 'required'
   },
@@ -203,7 +205,14 @@ export const INTERNATIONAL_LOCALIZATION = {
     FORGOT_PASSWORD: 'Forgot password?',
     RESET_PASSWORD: 'Reset password',
     FULL_NAME: 'Full name',
-    EMAIL: 'Email'
+    EMAIL: 'Email',
+    LOGIN_TITLE: 'Login to System',
+    LOGIN_DESCRIPTION: 'Enter your phone number to login',
+    ENTER_PHONE: 'Enter phone number',
+    CREATE_PROFILE: 'Create Profile',
+    PROFILE_DESCRIPTION: 'You are pre-registered. Create your profile.',
+    CHANGE_PHONE: 'Change phone number',
+    ENTER_VALID_PHONE: 'Enter valid phone number'
   },
   
   // Form validation (English)
@@ -213,7 +222,14 @@ export const INTERNATIONAL_LOCALIZATION = {
     INVALID_PHONE: 'Invalid phone number format',
     PASSWORD_TOO_SHORT: 'Password too short',
     PASSWORDS_DO_NOT_MATCH: 'Passwords do not match',
-    NAME_TOO_SHORT: 'Name too short'
+    NAME_TOO_SHORT: 'Name too short',
+    ENTER_FULL_NAME: 'Please enter your full name',
+    NAME_MIN_LENGTH: 'Name must contain at least 2 characters',
+    LOGIN_ERROR: 'Login error',
+    REGISTRATION_ERROR: 'Registration error',
+    REGISTRATION_ERROR_OCCURRED: 'An error occurred during registration',
+    CONTACT_SUPERVISOR: 'Your phone number is not found in the system. Please contact your supervisor or team leader to be added to the database.',
+    PRE_REGISTERED: 'pre-registered'
   },
   
   // Regional settings
