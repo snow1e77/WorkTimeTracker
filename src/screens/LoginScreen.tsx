@@ -49,8 +49,8 @@ export default function LoginScreen() {
       console.log('Login result:', result);
 
       if (result.success && result.user) {
-        // Successful login
-        navigation.navigate('Home');
+        // Successful login - navigation will happen automatically via App.tsx
+        // navigation.navigate('Home'); // Removed to prevent race condition
       } else if (result.needsContact) {
         // User not found - need to contact supervisor
         setError(result.error || t('VALIDATION.CONTACT_SUPERVISOR'));
@@ -88,7 +88,8 @@ export default function LoginScreen() {
       const result = await authService.register(cleanPhone, name.trim());
 
       if (result.success && result.user) {
-        navigation.navigate('Home');
+        // Successful registration - navigation will happen automatically via App.tsx
+        // navigation.navigate('Home'); // Removed to prevent race condition
       } else {
         setError(result.error || t('VALIDATION.REGISTRATION_ERROR'));
       }
