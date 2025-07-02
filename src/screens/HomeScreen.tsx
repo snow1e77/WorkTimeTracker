@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import { scrollViewConfig, scrollContentStyle } from '../config/scrollConfig';
 import {
   Card,
   Title,
@@ -134,7 +135,10 @@ export default function HomeScreen() {
         </Card>
       ) : null}
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        {...scrollViewConfig}
+        contentContainerStyle={[scrollContentStyle, styles.scrollContent]}
+      >
         {/* Header с информацией о пользователе */}
         <View style={styles.header}>
           <View style={styles.userInfo}>

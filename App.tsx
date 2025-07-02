@@ -3,7 +3,7 @@ import { NavigationContainer, NavigationContainerRef } from '@react-navigation/n
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View, Platform } from 'react-native';
+import { ActivityIndicator, View, Platform, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WebApp from './src/components/WebApp';
 import { notificationService } from './src/services/NotificationService';
@@ -30,6 +30,14 @@ import SiteManagementScreen from './src/screens/SiteManagementScreen';
 import CreateSiteScreen from './src/screens/CreateSiteScreen';
 import WorkReportsScreen from './src/screens/WorkReportsScreen';
 import UserManagementScreen from './src/screens/UserManagementScreen';
+
+// Enable scroll optimization for iOS simulator
+if (Platform.OS === 'ios' && __DEV__) {
+  // @ts-ignore
+  Text.defaultProps = Text.defaultProps || {};
+  // @ts-ignore
+  Text.defaultProps.allowFontScaling = false;
+}
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

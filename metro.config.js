@@ -63,4 +63,7 @@ config.transformer.minifierConfig = {
   },
 };
 
+// Enable scroll performance optimization for iOS simulator
+config.resolver.platforms = ['ios', 'android', 'native', 'web'];
+
 module.exports = config; 

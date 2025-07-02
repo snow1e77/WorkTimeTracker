@@ -1,5 +1,5 @@
 ﻿import React, { useState } from 'react';
-import { View, StyleSheet, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, StyleSheet, Keyboard, TouchableWithoutFeedback, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Button, Card, Title, HelperText } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,6 +12,7 @@ import {
 } from '../utils/phoneUtils';
 import InternationalPhoneInput from '../components/InternationalPhoneInput';
 import { t } from '../constants/localization';
+import { scrollViewConfig, keyboardAvoidingConfig } from '../config/scrollConfig';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -195,24 +196,36 @@ export default function LoginScreen() {
   );
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
-        <Card style={styles.card}>
-          <Card.Content>
-            {step === 'phone' ? renderPhoneStep() : renderRegisterStep()}
-          </Card.Content>
-        </Card>
-      </View>
-    </TouchableWithoutFeedback>
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }} 
+      {...keyboardAvoidingConfig}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          style={styles.container}
+          {...scrollViewConfig}
+        >
+          <Card style={styles.card}>
+            <Card.Content>
+              {step === 'phone' ? renderPhoneStep() : renderRegisterStep()}
+            </Card.Content>
+          </Card>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
   },
   card: {
     borderRadius: 8,
