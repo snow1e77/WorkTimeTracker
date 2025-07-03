@@ -8,6 +8,8 @@ import {
   IconButton,
   Menu,
   Provider,
+  Text,
+  Card,
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,6 +26,7 @@ export default function HomeScreen() {
   
   const [isWorking, setIsWorking] = useState(false);
   const [shiftStartTime, setShiftStartTime] = useState<Date | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
   const [menuVisible, setMenuVisible] = useState(false);
 
   const locationService = LocationService.getInstance();
@@ -53,18 +56,44 @@ export default function HomeScreen() {
     };
   }, [user]);
 
+  // Секундомер
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isWorking && shiftStartTime) {
+      interval = setInterval(() => {
+        const now = new Date();
+        const elapsed = Math.floor((now.getTime() - shiftStartTime.getTime()) / 1000);
+        setElapsedTime(elapsed);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isWorking, shiftStartTime]);
+
   const handleStartShift = () => {
     setIsWorking(true);
-    setShiftStartTime(new Date());
+    const now = new Date();
+    setShiftStartTime(now);
+    setElapsedTime(0);
   };
 
   const handleEndShift = () => {
     setIsWorking(false);
     setShiftStartTime(null);
+    setElapsedTime(0);
   };
 
   const openMenu = () => setMenuVisible(true);
   const closeMenu = () => setMenuVisible(false);
+
+  // Форматирование времени для секундомера
+  const formatElapsedTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <Provider>
@@ -161,6 +190,38 @@ export default function HomeScreen() {
             />
           </TouchableOpacity>
         </View>
+
+        {/* Информация о смене */}
+        {isWorking && shiftStartTime && (
+          <Card style={styles.shiftInfoCard}>
+            <Card.Content>
+              <Text style={styles.shiftTitle}>Рабочая смена активна</Text>
+              <View style={styles.shiftInfoRow}>
+                <Text style={styles.shiftLabel}>Начало смены:</Text>
+                <Text style={styles.shiftValue}>
+                  {shiftStartTime.toLocaleTimeString('ru-RU', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })}
+                </Text>
+              </View>
+              <View style={styles.shiftInfoRow}>
+                <Text style={styles.shiftLabel}>Дата:</Text>
+                <Text style={styles.shiftValue}>
+                  {shiftStartTime.toLocaleDateString('ru-RU', {
+                    day: '2-digit',
+                    month: '2-digit', 
+                    year: 'numeric'
+                  })}
+                </Text>
+              </View>
+              <View style={styles.shiftInfoRow}>
+                <Text style={styles.shiftLabel}>Время работы:</Text>
+                <Text style={styles.timerValue}>{formatElapsedTime(elapsedTime)}</Text>
+              </View>
+            </Card.Content>
+          </Card>
+        )}
       </View>
     </Provider>
   );
@@ -227,5 +288,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  shiftInfoCard: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#ccc',
+  },
+  shiftTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  shiftInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  shiftLabel: {
+    fontWeight: 'bold',
+    marginRight: 8,
+  },
+  shiftValue: {
+    fontWeight: 'normal',
+  },
+  timerValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 }); 

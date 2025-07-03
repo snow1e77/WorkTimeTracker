@@ -26,6 +26,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Chat, ChatMessage, DailyTask } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { Audio } from 'expo-av';
 import { ApiDatabaseService } from '../services/ApiDatabaseService';
 import { flatListConfig } from '../config/scrollConfig';
 
@@ -42,6 +43,10 @@ export default function ChatScreen() {
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
+  // Состояние для голосовых сообщений
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  
   const flatListRef = useRef<FlatList>(null);
   const apiService = ApiDatabaseService.getInstance();
 
@@ -50,6 +55,15 @@ export default function ChatScreen() {
     // Set up polling for new messages
     const interval = setInterval(loadMessages, 5000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Разрешение', 'Нужно разрешение на использование микрофона для голосовых сообщений');
+      }
+    })();
   }, []);
 
   const loadChat = async () => {
@@ -95,19 +109,19 @@ export default function ChatScreen() {
       }
   };
 
-  const sendMessage = async (messageType: 'text' | 'photo', content: string, photoUri?: string, location?: { latitude: number; longitude: number }) => {
+  const sendMessage = async (messageType: 'text' | 'photo' | 'audio', content: string, photoUri?: string, location?: { latitude: number; longitude: number }, audioUri?: string) => {
     if (!chat || sending) return;
 
     try {
       setSending(true);
       
-      const messageData = {
+      const messageData: any = {
         chatId: chat.id,
         messageType,
         content,
-        photoUri,
-        latitude: location?.latitude,
-        longitude: location?.longitude
+        ...(photoUri && { photoUri }),
+        ...(location && { latitude: location.latitude, longitude: location.longitude }),
+        ...(audioUri && { audioUri })
       };
 
       const response = await apiService.sendMessage(messageData);
@@ -220,6 +234,61 @@ export default function ChatScreen() {
     }
   };
 
+  // Функции для голосовых сообщений
+  const startRecording = async () => {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Разрешение', 'Нужно разрешение на использование микрофона');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      
+      setRecording(recording);
+      setIsRecording(true);
+    } catch (err) {
+      Alert.alert('Ошибка', 'Не удалось начать запись');
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+
+    try {
+      setIsRecording(false);
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecording(null);
+
+      if (uri) {
+        // Отправляем голосовое сообщение
+        await sendMessage('audio', '🎤 Голосовое сообщение', undefined, undefined, uri);
+      }
+    } catch (error) {
+      Alert.alert('Ошибка', 'Не удалось завершить запись');
+    }
+  };
+
+  const cancelRecording = async () => {
+    if (recording) {
+      try {
+        await recording.stopAndUnloadAsync();
+        setRecording(null);
+        setIsRecording(false);
+      } catch (error) {
+        console.error('Ошибка отмены записи:', error);
+      }
+    }
+  };
+
   const openImageModal = (imageUri: string) => {
     setSelectedImage(imageUri);
     setImageModalVisible(true);
@@ -231,6 +300,15 @@ export default function ChatScreen() {
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString();
+  };
+
+  const playAudio = async (audioUri: string) => {
+    try {
+      const { sound } = await Audio.Sound.createAsync({ uri: audioUri });
+      await sound.playAsync();
+    } catch (error) {
+      Alert.alert('Ошибка', 'Не удалось воспроизвести аудио');
+    }
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
@@ -246,13 +324,19 @@ export default function ChatScreen() {
             
             {item.messageType === 'task' && (
               <Chip icon="clipboard-text" style={styles.taskChip}>
-                Task
+                Задача
               </Chip>
             )}
             
             {item.messageType === 'photo' && (
               <Chip icon="camera" style={styles.photoChip}>
-                Photo
+                Фото
+              </Chip>
+            )}
+            
+            {item.messageType === 'audio' && (
+              <Chip icon="microphone" style={styles.audioChip}>
+                Голосовое
               </Chip>
             )}
             
@@ -276,9 +360,25 @@ export default function ChatScreen() {
                     }}
                     style={styles.locationButton}
                   >
-                    View Location
+                    Показать местоположение
                   </Button>
                 )}
+              </View>
+            )}
+            
+            {item.audioUri && (
+              <View style={styles.audioContainer}>
+                <TouchableOpacity 
+                  style={styles.audioPlayButton}
+                  onPress={() => playAudio(item.audioUri!)}
+                >
+                  <IconButton
+                    icon="play"
+                    iconColor="white"
+                    size={20}
+                  />
+                </TouchableOpacity>
+                <Text style={styles.audioText}>Нажмите для воспроизведения</Text>
               </View>
             )}
             
@@ -343,7 +443,7 @@ export default function ChatScreen() {
             style={styles.textInput}
             value={newMessage}
             onChangeText={setNewMessage}
-            placeholder="Type a message..."
+            placeholder="Введите сообщение..."
             multiline
             maxLength={500}
           />
@@ -357,7 +457,7 @@ export default function ChatScreen() {
         </View>
       </View>
 
-      {/* Большие круглые кнопки внизу экрана */}
+      {/* Улучшенные кнопки внизу экрана */}
       <View style={styles.bottomButtonsContainer}>
         {/* Кнопка камеры */}
         <TouchableOpacity
@@ -366,8 +466,21 @@ export default function ChatScreen() {
         >
           <IconButton
             icon="camera"
-            iconColor="#333"
-            size={40}
+            iconColor="white"
+            size={24}
+          />
+        </TouchableOpacity>
+
+        {/* Кнопка голосового сообщения */}
+        <TouchableOpacity
+          style={[styles.voiceButton, isRecording && styles.voiceButtonRecording]}
+          onPress={isRecording ? stopRecording : startRecording}
+          onLongPress={isRecording ? cancelRecording : undefined}
+        >
+          <IconButton
+            icon={isRecording ? "stop" : "microphone"}
+            iconColor="white"
+            size={30}
           />
         </TouchableOpacity>
 
@@ -379,10 +492,17 @@ export default function ChatScreen() {
           <IconButton
             icon="image"
             iconColor="white"
-            size={50}
+            size={24}
           />
         </TouchableOpacity>
       </View>
+
+      {/* Индикатор записи */}
+      {isRecording && (
+        <View style={styles.recordingIndicator}>
+          <Text style={styles.recordingText}>🎤 Идет запись... Отпустите для отправки, удерживайте для отмены</Text>
+        </View>
+      )}
 
       {/* Image Modal */}
       <Portal>
@@ -484,6 +604,11 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 8,
   },
+  audioChip: {
+    backgroundColor: '#FF5722',
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
   messageText: {
     fontSize: 16,
     marginBottom: 4,
@@ -504,6 +629,25 @@ const styles = StyleSheet.create({
   },
   locationButton: {
     alignSelf: 'flex-start',
+  },
+  audioContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  audioPlayButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2196F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  audioText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
   },
   inputContainer: {
     backgroundColor: '#ffffff',
@@ -528,18 +672,17 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-evenly',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 20,
   },
   cameraButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'white',
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
+    backgroundColor: '#2196F3',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 40,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -547,9 +690,9 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   galleryButton: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
     backgroundColor: '#4CAF50',
     justifyContent: 'center',
     alignItems: 'center',
@@ -574,5 +717,37 @@ const styles = StyleSheet.create({
     top: 50,
     right: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  },
+  voiceButton: {
+    width: 75,
+    height: 75,
+    borderRadius: 37.5,
+    backgroundColor: '#FF5722',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  voiceButtonRecording: {
+    backgroundColor: '#FF9800',
+    transform: [{ scale: 1.1 }],
+  },
+  recordingIndicator: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  recordingText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
   },
 }); 

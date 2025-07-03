@@ -275,9 +275,10 @@ export interface ChatMessage {
   senderId: string;
   senderName: string;
   senderRole: 'worker' | 'admin';
-  messageType: 'text' | 'photo' | 'task';
+  messageType: 'text' | 'photo' | 'task' | 'audio';
   content: string;
   photoUri?: string;
+  audioUri?: string;
   latitude?: number;
   longitude?: number;
   timestamp: Date;
