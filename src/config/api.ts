@@ -1,4 +1,5 @@
 ﻿import { Platform } from 'react-native';
+import logger from '../utils/logger';
 
 // Функция для определения правильного хоста
 const getApiHost = () => {
@@ -33,7 +34,7 @@ let customBaseUrl: string | null = null;
 
 export const setCustomBaseUrl = (url: string | null) => {
   customBaseUrl = url;
-  console.log('Custom base URL set to:', url);
+          logger.info('Custom base URL set', { url }, 'api');
 };
 
 export const getCustomBaseUrl = () => customBaseUrl;
@@ -195,7 +196,7 @@ export const checkServerHealth = async (): Promise<boolean> => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000); // 5 секунд для health check
     
-    console.log('Checking server health at:', getHealthUrl());
+            logger.info('Checking server health', { url: getHealthUrl() }, 'api');
     
     const response = await fetch(getHealthUrl(), {
       method: 'GET',
@@ -204,10 +205,10 @@ export const checkServerHealth = async (): Promise<boolean> => {
     });
     
     clearTimeout(timeout);
-    console.log('Health check response:', response.status, response.ok);
+            logger.info('Health check response received', { status: response.status, ok: response.ok }, 'api');
     return response.ok;
   } catch (error) {
-    console.log('Health check error:', error);
+            logger.error('Health check failed', { error: error instanceof Error ? error.message : 'Unknown error' }, 'api');
     return false;
   }
 };
@@ -244,7 +245,7 @@ export const debugConnection = async (): Promise<{
     error
   };
   
-  console.log('Connection debug info:', debugInfo);
+      logger.debug('Connection debug info', debugInfo, 'api');
   return debugInfo;
 };
 

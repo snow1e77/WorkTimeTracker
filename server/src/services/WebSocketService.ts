@@ -2,6 +2,7 @@
 import { Server as HTTPServer } from 'http';
 import jwt from 'jsonwebtoken';
 import { User } from '../types';
+import logger from '../utils/logger';
 
 type SocketMiddleware = (socket: AuthenticatedSocket, next: (err?: Error) => void) => void;
 
@@ -243,7 +244,11 @@ export class WebSocketService {
         timestamp: new Date()
       });
     } catch (error) {
-      console.error(`Failed to notify user ${userId}:`, error);
+      logger.error(`Failed to notify user ${userId}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        event
+      });
     }
   }
 
@@ -255,7 +260,10 @@ export class WebSocketService {
         timestamp: new Date()
       });
     } catch (error) {
-      console.error('Failed to notify admins:', error);
+      logger.error('Failed to notify admins', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        event
+      });
     }
   }
 
@@ -267,7 +275,10 @@ export class WebSocketService {
         timestamp: new Date()
       });
     } catch (error) {
-      console.error('Failed to broadcast message:', error);
+      logger.error('Failed to broadcast message', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        event
+      });
     }
   }
 

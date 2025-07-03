@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, Platform } from 'react-native';
 import { AuthUser } from '../types';
+import logger from '../utils/logger';
 
 interface User {
   id: string;
   phoneNumber: string;
   name: string;
-  role: 'worker' | 'admin';
+  role: 'worker' | 'foreman' | 'admin' | 'superadmin';
   companyId?: string;
   isVerified: boolean;
   isActive: boolean;
+  foremanId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,11 +28,12 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
   const [newUserData, setNewUserData] = useState({
     phoneNumber: '',
     name: '',
-    role: 'worker' as 'worker' | 'admin'
+    role: 'worker' as 'worker' | 'foreman' | 'admin',
+    foremanPhone: ''
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [filterRole, setFilterRole] = useState<'all' | 'worker' | 'admin'>('all');
+  const [filterRole, setFilterRole] = useState<'all' | 'worker' | 'foreman' | 'admin' | 'superadmin'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
@@ -58,10 +61,10 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
         const data = await response.json();
         setUsers(data.data?.users || []);
       } else {
-        console.error('Failed to load users');
+        logger.error('Failed to load users', {}, 'admin');
       }
     } catch (error) {
-      console.error('Error loading users:', error);
+              logger.error('Error loading users', { error: error instanceof Error ? error.message : 'Unknown error' }, 'admin');
     } finally {
       setLoading(false);
     }
@@ -89,6 +92,18 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
       return;
     }
 
+    // Foreman phone validation for workers
+    if (newUserData.role === 'worker') {
+      if (!newUserData.foremanPhone.trim()) {
+        setError('Введите номер телефона прораба для работника');
+        return;
+      }
+      if (!phoneRegex.test(newUserData.foremanPhone)) {
+        setError('Номер телефона прораба должен быть в международном формате');
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError('');
 
@@ -106,7 +121,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
 
       if (response.ok && data.success) {
         await loadUsers();
-        setNewUserData({ phoneNumber: '', name: '', role: 'worker' });
+        setNewUserData({ phoneNumber: '', name: '', role: 'worker', foremanPhone: '' });
         setShowAddForm(false);
         alert('Пользователь успешно зарегистрирован');
       } else {
@@ -225,7 +240,9 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
           >
             <option value="all">Все роли</option>
             <option value="worker">Рабочие</option>
+            <option value="foreman">Прорабы</option>
             <option value="admin">Администраторы</option>
+            <option value="superadmin">Суперадмины</option>
           </select>
 
           <select
@@ -282,13 +299,27 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
             <label style={styles.label}>Роль:</label>
             <select
               value={newUserData.role}
-              onChange={(e) => setNewUserData(prev => ({ ...prev, role: e.target.value as 'worker' | 'admin' }))}
+              onChange={(e) => setNewUserData(prev => ({ ...prev, role: e.target.value as 'worker' | 'foreman' | 'admin', foremanPhone: e.target.value !== 'worker' ? '' : prev.foremanPhone }))}
               style={styles.select}
             >
               <option value="worker">Рабочий</option>
+              <option value="foreman">Прораб</option>
               <option value="admin">Администратор</option>
             </select>
           </div>
+
+          {newUserData.role === 'worker' && (
+            <div style={styles.formField}>
+              <label style={styles.label}>Номер телефона прораба:</label>
+              <input
+                type="tel"
+                placeholder="+79001234567"
+                value={newUserData.foremanPhone}
+                onChange={(e) => setNewUserData(prev => ({ ...prev, foremanPhone: e.target.value }))}
+                style={styles.input}
+              />
+            </div>
+          )}
 
           <div style={styles.formActions}>
             <button
@@ -329,8 +360,16 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
                   </td>
                   <td style={styles.tableCell}>{user.name}</td>
                   <td style={styles.tableCell}>
-                    <span style={user.role === 'admin' ? styles.adminBadge : styles.workerBadge}>
-                      {user.role === 'admin' ? 'Администратор' : 'Рабочий'}
+                    <span style={
+                      user.role === 'superadmin' ? styles.superadminBadge :
+                      user.role === 'admin' ? styles.adminBadge :
+                      user.role === 'foreman' ? styles.foremanBadge :
+                      styles.workerBadge
+                    }>
+                      {user.role === 'superadmin' ? 'Суперадмин' :
+                       user.role === 'admin' ? 'Администратор' :
+                       user.role === 'foreman' ? 'Прораб' :
+                       'Рабочий'}
                     </span>
                   </td>
                   <td style={styles.tableCell}>
@@ -379,34 +418,35 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
   );
 };
 
-const styles = StyleSheet.create({
+// Для веб-платформы используем обычные CSS стили
+const styles = Platform.OS === 'web' ? {
   container: {
     flex: 1,
-    padding: 20,
+    padding: 24,
     backgroundColor: '#f5f5f5',
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     marginBottom: 8,
     color: '#333',
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
-    lineHeight: '1.5',
+    marginBottom: 20,
   },
   controls: {
     marginBottom: 20,
   },
   searchRow: {
-    display: 'flex',
+    display: 'flex' as const,
     gap: 12,
     marginBottom: 12,
-    alignItems: 'center',
+    alignItems: 'center' as const,
   },
   searchInput: {
     flex: 1,
@@ -429,7 +469,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     color: 'white',
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '500' as const,
     cursor: 'pointer',
     transition: 'background-color 0.2s',
   },
@@ -442,7 +482,7 @@ const styles = StyleSheet.create({
   },
   formTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     marginBottom: 8,
     color: '#333',
   },
@@ -466,7 +506,7 @@ const styles = StyleSheet.create({
     display: 'block',
     marginBottom: 6,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '500' as const,
     color: '#333',
   },
   input: {
@@ -475,7 +515,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     border: '1px solid #ddd',
     fontSize: 16,
-    boxSizing: 'border-box',
+    boxSizing: 'border-box' as const,
   },
   select: {
     width: '100%',
@@ -483,11 +523,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     border: '1px solid #ddd',
     fontSize: 16,
-    boxSizing: 'border-box',
+    boxSizing: 'border-box' as const,
   },
   formActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
+    display: 'flex' as const,
+    justifyContent: 'flex-end' as const,
     gap: 12,
     marginTop: 20,
   },
@@ -498,7 +538,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#34C759',
     color: 'white',
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '500' as const,
     cursor: 'pointer',
   },
   tableContainer: {
@@ -510,27 +550,27 @@ const styles = StyleSheet.create({
   },
   loading: {
     padding: 40,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     color: '#666',
     fontSize: 16,
   },
   emptyState: {
     padding: 40,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     color: '#666',
     fontSize: 16,
   },
   table: {
     width: '100%',
-    borderCollapse: 'collapse',
+    borderCollapse: 'collapse' as const,
   },
   tableHeader: {
     backgroundColor: '#f8f9fa',
   },
   tableHeaderCell: {
     padding: 16,
-    textAlign: 'left',
-    fontWeight: '600',
+    textAlign: 'left' as const,
+    fontWeight: '600' as const,
     color: '#333',
     borderBottom: '1px solid #eee',
   },
@@ -541,13 +581,29 @@ const styles = StyleSheet.create({
     padding: 16,
     color: '#333',
   },
+  superadminBadge: {
+    padding: '4px 8px',
+    borderRadius: 4,
+    backgroundColor: '#8E44AD',
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '500' as const,
+  },
   adminBadge: {
     padding: '4px 8px',
     borderRadius: 4,
     backgroundColor: '#FF9500',
     color: 'white',
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '500' as const,
+  },
+  foremanBadge: {
+    padding: '4px 8px',
+    borderRadius: 4,
+    backgroundColor: '#2ECC71',
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '500' as const,
   },
   workerBadge: {
     padding: '4px 8px',
@@ -555,7 +611,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     color: 'white',
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '500' as const,
   },
   activeBadge: {
     padding: '4px 8px',
@@ -563,7 +619,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#34C759',
     color: 'white',
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '500' as const,
   },
   inactiveBadge: {
     padding: '4px 8px',
@@ -571,10 +627,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF3B30',
     color: 'white',
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '500' as const,
   },
   actions: {
-    display: 'flex',
+    display: 'flex' as const,
     gap: 8,
   },
   activateButton: {
@@ -610,6 +666,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
   },
-});
+} : {} as any; // Для React Native возвращаем пустой объект
 
 export default UserManagementPanel; 

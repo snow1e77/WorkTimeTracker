@@ -1,4 +1,4 @@
-﻿import { AuthUser, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation, ConstructionSite, WorkReport, LocationEvent, Chat, ChatMessage } from '../types';
+﻿import { AuthUser, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation, ConstructionSite, WorkReport, LocationEvent, Chat, ChatMessage, Project } from '../types';
 
 // Веб-версия DatabaseService для работы с localStorage
 export class WebDatabaseService {
@@ -762,5 +762,101 @@ export class WebDatabaseService {
     } catch (error) {
       return { success: false, error: 'Failed to validate photo' };
     }
+  }
+
+  // Project management methods
+  async getProjects(): Promise<Project[]> {
+    const projectsData = localStorage.getItem('worktime_projects');
+    if (!projectsData) {
+      const defaultProjects: Project[] = [
+        {
+          id: 'project-1',
+          name: 'Жилой комплекс "Северная звезда"',
+          description: 'Строительство многоэтажного жилого комплекса в северном районе города',
+          companyId: 'default-company',
+          startDate: new Date('2024-01-15'),
+          endDate: new Date('2025-12-31'),
+          status: 'active',
+          budget: 150000000,
+          currency: 'RUB',
+          address: 'ул. Северная, 123',
+          isActive: true,
+          createdBy: 'admin-1',
+          createdAt: new Date('2024-01-01'),
+        },
+        {
+          id: 'project-2',
+          name: 'Торговый центр "Горизонт"',
+          description: 'Реконструкция существующего торгового центра',
+          companyId: 'default-company',
+          startDate: new Date('2024-03-01'),
+          endDate: new Date('2024-11-30'),
+          status: 'planning',
+          budget: 75000000,
+          currency: 'RUB',
+          address: 'пр. Центральный, 45',
+          isActive: true,
+          createdBy: 'admin-1',
+          createdAt: new Date('2024-02-15'),
+        },
+      ];
+      localStorage.setItem('worktime_projects', JSON.stringify(defaultProjects));
+      return defaultProjects;
+    }
+    
+    const projects = JSON.parse(projectsData);
+    // Преобразуем строки дат обратно в Date объекты
+    return projects.map((project: Project) => ({
+      ...project,
+      startDate: typeof project.startDate === 'string' ? new Date(project.startDate) : project.startDate,
+      endDate: project.endDate && typeof project.endDate === 'string' ? new Date(project.endDate) : project.endDate,
+      createdAt: typeof project.createdAt === 'string' ? new Date(project.createdAt) : project.createdAt,
+      updatedAt: project.updatedAt && typeof project.updatedAt === 'string' ? new Date(project.updatedAt) : project.updatedAt,
+    }));
+  }
+
+  async createProject(project: Project): Promise<void> {
+    const projects = await this.getProjects();
+    projects.push(project);
+    localStorage.setItem('worktime_projects', JSON.stringify(projects));
+  }
+
+  async updateProject(projectId: string, updates: Partial<Project>): Promise<void> {
+    const projects = await this.getProjects();
+    const projectIndex = projects.findIndex(project => project.id === projectId);
+    if (projectIndex !== -1 && projects[projectIndex]) {
+      projects[projectIndex] = { ...projects[projectIndex], ...updates };
+      localStorage.setItem('worktime_projects', JSON.stringify(projects));
+    }
+  }
+
+  async deleteProject(projectId: string): Promise<void> {
+    const projects = await this.getProjects();
+    const filteredProjects = projects.filter(project => project.id !== projectId);
+    localStorage.setItem('worktime_projects', JSON.stringify(filteredProjects));
+  }
+
+  async updateProjectStatus(projectId: string, isActive: boolean): Promise<void> {
+    const projects = await this.getProjects();
+    const projectIndex = projects.findIndex(project => project.id === projectId);
+    if (projectIndex !== -1 && projects[projectIndex]) {
+      projects[projectIndex].isActive = isActive;
+      localStorage.setItem('worktime_projects', JSON.stringify(projects));
+    }
+  }
+
+  async getProjectById(projectId: string): Promise<Project | null> {
+    const projects = await this.getProjects();
+    return projects.find(project => project.id === projectId) || null;
+  }
+
+  async getProjectSites(projectId: string): Promise<ConstructionSite[]> {
+    const sites = await this.getConstructionSites();
+    return sites.filter(site => site.projectId === projectId);
+  }
+
+  async getActiveProjects(): Promise<Project[]> {
+    const projects = await this.getProjects();
+    return projects.filter(project => project.isActive && project.status === 'active');
   }
 } 

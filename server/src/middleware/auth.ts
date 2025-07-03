@@ -74,23 +74,68 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
   }
 };
 
-// Middleware для проверки роли администратора
+// Проверка роли администратора
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
-    return res.status(401).json({
-      success: false,
-      error: 'Authentication required'
-    });
+    res.status(401).json({ error: 'Пользователь не аутентифицирован' });
+    return;
   }
 
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      success: false,
-      error: 'Admin access required'
-    });
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+    res.status(403).json({ error: 'Требуются права администратора' });
+    return;
   }
 
-  return next();
+  next();
+};
+
+// Проверка роли суперадмина
+export const requireSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    res.status(401).json({ error: 'Пользователь не аутентифицирован' });
+    return;
+  }
+
+  if (req.user.role !== 'superadmin') {
+    res.status(403).json({ error: 'Требуются права суперадмина' });
+    return;
+  }
+
+  next();
+};
+
+// Проверка роли прораба
+export const requireForeman = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    res.status(401).json({ error: 'Пользователь не аутентифицирован' });
+    return;
+  }
+
+  if (req.user.role !== 'foreman' && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+    res.status(403).json({ error: 'Требуются права прораба или выше' });
+    return;
+  }
+
+  next();
+};
+
+// Универсальная проверка ролей
+export const requireRole = (...roles: Array<'worker' | 'foreman' | 'admin' | 'superadmin'>) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Пользователь не аутентифицирован' });
+      return;
+    }
+
+    if (!roles.includes(req.user.role)) {
+      res.status(403).json({ 
+        error: `Недостаточно прав. Требуется одна из ролей: ${roles.join(', ')}` 
+      });
+      return;
+    }
+
+    next();
+  };
 };
 
 // Middleware для проверки доступа к ресурсу (пользователь может получить только свои данные или админ может получить любые)
@@ -119,27 +164,6 @@ export const requireOwnershipOrAdmin = (userIdParam: string = 'userId') => {
       success: false,
       error: 'Access denied: insufficient permissions'
     });
-  };
-};
-
-// Middleware для проверки роли (можно указать несколько ролей)
-export const requireRole = (...roles: Array<'worker' | 'admin'>) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required'
-      });
-    }
-
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        error: `Access denied: required role(s): ${roles.join(', ')}`
-      });
-    }
-
-    return next();
   };
 };
 

@@ -9,7 +9,7 @@ module.exports = {
     '__BUNDLE_START_TIME__': 0
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|react-native-.*|@react-navigation|react-navigation|@expo|expo|expo-.*|@react-native-async-storage|react-native-paper|react-native-vector-icons|react-native-safe-area-context|react-native-screens)/)'
+    'node_modules/(?!(react-native|@react-native|react-native-.*|@react-navigation|react-navigation|@expo|expo|expo-.*|@react-native-async-storage|@react-native-community|react-native-paper|react-native-vector-icons|react-native-safe-area-context|react-native-screens|@sentry|is-online|axios)/)'
   ],
   testMatch: [
     '**/__tests__/**/*.test.{js,jsx,ts,tsx}',
@@ -29,7 +29,11 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    '^react-native-maps$': '<rootDir>/src/utils/mapsMock.web.js'
+    '^react-native-maps$': '<rootDir>/src/utils/mapsMock.web.js',
+    '^@react-native-community/netinfo$': '<rootDir>/src/utils/__mocks__/netinfo.js',
+    '^is-online$': '<rootDir>/src/utils/__mocks__/is-online.js',
+    '^@sentry/react-native$': '<rootDir>/src/utils/__mocks__/sentry.js'
   },
-  testEnvironment: 'node'
+  testEnvironment: 'node',
+  testTimeout: 10000
 }; 

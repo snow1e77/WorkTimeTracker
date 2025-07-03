@@ -112,6 +112,23 @@ jest.mock('react-native-maps', () => {
 // Глобальные настройки для тестов
 global.__DEV__ = true;
 
+// Мокируем ErrorUtils для MonitoringService
+global.ErrorUtils = {
+  getGlobalHandler: jest.fn(),
+  setGlobalHandler: jest.fn()
+};
+
+// Мокируем performance для мониторинга
+global.performance = {
+  now: jest.fn(() => Date.now()),
+  memory: {
+    usedJSHeapSize: 1024 * 1024 * 50 // 50MB
+  }
+};
+
+// Мокируем fetch
+global.fetch = jest.fn();
+
 // Увеличиваем таймаут для тестов
 jest.setTimeout(10000);
 

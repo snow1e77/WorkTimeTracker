@@ -3,6 +3,7 @@ import { AuthUser, ConstructionSite, WorkShift, UserSiteAssignment, Violation, C
 import { notificationService } from './NotificationService';
 import { API_CONFIG, getApiUrl, getHealthUrl, ApiResponse } from '../config/api';
 import { apiClient } from './ApiClient';
+import logger from '../utils/logger';
 
 // Helper function to get auth token
 const getAuthToken = async (): Promise<string | null> => {
@@ -64,7 +65,7 @@ export class ApiDatabaseService {
         }
 
       this.isInitialized = true;
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -81,7 +82,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to create user');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -121,7 +122,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to update password');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -132,6 +133,7 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/sites');
       return response.success ? (response.data as ConstructionSite[]) : [];
     } catch (error) {
+      logger.error('Error getting construction sites', { error: error instanceof Error ? error.message : 'Unknown error' }, 'api');
       return [];
     }
   }
@@ -157,7 +159,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to delete site');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -170,7 +172,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to update site status');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -235,9 +237,13 @@ export class ApiDatabaseService {
   async getViolations(period: 'today' | 'week' | 'month', severity: 'all' | 'low' | 'medium' | 'high' = 'all'): Promise<Violation[]> {
     try {
       const response = await apiClient.get(`/violations?period=${period}&severity=${severity}`);
-      return response.success ? (response.data as Violation[]) : [];
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to get violations');
+      }
+      return response.data as Violation[];
     } catch (error) {
-      return [];
+      logger.error('Error getting violations', { error: error instanceof Error ? error.message : 'Unknown error', period, severity }, 'api');
+      throw error;
     }
   }
 
@@ -249,7 +255,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to resolve violation');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -262,7 +268,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to delete violation');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -286,9 +292,13 @@ export class ApiDatabaseService {
   async getAllUsers(): Promise<AuthUser[]> {
     try {
       const response = await apiClient.get('/users');
-      return response.success ? (response.data as AuthUser[]) : [];
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to get users');
+      }
+      return response.data as AuthUser[];
     } catch (error) {
-      return [];
+      logger.error('Error getting users', { error: error instanceof Error ? error.message : 'Unknown error' }, 'api');
+      throw error;
     }
   }
 
@@ -300,7 +310,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to update user role');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -313,7 +323,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to update user status');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -326,7 +336,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to delete user');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -414,7 +424,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to end work shift');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -446,7 +456,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to update user site assignment');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }
@@ -459,7 +469,7 @@ export class ApiDatabaseService {
         throw new Error(response.error || 'Failed to delete user site assignment');
       }
       
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   }

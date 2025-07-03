@@ -264,78 +264,68 @@ router.get('/history', async (req, res) => {
   }
 });
 
-// Обработка операций смен из очереди
+// Синхронизация отдельной смены
 router.post('/shift', async (req, res) => {
   try {
     const { operation, entityId, data, deviceId } = req.body;
     const userId = req.user!.id;
 
-    let result;
-    switch (operation) {
-      case 'create':
-        result = await SyncService.createShiftFromSync(userId, data);
-        break;
-      case 'update':
-        result = await SyncService.updateShiftFromSync(entityId, data);
-        break;
-      case 'delete':
-        result = await SyncService.deleteShiftFromSync(entityId);
-        break;
-      default:
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid operation type'
-        });
+    if (!operation || !entityId || !deviceId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: operation, entityId, deviceId'
+      });
     }
+
+    // Обрабатываем операцию со сменой
+    const result = await SyncService.processSync(userId, {
+      deviceId,
+      data: { shifts: [{ ...data, id: entityId }] }
+    });
 
     res.json({
       success: true,
-      result,
+      data: result,
       timestamp: new Date()
     });
 
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to process shift operation'
+      error: 'Failed to sync shift'
     });
   }
 });
 
-// Обработка операций назначений из очереди
+// Синхронизация отдельного назначения
 router.post('/assignment', async (req, res) => {
   try {
     const { operation, entityId, data, deviceId } = req.body;
     const userId = req.user!.id;
 
-    let result;
-    switch (operation) {
-      case 'create':
-        result = await SyncService.createAssignmentFromSync(userId, data);
-        break;
-      case 'update':
-        result = await SyncService.updateAssignmentFromSync(entityId, data);
-        break;
-      case 'delete':
-        result = await SyncService.deleteAssignmentFromSync(entityId);
-        break;
-      default:
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid operation type'
-        });
+    if (!operation || !entityId || !deviceId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: operation, entityId, deviceId'
+      });
     }
+
+    // Обрабатываем операцию с назначением
+    const result = await SyncService.processSync(userId, {
+      deviceId,
+      data: { assignments: [{ ...data, id: entityId }] }
+    });
 
     res.json({
       success: true,
-      result,
+      data: result,
       timestamp: new Date()
     });
 
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to process assignment operation'
+      error: 'Failed to sync assignment'
     });
   }
 });

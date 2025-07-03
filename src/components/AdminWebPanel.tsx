@@ -2,12 +2,14 @@
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { WebDatabaseService } from '../services/WebDatabaseService';
 import { WebSyncService } from '../services/WebSyncService';
-import { AuthUser, ConstructionSite, WorkReport, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation } from '../types';
+import { AuthUser, ConstructionSite, WorkReport, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation, Project } from '../types';
 import AssignmentsTab from './AssignmentsTab';
 import SyncTab from './SyncTab';
 import { SyncStatusPanel } from './SyncStatusPanel';
 import ChatManagementPanel from './ChatManagementPanel';
 import PreRegistrationPanel from './PreRegistrationPanel';
+import ProjectManagementPanel from './ProjectManagementPanel';
+import logger from '../utils/logger';
 
 // Импорты для карты (только для веб-платформы)
 let MapContainer: any, TileLayer: any, Marker: any, useMapEvents: any;
@@ -23,14 +25,16 @@ if (Platform.OS === 'web') {
     Marker = reactLeaflet.Marker;
     useMapEvents = reactLeaflet.useMapEvents;
   } catch (error) {
-    }
+    logger.warn('Failed to load Leaflet for web maps', { error: error instanceof Error ? error.message : 'Unknown error' }, 'maps');
+  }
 }
 
 interface WebAdminPanelProps {
   onLogout?: () => void;
+  currentUser?: AuthUser | null;
 }
 
-const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
+const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) => {
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [sites, setSites] = useState<ConstructionSite[]>([]);
   const [reports, setReports] = useState<WorkReport[]>([]);
@@ -38,8 +42,10 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
   const [workersLocations, setWorkersLocations] = useState<WorkerLocation[]>([]);
   const [schedules, setSchedules] = useState<WorkSchedule[]>([]);
   const [assignments, setAssignments] = useState<UserSiteAssignment[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState<'workers' | 'schedule' | 'reports' | 'users' | 'assignments' | 'sync' | 'chat' | 'preregistration'>('workers');
+  const [selectedTab, setSelectedTab] = useState<'projects' | 'workers' | 'schedule' | 'reports' | 'users' | 'assignments' | 'sync' | 'chat' | 'preregistration'>('projects');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<AuthUser | null>(null);
   const [syncStatus, setSyncStatus] = useState<any>(null);
@@ -57,20 +63,25 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
       loadData();
       loadSyncData();
     }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    
+    // Правильно очищаем интервал при размонтировании
+    return () => {
+      clearInterval(interval);
+    };
+  }, []); // Добавляем пустой массив зависимостей
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [usersData, sitesData, reportsData, photoReportsData, locationsData, schedulesData, assignmentsData] = await Promise.all([
+      const [usersData, sitesData, reportsData, photoReportsData, locationsData, schedulesData, assignmentsData, projectsData] = await Promise.all([
         dbService.getAllUsers(),
         dbService.getConstructionSites(),
         dbService.getWorkReports('week'),
         dbService.getPhotoReports(),
         dbService.getWorkersLocations(),
         dbService.getWorkSchedules(),
-        dbService.getAllAssignments()
+        dbService.getAllAssignments(),
+        dbService.getProjects()
       ]);
       
       setUsers(usersData);
@@ -80,9 +91,28 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
       setWorkersLocations(locationsData);
       setSchedules(schedulesData);
       setAssignments(assignmentsData);
+      setProjects(projectsData);
     } catch (error) {
-      } finally {
+      logger.error('Failed to load admin panel data', { error: error instanceof Error ? error.message : 'Unknown error' }, 'admin');
+    } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProjectData = async (projectId: string) => {
+    try {
+      const [projectSites, projectAssignments] = await Promise.all([
+        dbService.getProjectSites(projectId),
+        dbService.getAllAssignments()
+      ]);
+      
+      // Фильтруем данные по выбранному проекту
+      setSites(projectSites);
+      setAssignments(projectAssignments.filter(assignment => 
+        projectSites.some(site => site.id === assignment.siteId)
+      ));
+    } catch (error) {
+      logger.error('Failed to load project data', { error: error instanceof Error ? error.message : 'Unknown error' }, 'admin');
     }
   };
 
@@ -94,7 +124,8 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
       setSyncStatus(status);
       setSyncHistory(history);
     } catch (error) {
-      }
+      logger.error('Failed to load sync data', { error: error instanceof Error ? error.message : 'Unknown error' }, 'sync');
+    }
   };
 
   const formatTime = (minutes: number): string => {
@@ -136,8 +167,32 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
   const renderWorkersTab = () => (
     <div style={styles.tabContent}>
       <div style={styles.header}>
-        <h2 style={styles.title}>Worker Tracking</h2>
-        <p style={styles.subtitle}>Current location and status of workers</p>
+        <h2 style={styles.title}>
+          {selectedProject 
+            ? `Проект: ${selectedProject.name} - Рабочие` 
+            : 'Worker Tracking'
+          }
+        </h2>
+        <p style={styles.subtitle}>
+          {selectedProject 
+            ? `Текущее местоположение и статус рабочих на проекте "${selectedProject.name}"` 
+            : 'Current location and status of workers'
+          }
+        </p>
+        {selectedProject && (
+          <div style={styles.projectInfo}>
+            <button
+              style={styles.backToProjectsButton}
+              onClick={() => {
+                setSelectedProject(null);
+                setSelectedTab('projects');
+                loadData(); // Перезагружаем все данные
+              }}
+            >
+              ← Вернуться к проектам
+            </button>
+          </div>
+        )}
       </div>
 
       <div style={styles.workersGrid}>
@@ -493,6 +548,15 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
         <button
           style={{
             ...styles.tab,
+            ...(selectedTab === 'projects' ? styles.activeTab : {})
+          }}
+          onClick={() => setSelectedTab('projects')}
+        >
+          🏗️ Проекты
+        </button>
+        <button
+          style={{
+            ...styles.tab,
             ...(selectedTab === 'workers' ? styles.activeTab : {})
           }}
           onClick={() => setSelectedTab('workers')}
@@ -576,6 +640,19 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout }) => {
       </div>
 
       {/* Содержимое вкладок */}
+      {selectedTab === 'projects' && (
+        <ProjectManagementPanel 
+          currentUser={currentUser || null}
+          onSelectProject={(project) => {
+            setSelectedProject(project);
+            if (project) {
+              loadProjectData(project.id);
+              setSelectedTab('workers');
+            }
+          }}
+          selectedProject={selectedProject}
+        />
+      )}
       {selectedTab === 'workers' && renderWorkersTab()}
       {selectedTab === 'schedule' && renderScheduleTab()}
       {selectedTab === 'reports' && renderReportsTab()}
@@ -1151,6 +1228,21 @@ const styles = {
     marginTop: '10px',
     fontSize: '14px',
     color: '#666',
+  } as React.CSSProperties,
+
+  // Стили для проектов
+  projectInfo: {
+    marginBottom: '15px',
+  } as React.CSSProperties,
+
+  backToProjectsButton: {
+    padding: '8px 16px',
+    backgroundColor: '#6c757d',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
   } as React.CSSProperties,
 };
 

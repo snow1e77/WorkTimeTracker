@@ -1,6 +1,6 @@
 ﻿import express from 'express';
 import Joi from 'joi';
-import { requireAdmin, requireOwnershipOrAdmin, validateJSON, requireRole } from '../middleware/auth';
+import { requireAdmin, requireOwnershipOrAdmin, validateJSON, requireRole, requireSuperAdmin } from '../middleware/auth';
 import { UserService } from '../services/UserService';
 import { PreRegistrationService } from '../services/PreRegistrationService';
 
@@ -524,10 +524,22 @@ router.post('/register-user', requireRole('admin'), validateJSON, async (req, re
           'any.required': 'Имя обязательно'
         }),
       role: Joi.string()
-        .valid('worker', 'admin')
+        .valid('worker', 'admin', 'foreman')
         .default('worker')
         .messages({
-          'any.only': 'Роль должна быть worker или admin'
+          'any.only': 'Роль должна быть worker, admin или foreman'
+        }),
+      foremanPhone: Joi.string()
+        .pattern(/^\+?[1-9]\d{1,14}$/)
+        .when('role', {
+          is: 'worker',
+          then: Joi.required(),
+          otherwise: Joi.forbidden()
+        })
+        .messages({
+          'string.pattern.base': 'Неверный формат номера телефона прораба',
+          'any.required': 'Номер телефона прораба обязателен для работников',
+          'any.unknown': 'Номер прораба указывается только для работников'
         })
     });
 
@@ -540,7 +552,7 @@ router.post('/register-user', requireRole('admin'), validateJSON, async (req, re
       });
     }
 
-    const { phoneNumber, name, role } = value;
+    const { phoneNumber, name, role, foremanPhone } = value;
 
     // Проверяем, что пользователь не существует
     const existingUser = await UserService.getUserByPhoneNumber(phoneNumber);
@@ -551,11 +563,26 @@ router.post('/register-user', requireRole('admin'), validateJSON, async (req, re
       });
     }
 
+    let foremanId: string | undefined = undefined;
+    
+    // Если роль worker и указан номер прораба, найти прораба
+    if (role === 'worker' && foremanPhone) {
+      const foreman = await UserService.getForemanByPhone(foremanPhone);
+      if (!foreman) {
+        return res.status(400).json({
+          success: false,
+          error: 'Прораб с указанным номером телефона не найден'
+        });
+      }
+      foremanId = foreman.id;
+    }
+
     // Создаем пользователя сразу в основной таблице
     const newUser = await UserService.createUser({
       phoneNumber,
       name,
-      role
+      role,
+      foremanId
     });
 
     return res.status(201).json({
@@ -630,6 +657,195 @@ router.delete('/pre-registered/:id', requireRole('admin'), async (req, res) => {
   });
 });
 
+// GET /api/users/foremen - Получение списка прорабов (только для админов)
+router.get('/foremen', requireAdmin, async (req, res) => {
+  try {
+    const foremen = await UserService.getAllForemen();
+    
+    return res.json({
+      success: true,
+      message: 'Foremen retrieved successfully',
+      data: foremen
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve foremen'
+    });
+  }
+});
 
+// GET /api/users/foremen/:foremanId/workers - Получение работников прораба
+router.get('/foremen/:foremanId/workers', requireRole('admin', 'foreman'), async (req, res) => {
+  try {
+    const { foremanId } = req.params;
+    
+    if (!foremanId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Foreman ID is required'
+      });
+    }
+    
+    // Прораб может видеть только своих работников
+    if (req.user?.role === 'foreman' && req.user?.id !== foremanId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        error: 'User ID not found'
+      });
+    }
+
+    const workers = await UserService.getWorkersByForeman(foremanId);
+    
+    return res.json({
+      success: true,
+      message: 'Workers retrieved successfully',
+      data: workers
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve workers'
+    });
+  }
+});
+
+// POST /api/users/:workerId/assign-foreman - Назначение прораба работнику
+router.post('/:workerId/assign-foreman', requireAdmin, validateJSON, async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const { foremanId } = req.body;
+    
+    if (!workerId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Worker ID is required'
+      });
+    }
+    
+    if (!foremanId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Foreman ID is required'
+      });
+    }
+
+    const result = await UserService.assignForemanToWorker(workerId, foremanId);
+    
+    if (!result) {
+      return res.status(400).json({
+        success: false,
+        error: 'Failed to assign foreman to worker'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Foreman assigned successfully',
+      data: result
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to assign foreman'
+    });
+  }
+});
+
+// POST /api/users/promote-to-foreman - Назначение пользователя прорабом (только для админов)
+router.post('/promote-to-foreman', requireAdmin, validateJSON, async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Phone number is required'
+      });
+    }
+
+    const foreman = await UserService.getForemanByPhone(phoneNumber);
+    if (foreman) {
+      return res.status(400).json({
+        success: false,
+        error: 'User is already a foreman'
+      });
+    }
+
+    // Найти пользователя по номеру телефона
+    const user = await UserService.getUserByPhoneNumber(phoneNumber);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Обновить роль на foreman
+    const updatedUser = await UserService.updateUser(user.id, { role: 'foreman' });
+    
+    return res.json({
+      success: true,
+      message: 'User promoted to foreman successfully',
+      data: updatedUser
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to promote user to foreman'
+    });
+  }
+});
+
+// POST /api/users/promote-to-admin - Назначение пользователя админом (только для суперадминов)
+router.post('/promote-to-admin', requireSuperAdmin, validateJSON, async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Phone number is required'
+      });
+    }
+
+    // Найти пользователя по номеру телефона
+    const user = await UserService.getUserByPhoneNumber(phoneNumber);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    if (user.role === 'admin' || user.role === 'superadmin') {
+      return res.status(400).json({
+        success: false,
+        error: 'User is already an admin or superadmin'
+      });
+    }
+
+    // Обновить роль на admin
+    const updatedUser = await UserService.updateUser(user.id, { role: 'admin' });
+    
+    return res.json({
+      success: true,
+      message: 'User promoted to admin successfully',
+      data: updatedUser
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to promote user to admin'
+    });
+  }
+});
 
 export default router; 

@@ -6,6 +6,34 @@ export class ChatService {
   // Get or create chat between worker and foreman
   static async getOrCreateChat(workerId: string, foremanId: string): Promise<{ success: boolean; data?: Chat; error?: string }> {
     try {
+      // Проверить что участники имеют правильные роли для чата
+      const rolesQuery = `
+        SELECT 
+          w.role as worker_role,
+          f.role as foreman_role
+        FROM users w, users f
+        WHERE w.id = $1 AND f.id = $2
+      `;
+      
+      const rolesResult = await pool.query(rolesQuery, [workerId, foremanId]);
+      
+      if (rolesResult.rows.length === 0) {
+        return {
+          success: false,
+          error: 'One or both users not found'
+        };
+      }
+      
+      const { worker_role, foreman_role } = rolesResult.rows[0];
+      
+      // Проверить что один из них worker, а другой foreman
+      if (worker_role !== 'worker' || foreman_role !== 'foreman') {
+        return {
+          success: false,
+          error: 'Chats are only allowed between workers and foremen'
+        };
+      }
+      
       // First try to find existing chat
       const existingChatQuery = `
         SELECT c.*, 
@@ -145,6 +173,36 @@ export class ChatService {
   // Send message
   static async sendMessage(chatId: string, senderId: string, messageType: 'text' | 'photo' | 'task', content: string, photoUri?: string, latitude?: number, longitude?: number): Promise<{ success: boolean; data?: ChatMessage; error?: string }> {
     try {
+      // Проверить что отправитель является участником чата и имеет правильную роль
+      const participantQuery = `
+        SELECT 
+          c.worker_id,
+          c.foreman_id,
+          s.role as sender_role
+        FROM chats c
+        JOIN users s ON s.id = $2
+        WHERE c.id = $1 AND (c.worker_id = $2 OR c.foreman_id = $2)
+      `;
+      
+      const participantResult = await pool.query(participantQuery, [chatId, senderId]);
+      
+      if (participantResult.rows.length === 0) {
+        return {
+          success: false,
+          error: 'Sender is not a participant of this chat'
+        };
+      }
+      
+      const { sender_role } = participantResult.rows[0];
+      
+      // Проверить что отправитель имеет роль worker или foreman
+      if (sender_role !== 'worker' && sender_role !== 'foreman') {
+        return {
+          success: false,
+          error: 'Only workers and foremen can send messages'
+        };
+      }
+      
       const query = `
         INSERT INTO chat_messages (chat_id, sender_id, message_type, content, photo_uri, latitude, longitude) 
         VALUES ($1, $2, $3, $4, $5, $6, $7) 

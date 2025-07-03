@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { WebSyncService } from '../services/WebSyncService';
+import logger from '../utils/logger';
 
 interface SyncTabProps {
   onRefresh?: () => void;
@@ -58,7 +59,7 @@ const SyncTab: React.FC<SyncTabProps> = ({ onRefresh }) => {
       setSyncStatus(status);
       setSyncHistory(history);
     } catch (error) {
-      console.error('Failed to load sync data:', error);
+              logger.error('Failed to load sync data', { error: error instanceof Error ? error.message : 'Unknown error' }, 'sync');
     }
   };
 

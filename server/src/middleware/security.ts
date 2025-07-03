@@ -125,22 +125,23 @@ export const preventXSS = (req: Request, res: Response, next: NextFunction) => {
 };
 
 // Проверка результатов валидации
-export const handleValidationErrors = (req: Request, res: Response, next: NextFunction) => {
+export const handleValidationErrors = (req: Request, res: Response, next: NextFunction): void => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     // Логируем попытки валидации
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       error: 'Validation failed',
       details: errors.array()
     });
+    return;
   }
   next();
 };
 
 // Усиленная проверка IP whitelist для админских операций
 export const ipWhitelist = (allowedIPs: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     const clientIP = req.ip || 
                     req.connection.remoteAddress || 
                     req.headers['x-forwarded-for'] as string || 
@@ -158,10 +159,11 @@ export const ipWhitelist = (allowedIPs: string[]) => {
       });
       
       if (!isAllowed) {
-        return res.status(403).json({
+        res.status(403).json({
           success: false,
           error: 'Access denied from this location'
         });
+        return;
       }
     }
     
@@ -170,14 +172,15 @@ export const ipWhitelist = (allowedIPs: string[]) => {
 };
 
 // Улучшенная проверка User-Agent
-export const requireValidUserAgent = (req: Request, res: Response, next: NextFunction) => {
+export const requireValidUserAgent = (req: Request, res: Response, next: NextFunction): void => {
   const userAgent = req.get('User-Agent');
   
   if (!userAgent) {
-    return res.status(403).json({
+    res.status(403).json({
       success: false,
       error: 'User agent required'
     });
+    return;
   }
   
   // Блокируем известных ботов и подозрительные UA
@@ -190,17 +193,18 @@ export const requireValidUserAgent = (req: Request, res: Response, next: NextFun
   const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(userAgent));
   
   if (isSuspicious && process.env.NODE_ENV === 'production') {
-    return res.status(403).json({
+    res.status(403).json({
       success: false,
       error: 'Invalid user agent'
     });
+    return;
   }
   
   next();
 };
 
 // Защита от CSRF
-export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
+export const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
   // Проверяем CSRF токен для state-changing операций
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
     const csrfToken = req.headers['x-csrf-token'] as string;
@@ -210,10 +214,11 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction) 
     // В production требуем CSRF токен
     if (process.env.NODE_ENV === 'production') {
       if (!csrfToken && !origin && !referer) {
-        return res.status(403).json({
+        res.status(403).json({
           success: false,
           error: 'CSRF protection: missing security headers'
         });
+        return;
       }
     }
   }
@@ -255,17 +260,18 @@ export const logSuspiciousActivity = (req: Request, res: Response, next: NextFun
 };
 
 // Строгая проверка согласия на обработку персональных данных (GDPR)
-export const requirePrivacyConsent = (req: Request, res: Response, next: NextFunction) => {
+export const requirePrivacyConsent = (req: Request, res: Response, next: NextFunction): void => {
   const consentHeader = req.get('X-Privacy-Consent');
   const consentTimestamp = req.get('X-Privacy-Consent-Timestamp');
   
   if (process.env.NODE_ENV === 'production') {
     if (!consentHeader || consentHeader !== 'granted') {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Privacy consent required',
         code: 'PRIVACY_CONSENT_REQUIRED'
       });
+      return;
     }
     
     // Проверяем актуальность согласия (не старше 1 года)
@@ -275,11 +281,12 @@ export const requirePrivacyConsent = (req: Request, res: Response, next: NextFun
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
       
       if (consentDate < oneYearAgo) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Privacy consent expired, please renew',
           code: 'PRIVACY_CONSENT_EXPIRED'
         });
+        return;
       }
     }
   }

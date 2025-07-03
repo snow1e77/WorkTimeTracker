@@ -3,10 +3,34 @@ export interface User {
   id: string;
   phoneNumber: string;
   name: string;
-  role: 'worker' | 'admin';
+  role: 'worker' | 'foreman' | 'admin' | 'superadmin';
   companyId?: string;
+  companyName?: string;
+  adminLimitId?: string;
+  foremanId?: string; // ID прораба для работников
   isVerified: boolean;
   isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Admin limits types
+export interface AdminLimits {
+  id: string;
+  adminId: string;
+  companyName: string;
+  maxUsers: number;
+  maxSites: number;
+  maxProjects: number;
+  canExportExcel: boolean;
+  canManageUsers: boolean;
+  canManageSites: boolean;
+  canViewReports: boolean;
+  canChatWithWorkers: boolean;
+  validFrom: Date;
+  validTo?: Date;
+  isActive: boolean;
+  createdBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,7 +48,7 @@ export interface AuthTokens {
 export interface JWTPayload {
   userId: string;
   phoneNumber: string;
-  role: 'worker' | 'admin';
+  role: 'worker' | 'foreman' | 'admin' | 'superadmin';
   iat?: number;
   exp?: number;
 }
@@ -221,9 +245,11 @@ export interface UserRow {
   name: string;
   role: string;
   company_id: string | null;
+  company_name: string | null;
+  foreman_id: string | null;
   is_verified: boolean;
   is_active: boolean;
-    created_at: Date;
+  created_at: Date;
   updated_at: Date;
 }
 
@@ -343,4 +369,35 @@ export interface AssignTaskRequest {
 export interface ValidatePhotoRequest {
   reportId: string;
   notes?: string;
+}
+
+// Admin limits request types
+export interface CreateAdminLimitsRequest {
+  adminId: string;
+  companyName: string;
+  maxUsers: number;
+  maxSites: number;
+  maxProjects: number;
+  canExportExcel?: boolean;
+  canManageUsers?: boolean;
+  canManageSites?: boolean;
+  canViewReports?: boolean;
+  canChatWithWorkers?: boolean;
+  validFrom?: Date;
+  validTo?: Date;
+}
+
+export interface UpdateAdminLimitsRequest extends Partial<CreateAdminLimitsRequest> {
+  isActive?: boolean;
+}
+
+export interface ExcelExportRequest {
+  type: 'work' | 'violations' | 'statistics' | 'users' | 'detailed';
+  startDate?: Date;
+  endDate?: Date;
+  userId?: string;
+  siteId?: string;
+  format?: 'xlsx' | 'csv';
+  includeCharts?: boolean;
+  includeSummary?: boolean;
 } 

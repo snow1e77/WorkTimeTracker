@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { TextInput, Button, List, Searchbar, Text, Card } from 'react-native-paper';
 import { CountryCode } from 'libphonenumber-js';
@@ -102,30 +102,51 @@ export default function InternationalPhoneInput({
   const [isFocused, setIsFocused] = useState(false);
   const [isDetectingCountry, setIsDetectingCountry] = useState(false);
 
-  // Filter countries by search query
-  const filteredCountries = COUNTRIES_WITH_FLAGS.filter(country =>
-    country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    country.callingCode.includes(searchQuery) ||
-    country.code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter countries by search query with memoization
+  const filteredCountries = useMemo(() => {
+    return COUNTRIES_WITH_FLAGS.filter(country =>
+      country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      country.callingCode.includes(searchQuery) ||
+      country.code.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery]);
 
-  // Get current country data
-  const currentCountryData = COUNTRIES_WITH_FLAGS.find(c => c.code === currentCountry);
+  // Get current country data with memoization
+  const currentCountryData = useMemo(() => {
+    return COUNTRIES_WITH_FLAGS.find(c => c.code === currentCountry);
+  }, [currentCountry]);
+
+  // Memoize hint generation
+  const hint = useMemo(() => {
+    if (currentCountry) {
+      return getPhoneNumberHint(currentCountry);
+    }
+    return 'Format: +X XXX XXX XXXX';
+  }, [currentCountry]);
+
+  // Memoize validation
+  const isValid = useMemo(() => {
+    return value ? isValidInternationalPhoneNumber(value, currentCountry) : true;
+  }, [value, currentCountry]);
 
   // Auto-detect country on component load
   useEffect(() => {
     if (autoDetectCountry && !isDetectingCountry) {
       setIsDetectingCountry(true);
-      autoDetectUserCountry()
-        .then((detectedCountry) => {
+      
+      const detectCountry = async () => {
+        try {
+          const detectedCountry = await autoDetectUserCountry();
           setCurrentCountry(detectedCountry);
           onCountryChange?.(detectedCountry);
-        })
-        .catch((error) => {
-          })
-        .finally(() => {
+        } catch (error) {
+          // Silently handle error - fallback to default country
+        } finally {
           setIsDetectingCountry(false);
-        });
+        }
+      };
+      
+      detectCountry();
     }
   }, [autoDetectCountry, onCountryChange]);
 
@@ -170,15 +191,6 @@ export default function InternationalPhoneInput({
       style={styles.countryItem}
     />
   );
-
-  const getHint = () => {
-    if (currentCountry) {
-      return getPhoneNumberHint(currentCountry);
-    }
-    return 'Format: +X XXX XXX XXXX';
-  };
-
-  const isValid = value ? isValidInternationalPhoneNumber(value, currentCountry) : true;
 
   return (
     <View style={styles.container}>
@@ -232,7 +244,7 @@ export default function InternationalPhoneInput({
         <Text style={styles.helperText}>Invalid phone number</Text>
       ) : null}
       {(!value || isValid) && !isDetectingCountry ? (
-        <Text style={styles.hintText}>{getHint()}</Text>
+        <Text style={styles.hintText}>{hint}</Text>
       ) : null}
 
       {/* Country Picker */}

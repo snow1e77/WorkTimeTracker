@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { DatabaseService } from '../services/DatabaseService';
 import { LocationService } from '../services/LocationService';
 import { RootStackParamList } from '../types';
+import logger from '../utils/logger';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -40,7 +41,7 @@ export default function HomeScreen() {
           const sites = await dbService.getConstructionSites();
           await locationService.initializeBackgroundTracking(user.id, sites);
         } catch (error) {
-          console.log('Location tracking initialization failed');
+          logger.error('Location tracking initialization failed', {}, 'location');
         }
       }
     };
@@ -148,7 +149,20 @@ export default function HomeScreen() {
           </Menu>
         </View>
 
-        
+        {/* Company and User Info Header */}
+        <View style={styles.headerContainer}>
+          <View style={styles.companyHeader}>
+            <Text style={styles.companyName}>
+              {user?.companyName || 'Строительная компания'}
+            </Text>
+            <Text style={styles.userName}>
+              {user?.name || 'Рабочий'}
+            </Text>
+            <Text style={styles.userRole}>
+              {user?.role === 'admin' ? 'Администратор' : 'Рабочий'}
+            </Text>
+          </View>
+        </View>
 
         {/* Three main buttons */}
         <View style={styles.buttonsContainer}>
@@ -191,33 +205,32 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Информация о смене */}
+        {/* Shift Information */}
         {isWorking && shiftStartTime && (
           <Card style={styles.shiftInfoCard}>
             <Card.Content>
-              <Text style={styles.shiftTitle}>Рабочая смена активна</Text>
-              <View style={styles.shiftInfoRow}>
-                <Text style={styles.shiftLabel}>Начало смены:</Text>
-                <Text style={styles.shiftValue}>
-                  {shiftStartTime.toLocaleTimeString('ru-RU', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </Text>
-              </View>
-              <View style={styles.shiftInfoRow}>
-                <Text style={styles.shiftLabel}>Дата:</Text>
-                <Text style={styles.shiftValue}>
-                  {shiftStartTime.toLocaleDateString('ru-RU', {
-                    day: '2-digit',
-                    month: '2-digit', 
-                    year: 'numeric'
-                  })}
-                </Text>
-              </View>
-              <View style={styles.shiftInfoRow}>
-                <Text style={styles.shiftLabel}>Время работы:</Text>
-                <Text style={styles.timerValue}>{formatElapsedTime(elapsedTime)}</Text>
+              <View style={styles.shiftInfoColumns}>
+                <View style={styles.column}>
+                  <Text style={styles.timerValue}>{formatElapsedTime(elapsedTime)}</Text>
+                </View>
+                <View style={styles.column}>
+                  <Text style={styles.shiftValue}>
+                    {shiftStartTime.toLocaleDateString('en-US', {
+                      day: '2-digit',
+                      month: '2-digit', 
+                      year: '2-digit'
+                    })}
+                  </Text>
+                </View>
+                <View style={styles.column}>
+                  <Text style={styles.shiftValue}>
+                    {shiftStartTime.toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                      hour12: false
+                    })}
+                  </Text>
+                </View>
               </View>
             </Card.Content>
           </Card>
@@ -298,25 +311,51 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#ccc',
   },
-  shiftTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  shiftInfoRow: {
+  shiftInfoColumns: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  column: {
+    flex: 1,
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  shiftLabel: {
-    fontWeight: 'bold',
-    marginRight: 8,
-  },
-  shiftValue: {
-    fontWeight: 'normal',
   },
   timerValue: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  shiftValue: {
+    fontWeight: 'normal',
+  },
+  headerContainer: {
+    paddingTop: 100,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  companyHeader: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  companyName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#E8F4F8',
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  userRole: {
+    fontSize: 14,
+    color: '#BDC3C7',
+    textAlign: 'center',
   },
 }); 

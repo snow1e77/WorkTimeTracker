@@ -2,6 +2,7 @@
 import { AuthUser, AuthState } from '../types';
 import { AuthService } from '../services/AuthService';
 import { ApiDatabaseService } from '../services/ApiDatabaseService';
+import logger from '../utils/logger';
 
 interface AuthContextType extends AuthState {
   // Основные методы аутентификации
@@ -27,83 +28,189 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading: true,
   });
 
+  // Добавляем флаги для предотвращения race conditions
+  const [loginInProgress, setLoginInProgress] = useState(false);
+  const [registerInProgress, setRegisterInProgress] = useState(false);
+
   const authService = AuthService.getInstance();
   const dbService = ApiDatabaseService.getInstance();
 
   const checkAuthStatus = async () => {
     try {
-      setAuthState(prev => ({ ...prev, isLoading: true }));
+      const token = await authService.getAuthToken();
+      logger.auth('Checking auth status', { hasToken: !!token });
       
-      // Инициализируем API подключение
-      await dbService.initDatabase();
-      // Проверяем аутентификацию
+      if (!token) {
+        setAuthState({ 
+          isLoading: false, 
+          isAuthenticated: false, 
+          user: null 
+        });
+        return;
+      }
+
       const user = await authService.getCurrentUser();
+      logger.auth('Current user check result', { hasUser: !!user });
+      
       setAuthState({
+        isLoading: false,
         isAuthenticated: !!user,
         user,
-        isLoading: false,
       });
-    } catch (error) {
-      // Если ошибка связана с неавторизованным доступом, попробуем обновить токен
-      if (error instanceof Error && error.message.includes('401')) {
-        const refreshResult = await authService.refreshToken();
+    } catch (error: any) {
+      logger.error('Auth status check error', { error: error?.message || 'Unknown error' }, 'auth');
+      
+      if (error?.message?.includes('401') || error?.message?.includes('Unauthorized')) {
+        logger.auth('Attempting token refresh due to 401 error');
         
-        if (refreshResult.success) {
-          try {
+        try {
+          const refreshResult = await authService.refreshToken();
+          if (refreshResult.success) {
             const user = await authService.getCurrentUser();
+            logger.auth('User after token refresh', { hasUser: !!user });
             setAuthState({
+              isLoading: false,
               isAuthenticated: !!user,
               user,
-              isLoading: false,
             });
-            return;
-          } catch (retryError) {
-            }
+          } else {
+            throw new Error('Token refresh failed');
+          }
+        } catch (retryError) {
+          logger.error('Retry after refresh failed', { error: retryError instanceof Error ? retryError.message : 'Unknown error' }, 'auth');
+          await authService.removeAuthToken();
+          setAuthState({ 
+            isLoading: false, 
+            isAuthenticated: false, 
+            user: null 
+          });
         }
+      } else {
+        logger.auth('Setting auth state to unauthenticated due to error');
+        setAuthState({ 
+          isLoading: false, 
+          isAuthenticated: false, 
+          user: null 
+        });
       }
-      
-      setAuthState({
-        isAuthenticated: false,
-        user: null,
-        isLoading: false,
-      });
     }
   };
 
   // Основные методы аутентификации
-  const login = async (phoneNumber: string) => {
+  const login = async (phoneNumber: string): Promise<{ success: boolean; error?: string; needsContact?: boolean }> => {
+    // Предотвращаем множественные одновременные запросы
+    if (loginInProgress) {
+      return { success: false, error: 'Login already in progress' };
+    }
+
     try {
+      setLoginInProgress(true);
+      setAuthState(prev => ({ ...prev, isLoading: true }));
+      
+      logger.auth('Starting login process');
       const result = await authService.login(phoneNumber);
       
+      logger.auth('AuthService result', { success: result.success, hasUser: !!result.user });
+      
       if (result.success && result.user) {
+        logger.auth('Setting authenticated state');
         setAuthState({
+          isLoading: false,
           isAuthenticated: true,
           user: result.user,
-          isLoading: false,
         });
+
+        // Проверяем что токен действительно сохранился
+        const token = await authService.getAuthToken();
+        logger.auth('Post-login token check', { hasToken: !!token });
+        
+        if (!token) {
+          logger.warn('Warning - no token found after login', {}, 'auth');
+          setAuthState(prev => ({ ...prev, isLoading: false }));
+          return { 
+            success: false, 
+            error: 'Ошибка сохранения аутентификации' 
+          };
+        }
+
+        logger.auth('Login completed successfully');
+        return { success: true };
+      } else {
+        logger.auth('Login failed');
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+        return { 
+          success: false, 
+          error: result.error,
+          needsContact: result.needsContact 
+        };
       }
-      
-      return result;
     } catch (error) {
-      return { success: false, error: 'Login system error' };
+      logger.error('Login exception', { error: error instanceof Error ? error.message : 'Unknown error' }, 'auth');
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+      return { 
+        success: false, 
+        error: 'Ошибка при входе в систему' 
+      };
+    } finally {
+      setLoginInProgress(false);
     }
   };
 
-  const register = async (phoneNumber: string, name: string) => {
+  const register = async (phoneNumber: string, name: string): Promise<{ success: boolean; error?: string }> => {
+    // Предотвращаем множественные одновременные запросы
+    if (registerInProgress) {
+      return { success: false, error: 'Registration already in progress' };
+    }
+
     try {
+      setRegisterInProgress(true);
+      setAuthState(prev => ({ ...prev, isLoading: true }));
+      
+      logger.auth('Starting registration process');
       const result = await authService.register(phoneNumber, name);
       
+      logger.auth('AuthService result', { success: result.success, hasUser: !!result.user });
+      
       if (result.success && result.user) {
+        logger.auth('Setting authenticated state');
         setAuthState({
+          isLoading: false,
           isAuthenticated: true,
           user: result.user,
-          isLoading: false,
         });
+
+        // Проверяем что токен действительно сохранился
+        const token = await authService.getAuthToken();
+        logger.auth('Post-register token check', { hasToken: !!token });
+        
+        if (!token) {
+          logger.warn('Warning - no token found after registration', {}, 'auth');
+          setAuthState(prev => ({ ...prev, isLoading: false }));
+          return { 
+            success: false, 
+            error: 'Ошибка сохранения аутентификации' 
+          };
+        }
+
+        logger.auth('Registration completed successfully');
+        return { success: true };
+      } else {
+        logger.auth('Registration failed');
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+        return { 
+          success: false, 
+          error: result.error 
+        };
       }
-      
-      return result;
     } catch (error) {
-      return { success: false, error: 'Registration error' };
+      logger.error('Registration exception', { error: error instanceof Error ? error.message : 'Unknown error' }, 'auth');
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+      return { 
+        success: false, 
+        error: 'Ошибка при регистрации' 
+      };
+    } finally {
+      setRegisterInProgress(false);
     }
   };
 
@@ -139,8 +246,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { success: false, error: 'Failed to refresh token' };
     }
   };
-
-
 
   const logout = async (): Promise<void> => {
     try {

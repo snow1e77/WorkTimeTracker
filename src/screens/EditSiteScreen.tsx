@@ -14,6 +14,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, ConstructionSite } from '../types';
 import { DatabaseService } from '../services/DatabaseService';
+import logger from '../utils/logger';
 
 // Динамически импортируем компоненты карт только на нативных платформах
 let MapView: React.ComponentType<any>, 
@@ -26,7 +27,8 @@ if (Platform.OS !== 'web') {
     Marker = MapModule.Marker;
     Circle = MapModule.Circle;
   } catch (error) {
-    }
+    logger.warn('Failed to load react-native-maps for mobile platform', { error: error instanceof Error ? error.message : 'Unknown error' }, 'maps');
+  }
 }
 
 type EditSiteScreenProps = NativeStackScreenProps<RootStackParamList, 'EditSite'>;

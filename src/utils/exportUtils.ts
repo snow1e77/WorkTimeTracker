@@ -254,10 +254,13 @@ export const generateReportSummary = (reports: WorkReport[]) => {
         shifts: 0
       };
     }
-    acc[report.siteName]!.workers += 1;
-    acc[report.siteName]!.totalHours += report.totalHours;
-    acc[report.siteName]!.violations += report.violations;
-    acc[report.siteName]!.shifts += report.shiftsCount;
+    const siteData = acc[report.siteName];
+    if (siteData) {
+      siteData.workers += 1;
+      siteData.totalHours += report.totalHours;
+      siteData.violations += report.violations;
+      siteData.shifts += report.shiftsCount;
+    }
     return acc;
   }, {} as Record<string, {
     workers: number;

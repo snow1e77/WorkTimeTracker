@@ -4,13 +4,32 @@
 -- Extension for UUID generation
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Projects table
+CREATE TABLE IF NOT EXISTS projects (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    company_id UUID,
+    start_date DATE NOT NULL,
+    end_date DATE,
+    status VARCHAR(20) NOT NULL DEFAULT 'planning' CHECK (status IN ('planning', 'active', 'paused', 'completed', 'cancelled')),
+    budget DECIMAL(15, 2),
+    currency VARCHAR(3) DEFAULT 'RUB',
+    address TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by UUID NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     phone_number VARCHAR(20) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL DEFAULT 'worker' CHECK (role IN ('worker', 'admin')),
+    role VARCHAR(20) NOT NULL DEFAULT 'worker' CHECK (role IN ('worker', 'foreman', 'admin', 'superadmin')),
     company_id UUID,
+    foreman_id UUID REFERENCES users(id) ON DELETE SET NULL,
     is_verified BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     password_hash VARCHAR(255) NOT NULL,
@@ -18,7 +37,39 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Admin limits table for managing administrator permissions and restrictions
+CREATE TABLE IF NOT EXISTS admin_limits (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    admin_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    company_name VARCHAR(255) NOT NULL,
+    max_users INTEGER NOT NULL DEFAULT 10 CHECK (max_users >= 1 AND max_users <= 10000),
+    max_sites INTEGER NOT NULL DEFAULT 5 CHECK (max_sites >= 1 AND max_sites <= 1000),
+    max_projects INTEGER NOT NULL DEFAULT 3 CHECK (max_projects >= 1 AND max_projects <= 100),
+    can_export_excel BOOLEAN DEFAULT TRUE,
+    can_manage_users BOOLEAN DEFAULT TRUE,
+    can_manage_sites BOOLEAN DEFAULT TRUE,
+    can_view_reports BOOLEAN DEFAULT TRUE,
+    can_chat_with_workers BOOLEAN DEFAULT TRUE,
+    valid_from TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    valid_to TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(admin_id)
+);
 
+-- Add company name and admin limits to users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_limit_id UUID REFERENCES admin_limits(id) ON DELETE SET NULL;
+
+-- Index for admin limits
+CREATE INDEX IF NOT EXISTS idx_admin_limits_admin ON admin_limits(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_limits_active ON admin_limits(is_active);
+CREATE INDEX IF NOT EXISTS idx_admin_limits_validity ON admin_limits(valid_from, valid_to);
+CREATE INDEX IF NOT EXISTS idx_users_company_name ON users(company_name);
+CREATE INDEX IF NOT EXISTS idx_users_admin_limit ON users(admin_limit_id);
+CREATE INDEX IF NOT EXISTS idx_users_foreman ON users(foreman_id);
 
 -- Construction sites table
 CREATE TABLE IF NOT EXISTS construction_sites (
@@ -30,6 +81,7 @@ CREATE TABLE IF NOT EXISTS construction_sites (
     radius INTEGER NOT NULL DEFAULT 50 CHECK (radius >= 10 AND radius <= 1000),
     is_active BOOLEAN DEFAULT TRUE,
     company_id UUID,
+    project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
     created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -218,8 +270,9 @@ CREATE TABLE IF NOT EXISTS pre_registered_users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     phone_number VARCHAR(20) UNIQUE NOT NULL,
     name VARCHAR(255),
-    role VARCHAR(20) NOT NULL DEFAULT 'worker' CHECK (role IN ('worker', 'admin')),
+    role VARCHAR(20) NOT NULL DEFAULT 'worker' CHECK (role IN ('worker', 'foreman', 'admin')),
     company_id UUID,
+    foreman_phone VARCHAR(20), -- номер телефона прораба для работников
     added_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     is_activated BOOLEAN DEFAULT FALSE,
     activated_at TIMESTAMP WITH TIME ZONE,
@@ -230,14 +283,22 @@ CREATE TABLE IF NOT EXISTS pre_registered_users (
 );
 
 -- Indexes for better performance
+-- Project indexes
+CREATE INDEX IF NOT EXISTS idx_projects_company ON projects(company_id);
+CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+CREATE INDEX IF NOT EXISTS idx_projects_active ON projects(is_active);
+CREATE INDEX IF NOT EXISTS idx_projects_created_by ON projects(created_by);
+CREATE INDEX IF NOT EXISTS idx_projects_dates ON projects(start_date, end_date);
+
+-- User indexes
 CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
 
-
-
+-- Construction site indexes
 CREATE INDEX IF NOT EXISTS idx_sites_active ON construction_sites(is_active);
 CREATE INDEX IF NOT EXISTS idx_sites_company ON construction_sites(company_id);
+CREATE INDEX IF NOT EXISTS idx_sites_project ON construction_sites(project_id);
 CREATE INDEX IF NOT EXISTS idx_sites_created_by ON construction_sites(created_by);
 
 CREATE INDEX IF NOT EXISTS idx_assignments_user ON user_site_assignments(user_id);
@@ -322,6 +383,10 @@ END;
 $$ language 'plpgsql';
 
 -- Triggers for automatic updated_at
+CREATE TRIGGER update_projects_updated_at 
+    BEFORE UPDATE ON projects 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_users_updated_at 
     BEFORE UPDATE ON users 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -350,6 +415,11 @@ CREATE TRIGGER update_notification_prefs_updated_at
 -- Trigger for updating pre_registered_users updated_at
 CREATE TRIGGER update_pre_registered_users_updated_at 
     BEFORE UPDATE ON pre_registered_users 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Update admin limits updated_at trigger
+CREATE TRIGGER update_admin_limits_updated_at 
+    BEFORE UPDATE ON admin_limits 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Views for commonly used queries

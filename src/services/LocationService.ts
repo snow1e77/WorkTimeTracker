@@ -1,8 +1,9 @@
 ﻿import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { LocationEvent, ConstructionSite } from '../types';
-import { DatabaseService } from './DatabaseService';
+import { ApiDatabaseService } from './ApiDatabaseService';
 import { notificationService } from './NotificationService';
+import logger from '../utils/logger';
 
 const LOCATION_TASK_NAME = 'background-location-task';
 const LOCATION_UPDATE_INTERVAL = 30000; // 30 секунд
@@ -16,7 +17,7 @@ interface LocationServiceConfig {
 class LocationService {
   private static instance: LocationService;
   private config: LocationServiceConfig | null = null;
-  private dbService = DatabaseService.getInstance();
+  private dbService = ApiDatabaseService.getInstance();
   private lastKnownLocation: Location.LocationObject | null = null;
   private currentSiteId: string | null = null;
 
@@ -33,12 +34,14 @@ class LocationService {
       // Запрашиваем разрешения
       const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
       if (foregroundStatus !== 'granted') {
+        logger.warn('Foreground location permission not granted', {}, 'location');
         return false;
       }
 
       const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
       if (backgroundStatus !== 'granted') {
-        }
+        logger.warn('Background location permission not granted', {}, 'location');
+      }
 
       // Настраиваем конфигурацию
       this.config = {
@@ -50,6 +53,7 @@ class LocationService {
       // Определяем задачу для фонового отслеживания
       TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
         if (error) {
+          logger.error('Background location task error', { error: error.message }, 'location');
           return;
         }
         
@@ -69,8 +73,10 @@ class LocationService {
         },
       });
 
+      logger.info('Background location tracking started', { userId, sitesCount: sites.length }, 'location');
       return true;
     } catch (error) {
+      logger.error('Failed to initialize background tracking', { error: error instanceof Error ? error.message : 'Unknown error' }, 'location');
       return false;
     }
   }
@@ -81,13 +87,15 @@ class LocationService {
       const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
       if (hasStarted) {
         await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-        }
+        logger.info('Background location tracking stopped', {}, 'location');
+      }
       
       this.config = null;
       this.lastKnownLocation = null;
       this.currentSiteId = null;
     } catch (error) {
-      }
+      logger.error('Failed to stop background tracking', { error: error instanceof Error ? error.message : 'Unknown error' }, 'location');
+    }
   }
 
   // Обработка обновления локации
@@ -123,14 +131,15 @@ class LocationService {
       const wasInCurrentSite = this.currentSiteId !== null;
       const isInSite = nearestSite && minDistance <= nearestSite.radius;
 
-      if (isInSite && !wasInCurrentSite) {
+      if (isInSite && !wasInCurrentSite && nearestSite) {
         eventType = 'site_entry';
-        this.currentSiteId = nearestSite!.id;
+        this.currentSiteId = nearestSite.id;
         // Отправляем уведомление о входе на объект
         try {
-          await notificationService.notifyGeofenceEvent('entry', nearestSite!.name);
+          await notificationService.notifyGeofenceEvent('entry', nearestSite.name);
         } catch (error) {
-          }
+          logger.error('Failed to send geofence entry notification', { error: error instanceof Error ? error.message : 'Unknown error' }, 'location');
+        }
       } else if (!isInSite && wasInCurrentSite) {
         eventType = 'site_exit';
         // Найдем сайт, с которого происходит выход
@@ -141,7 +150,8 @@ class LocationService {
         try {
           await notificationService.notifyGeofenceEvent('exit', siteName);
         } catch (error) {
-          }
+          logger.error('Failed to send geofence exit notification', { error: error instanceof Error ? error.message : 'Unknown error' }, 'location');
+        }
         
         this.currentSiteId = null;
       }
@@ -159,7 +169,8 @@ class LocationService {
       await this.saveLocationEvent(locationEvent);
 
     } catch (error) {
-      }
+      logger.error('Failed to handle location update', { error: error instanceof Error ? error.message : 'Unknown error' }, 'location');
+    }
   }
 
   // Расчёт расстояния между двумя точками
@@ -186,7 +197,8 @@ class LocationService {
         timestamp: new Date(),
       });
     } catch (error) {
-      }
+      logger.error('Failed to save location event', { error: error instanceof Error ? error.message : 'Unknown error' }, 'location');
+    }
   }
 
   // Получение текущего местоположения
@@ -194,6 +206,7 @@ class LocationService {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
+        logger.warn('Location permission not granted for getCurrentLocation', {}, 'location');
         return null;
       }
 
@@ -204,6 +217,7 @@ class LocationService {
       this.lastKnownLocation = location;
       return location;
     } catch (error) {
+      logger.error('Failed to get current location', { error: error instanceof Error ? error.message : 'Unknown error' }, 'location');
       return null;
     }
   }

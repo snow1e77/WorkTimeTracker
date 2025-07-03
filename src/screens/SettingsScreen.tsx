@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatInternationalPhoneNumber } from '../utils/phoneUtils';
 import { formatDateUS } from '../utils/dateUtils';
 import { notificationService } from '../services/NotificationService';
+import logger from '../utils/logger';
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
@@ -57,7 +58,10 @@ export default function SettingsScreen() {
         setGpsEvents(settings.gpsEvents);
         setViolationAlerts(settings.violations);
       } catch (error) {
-        }
+        logger.error('Failed to load notification settings', {
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }, 'settings');
+      }
     };
 
     loadNotificationSettings();

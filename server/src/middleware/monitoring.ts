@@ -87,9 +87,10 @@ export const performanceMonitoring = (req: Request, res: Response, next: NextFun
 };
 
 // Endpoint для получения метрик (только для админов)
-export const getMetricsHandler = (req: Request, res: Response) => {
+export const getMetricsHandler = (req: Request, res: Response): void => {
   if (req.user?.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
+    res.status(403).json({ error: 'Admin access required' });
+    return;
   }
 
   const limit = parseInt(req.query.limit as string) || 100;
@@ -106,7 +107,7 @@ export const getMetricsHandler = (req: Request, res: Response) => {
 };
 
 // Health check endpoint
-export const healthCheck = (req: Request, res: Response) => {
+export const healthCheck = (req: Request, res: Response): void => {
   const uptime = process.uptime();
   const memoryUsage = process.memoryUsage();
   

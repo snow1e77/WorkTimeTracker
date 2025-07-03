@@ -11,6 +11,12 @@ import {
 import { ApiDatabaseService } from './ApiDatabaseService';
 import { WebSocketService } from './WebSocketService';
 import { notificationService } from './NotificationService';
+import { API_CONFIG, getApiUrl } from '../config/api';
+import logger from '../utils/logger';
+import { DatabaseService } from './DatabaseService';
+import { ApiClient } from './ApiClient';
+import { SyncDataResponse, SyncStatusResponse } from '../types';
+import { NetworkService } from './NetworkService';
 
 // Типы для данных синхронизации
 type SyncEntityData = AuthUser | ConstructionSite | UserSiteAssignment | WorkShift | Record<string, unknown>;
@@ -116,7 +122,7 @@ export class SyncService {
   // Получить текущий статус синхронизации
   public getSyncStatus(): SyncStatus {
     return {
-      isOnline: this.isOnline(),
+      isOnline: false, // Будет обновлено асинхронно через NetworkService
       lastSyncTime: this.lastSyncTimestamp,
       pendingOperations: this.syncQueue.operations.filter(op => op.status === 'pending').length,
       failedOperations: this.syncQueue.operations.filter(op => op.status === 'failed').length,
@@ -149,7 +155,11 @@ export class SyncService {
     try {
       await AsyncStorage.setItem('syncQueue', JSON.stringify(this.syncQueue));
     } catch (error) {
-      }
+      logger.error('Failed to save sync queue to storage', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        queueLength: this.syncQueue.operations.length
+      }, 'sync');
+    }
   }
 
   // Добавить операцию в очередь
@@ -177,7 +187,8 @@ export class SyncService {
     this.notifySyncStatusChange();
 
     // Если онлайн, сразу попробуем обработать
-    if (this.isOnline()) {
+    const hasNetwork = await this.checkNetwork();
+    if (hasNetwork) {
       this.processQueueOperation(operation);
     }
   }
@@ -190,8 +201,9 @@ export class SyncService {
     }
 
     // Обрабатываем очередь каждые 30 секунд
-    this.queueProcessorInterval = setInterval(() => {
-      if (this.isOnline() && !this.syncInProgress) {
+    this.queueProcessorInterval = setInterval(async () => {
+      const hasNetwork = await this.checkNetwork();
+      if (hasNetwork && !this.syncInProgress) {
         this.processQueue();
       }
     }, 30000);
@@ -199,20 +211,14 @@ export class SyncService {
 
   // Обработать очередь операций
   private async processQueue(): Promise<void> {
-    const pendingOperations = this.syncQueue.operations.filter(
-      op => op.status === 'pending' || (op.status === 'failed' && op.attempts < op.maxAttempts)
-    );
-
-    if (pendingOperations.length === 0) return;
-
-    for (const operation of pendingOperations) {
-      if (!this.isOnline()) break;
-      await this.processQueueOperation(operation);
+    const pendingOps = this.syncQueue.operations.filter(op => op.status === 'pending');
+    
+    for (const operation of pendingOps) {
+      const hasNetwork = await this.checkNetwork();
+      if (hasNetwork) {
+        await this.processQueueOperation(operation);
+      }
     }
-
-    this.syncQueue.lastProcessed = new Date();
-    await this.saveSyncQueue();
-    this.notifySyncStatusChange();
   }
 
   // Обработать одну операцию из очереди
@@ -225,16 +231,16 @@ export class SyncService {
     try {
       switch (operation.entityType) {
         case 'shift':
-          await this.syncShiftOperation(operation);
+          await this.syncShiftOperation(operation.data as WorkShift);
           break;
         case 'assignment':
-          await this.syncAssignmentOperation(operation);
+          await this.syncAssignmentOperation(operation.data as UserSiteAssignment);
           break;
         case 'user':
-          await this.syncUserOperation(operation);
+          await this.syncUserOperation(operation.type, operation.data as Record<string, unknown>);
           break;
         case 'site':
-          await this.syncSiteOperation(operation);
+          await this.syncSiteOperation(operation.type, operation.data as Record<string, unknown>);
           break;
       }
 
@@ -258,76 +264,112 @@ export class SyncService {
   }
 
   // Синхронизация операций со сменами
-  private async syncShiftOperation(operation: SyncOperation): Promise<void> {
-    const token = await AsyncStorage.getItem('authToken');
-    if (!token) throw new Error('No authentication token');
-
-    const response = await fetch('http://localhost:3001/api/sync/shift', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        operation: operation.type,
-        entityId: operation.entityId,
-        data: operation.data,
-        deviceId: this.deviceId
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const result = await response.json();
-    if (!result.success) {
-      throw new Error(result.error || 'Operation failed');
+  private async syncShiftOperation(shift: WorkShift): Promise<void> {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) throw new Error('No authentication token');
+      
+      const response = await fetch(getApiUrl('/sync/shift'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(shift)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to sync shift: ${response.statusText}`);
+      }
+    } catch (error) {
+      logger.sync('Sync error occurred', { error: error instanceof Error ? error.message : 'Unknown error' });
     }
   }
 
   // Синхронизация операций с назначениями
-  private async syncAssignmentOperation(operation: SyncOperation): Promise<void> {
-    // Аналогично syncShiftOperation, но для назначений
-    const token = await AsyncStorage.getItem('authToken');
-    if (!token) throw new Error('No authentication token');
-
-    const response = await fetch('http://localhost:3001/api/sync/assignment', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        operation: operation.type,
-        entityId: operation.entityId,
-        data: operation.data,
-        deviceId: this.deviceId
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP ${response.status}`);
+  private async syncAssignmentOperation(assignment: UserSiteAssignment): Promise<void> {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) throw new Error('No authentication token');
+      
+      const response = await fetch(getApiUrl('/sync/assignment'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(assignment)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to sync assignment: ${response.statusText}`);
+      }
+    } catch (error) {
+      logger.sync('Sync error occurred', { error: error instanceof Error ? error.message : 'Unknown error' });
     }
   }
 
   // Синхронизация операций с пользователями
-  private async syncUserOperation(operation: SyncOperation): Promise<void> {
-    // Реализация для пользователей
+  private async syncUserOperation(operation: string, data: Record<string, unknown>): Promise<void> {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) throw new Error('No authentication token');
+      
+      const response = await fetch(getApiUrl('/sync/user'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ operation, data })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to sync user operation: ${response.statusText}`);
+      }
+      
+      logger.sync('User operation synced successfully', { operation });
+    } catch (error) {
+      logger.error('Failed to sync user operation', { error: error instanceof Error ? error.message : 'Unknown error', operation }, 'sync');
+      throw error;
     }
+  }
 
   // Синхронизация операций с объектами
-  private async syncSiteOperation(operation: SyncOperation): Promise<void> {
-    // Реализация для объектов
+  private async syncSiteOperation(operation: string, data: Record<string, unknown>): Promise<void> {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) throw new Error('No authentication token');
+      
+      const response = await fetch(getApiUrl('/sync/site'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ operation, data })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to sync site operation: ${response.statusText}`);
+      }
+      
+      logger.sync('Site operation synced successfully', { operation });
+    } catch (error) {
+      logger.error('Failed to sync site operation', { error: error instanceof Error ? error.message : 'Unknown error', operation }, 'sync');
+      throw error;
     }
+  }
 
-  // Проверить подключение к интернету
-  private isOnline(): boolean {
-    // В реальном приложении здесь была бы проверка сетевого подключения
-    // Для демонстрации возвращаем true
-    return true;
+  // Проверка подключения к интернету через NetworkService
+  private async checkNetwork(): Promise<boolean> {
+    try {
+      const networkService = NetworkService.getInstance();
+      return await networkService.checkInternetConnectivity();
+    } catch (error) {
+      logger.error('Failed to check network connectivity', { error: error instanceof Error ? error.message : 'Unknown error' }, 'sync');
+      return false;
+    }
   }
 
   // Очистить завершенные операции из очереди
@@ -417,7 +459,11 @@ export class SyncService {
       await AsyncStorage.setItem('lastSyncTimestamp', timestamp.toISOString());
       this.lastSyncTimestamp = timestamp;
     } catch (error) {
-      }
+      logger.error('Failed to save last sync timestamp', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: timestamp.toISOString()
+      }, 'sync');
+    }
   }
 
   // Проверить, нужна ли синхронизация
@@ -519,7 +565,8 @@ export class SyncService {
   private async sendDataToServer(payload: SyncPayload): Promise<{ 
     success: boolean; 
     incomingData?: SyncPayload; 
-    conflicts?: SyncConflict[] 
+    conflicts?: SyncConflict[];
+    error?: string;
   }> {
     try {
       // Получаем токен авторизации
@@ -561,12 +608,11 @@ export class SyncService {
       }
       
     } catch (error) {
-      // Fallback к локальным данным веб-панели для демонстрации
-      const incomingData = await this.getDataFromWebPanel();
-      
-      return {
-        success: true,
-        incomingData
+      // НЕ возвращаем success: true при ошибке сети
+      logger.sync('Sync error occurred', { error: error instanceof Error ? error.message : 'Unknown error' });
+      return { 
+        success: false,
+        error: error instanceof Error ? error.message : 'Network sync failed'
       };
     }
   }
@@ -635,7 +681,8 @@ export class SyncService {
         await this.createUser(user);
       }
     } catch (error) {
-      }
+      logger.sync('Sync error occurred', { error: error instanceof Error ? error.message : 'Unknown error' });
+    }
   }
 
   // Синхронизировать объект
@@ -644,7 +691,8 @@ export class SyncService {
       // Сохранить объект в локальной базе
       await this.saveSiteToLocal(site);
     } catch (error) {
-      }
+      logger.sync('Sync error occurred', { error: error instanceof Error ? error.message : 'Unknown error' });
+    }
   }
 
   // Синхронизировать назначение
@@ -653,7 +701,8 @@ export class SyncService {
       // Сохранить назначение в локальной базе
       await this.saveAssignmentToLocal(assignment);
     } catch (error) {
-      }
+      logger.sync('Sync error occurred', { error: error instanceof Error ? error.message : 'Unknown error' });
+    }
   }
 
   // Получить назначенные пользователю объекты
@@ -764,7 +813,8 @@ export class SyncService {
       
       await AsyncStorage.setItem('pendingSync', JSON.stringify(filtered));
     } catch (error) {
-      }
+      logger.sync('Sync error occurred', { error: error instanceof Error ? error.message : 'Unknown error' });
+    }
   }
 
   // Автоматическая синхронизация каждые 5 минут
@@ -798,8 +848,7 @@ export class SyncService {
     // Очищаем все таймауты повторных попыток
     this.retryTimeouts.forEach(timeout => clearTimeout(timeout));
     this.retryTimeouts.clear();
-
-    }
+  }
 
   // Принудительная синхронизация
   public async forcSync(): Promise<{ success: boolean; error?: string }> {
@@ -825,8 +874,9 @@ export class SyncService {
         this.handleAssignmentUpdateFromWebSocket(data as unknown as AssignmentUpdateData);
       });
       
+      logger.sync('WebSocket connection setup initiated');
     } catch (error) {
-      console.error('Error setting up WebSocket connection:', error);
+      logger.error('Error setting up WebSocket connection', { error: error instanceof Error ? error.message : 'Unknown error' }, 'sync');
     }
   }
 
@@ -836,8 +886,9 @@ export class SyncService {
         // Обрабатываем обновление данных синхронизации
         await this.sync(true);
       }
+      logger.sync('Processing WebSocket sync response', { responseType: data?.type });
     } catch (error) {
-      console.error('Error handling WebSocket sync response:', error);
+      logger.error('Error handling WebSocket sync response', { error: error instanceof Error ? error.message : 'Unknown error' }, 'sync');
     }
   }
 
@@ -854,8 +905,9 @@ export class SyncService {
           siteName: data.siteName 
         }
       );
+      logger.sync('Processing new assignment from WebSocket', { assignmentId: data.assignmentId });
     } catch (error) {
-      console.error('Error handling new assignment from WebSocket:', error);
+      logger.error('Error handling new assignment from WebSocket', { error: error instanceof Error ? error.message : 'Unknown error' }, 'sync');
     }
   }
 
@@ -863,8 +915,9 @@ export class SyncService {
     try {
       // Обрабатываем обновление назначения
       await this.sync(true);
+      logger.sync('Processing assignment update from WebSocket', { assignmentId: data.assignmentId });
     } catch (error) {
-      console.error('Error handling assignment update from WebSocket:', error);
+      logger.error('Error handling assignment update from WebSocket', { error: error instanceof Error ? error.message : 'Unknown error' }, 'sync');
     }
   }
 
@@ -895,6 +948,32 @@ export class SyncService {
   // Переподключение WebSocket
   public async reconnectWebSocket(): Promise<boolean> {
     return await this.webSocketService.connect();
+  }
+
+  private async fetchFullSyncData(): Promise<SyncDataResponse | null> {
+    try {
+      const authToken = await AsyncStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('No auth token available for sync');
+      }
+
+      const response = await fetch(getApiUrl('/sync'), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Sync request failed: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      logger.error('Failed to fetch sync data', { error: error instanceof Error ? error.message : 'Unknown error' }, 'sync');
+      return null;
+    }
   }
 } 
 

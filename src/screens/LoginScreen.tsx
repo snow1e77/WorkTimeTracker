@@ -1,24 +1,28 @@
-﻿import React, { useState } from 'react';
-import { View, StyleSheet, Keyboard, TouchableWithoutFeedback, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
+﻿import React, { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, Keyboard, TouchableWithoutFeedback, ScrollView, KeyboardAvoidingView, Platform, Image, Alert, ActivityIndicator } from 'react-native';
 import { Text, TextInput, Button, Card, Title, HelperText } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CountryCode } from 'libphonenumber-js';
 import { RootStackParamList } from '../types';
 import { AuthService } from '../services/AuthService';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   getCleanInternationalPhoneNumber, 
-  isValidInternationalPhoneNumber 
+  isValidInternationalPhoneNumber,
+  getCleanPhoneNumber
 } from '../utils/phoneUtils';
 import InternationalPhoneInput from '../components/InternationalPhoneInput';
 import { t } from '../constants/localization';
 import { scrollViewConfig, keyboardAvoidingConfig } from '../config/scrollConfig';
+import logger from '../utils/logger';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function LoginScreen() {
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const authService = AuthService.getInstance();
+  const { login, register } = useAuth();
 
   const [step, setStep] = useState<'phone' | 'register' | 'restricted'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -27,6 +31,8 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [needsRegistration, setNeedsRegistration] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const validatePhoneNumber = () => {
     if (!isValidInternationalPhoneNumber(phoneNumber, selectedCountry)) {
@@ -38,66 +44,69 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
-    if (!validatePhoneNumber()) return;
+    if (!phoneNumber.trim()) {
+      Alert.alert('Ошибка', 'Введите номер телефона');
+      return;
+    }
 
-    setLoading(true);
-    setError('');
+    setIsLoading(true);
     try {
-      const cleanPhone = getCleanInternationalPhoneNumber(phoneNumber, selectedCountry);
-      console.log('Login attempt:', cleanPhone);
+      const cleanPhone = getCleanPhoneNumber(phoneNumber);
+      logger.auth('Starting login for phone', { phoneNumber: cleanPhone });
       
-      const result = await authService.login(cleanPhone);
-      console.log('Login result:', result);
-
-      if (result.success && result.user) {
-        // Successful login - navigation will happen automatically via App.tsx
-        // navigation.navigate('Home'); // Removed to prevent race condition
+      const result = await login(cleanPhone);
+      logger.auth('Login result from context', { success: result.success, needsContact: result.needsContact });
+      
+      if (result.success) {
+        logger.auth('Login successful, waiting for state update');
+        // Состояние должно обновиться автоматически через useEffect в AuthContext
+        logger.auth('Navigation should happen automatically');
       } else if (result.needsContact) {
-        // User not found - show restricted screen
-        setStep('restricted');
-      } else if (result.error?.includes(t('VALIDATION.PRE_REGISTERED'))) {
-        // Need to create profile
-        setNeedsRegistration(true);
-        setStep('register');
+        logger.auth('User needs contact - showing restricted screen');
+        // @ts-ignore
+        navigation.navigate('RestrictedAccess');
+      } else if (result.error?.includes('не найден') || result.error?.includes('not found')) {
+        logger.auth('User needs registration');
+        setShowRegister(true);
       } else {
-        setError(result.error || t('VALIDATION.LOGIN_ERROR'));
+        logger.auth('Login failed with error', { error: result.error });
+        Alert.alert('Ошибка входа', result.error || 'Неизвестная ошибка');
       }
     } catch (error) {
-      console.log('Login error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred during login';
-      setError(errorMessage);
+      logger.error('Login exception occurred', { error: error instanceof Error ? error.message : 'Unknown error' }, 'auth');
+      Alert.alert('Ошибка', 'Произошла ошибка при входе');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleRegister = async () => {
-    if (!name.trim()) {
-      setError(t('VALIDATION.ENTER_FULL_NAME'));
+    if (!phoneNumber.trim() || !name.trim()) {
+      Alert.alert('Ошибка', 'Заполните все поля');
       return;
     }
 
-    if (name.trim().length < 2) {
-      setError(t('VALIDATION.NAME_MIN_LENGTH'));
-      return;
-    }
-
-    setLoading(true);
-    setError('');
+    setIsLoading(true);
     try {
-      const cleanPhone = getCleanInternationalPhoneNumber(phoneNumber, selectedCountry);
-      const result = await authService.register(cleanPhone, name.trim());
-
-      if (result.success && result.user) {
-        // Successful registration - navigation will happen automatically via App.tsx
-        // navigation.navigate('Home'); // Removed to prevent race condition
+      const cleanPhone = getCleanPhoneNumber(phoneNumber);
+      logger.auth('Starting registration for phone', { phoneNumber: cleanPhone });
+      
+      const result = await register(cleanPhone, name.trim());
+      logger.auth('Registration result from context', { success: result.success });
+      
+      if (result.success) {
+        logger.auth('Registration successful, waiting for state update');
+        // Состояние должно обновиться автоматически через useEffect в AuthContext
+        logger.auth('Navigation should happen automatically');
       } else {
-        setError(result.error || t('VALIDATION.REGISTRATION_ERROR'));
+        logger.auth('Registration failed with error', { error: result.error });
+        Alert.alert('Ошибка регистрации', result.error || 'Неизвестная ошибка');
       }
     } catch (error) {
-      setError(t('VALIDATION.REGISTRATION_ERROR_OCCURRED'));
+      logger.error('Registration exception occurred', { error: error instanceof Error ? error.message : 'Unknown error' }, 'auth');
+      Alert.alert('Ошибка', 'Произошла ошибка при регистрации');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -138,8 +147,8 @@ export default function LoginScreen() {
       <Button
         mode="contained"
         onPress={handleLogin}
-        loading={loading}
-        disabled={loading}
+        loading={isLoading}
+        disabled={isLoading}
         style={styles.button}
       >
         {t('AUTH.LOGIN')}
@@ -179,8 +188,8 @@ export default function LoginScreen() {
       <Button
         mode="contained"
         onPress={handleRegister}
-        loading={loading}
-        disabled={loading}
+        loading={isLoading}
+        disabled={isLoading}
         style={styles.button}
       >
         {t('AUTH.CREATE_PROFILE')}

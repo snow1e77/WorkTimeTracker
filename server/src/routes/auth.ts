@@ -36,99 +36,92 @@ const refreshTokenSchema = Joi.object({
   refreshToken: Joi.string().required()
 });
 
-// POST /api/auth/login - Упрощенный вход без валидации
+// POST /api/auth/login - Реальная аутентификация
 router.post('/login', async (req, res) => {
   try {
-    const { phoneNumber } = req.body;
-
-    // Простая проверка что номер телефона передан
-    if (!phoneNumber) {
+    const { error, value } = phoneSchema.validate(req.body);
+    
+    if (error) {
       return res.status(400).json({
         success: false,
-        error: 'Phone number is required'
+        error: error.details[0]?.message || 'Validation error'
       });
     }
 
-    // Всегда возвращаем успешный логин с мок-пользователем
-    const mockUser = {
-      id: '12345678-1234-1234-1234-123456789012',
-      phoneNumber: phoneNumber,
-      name: 'Test User',
-      role: 'worker',
-      isActive: true,
-      isVerified: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    const { phoneNumber } = value;
+    const result = await AuthService.login({ phoneNumber });
 
-    const mockTokens = {
-      accessToken: 'mock-access-token-12345',
-      refreshToken: 'mock-refresh-token-12345'
-    };
+    if (result.success && result.user && result.tokens) {
+      logger.info('Успешный логин', { phoneNumber, userId: result.user.id });
 
-    logger.info('Упрощенный логин', { phoneNumber });
-
-    return res.json({
-      success: true,
-      message: 'Login successful',
-      data: {
-        user: mockUser,
-        tokens: mockTokens
-      }
-    });
+      return res.json({
+        success: true,
+        message: 'Login successful',
+        data: {
+          user: result.user,
+          tokens: result.tokens
+        }
+      });
+    } else if (result.needsContact) {
+      return res.status(403).json({
+        success: false,
+        error: 'Account access restricted. Please contact administrator.',
+        needsContact: true
+      });
+    } else {
+      return res.status(401).json({
+        success: false,
+        error: result.error || 'Login failed'
+      });
+    }
 
   } catch (error) {
-    logger.error('Login error', { error });
+    logger.error('Login error', { error, phoneNumber: req.body.phoneNumber });
     return res.status(500).json({
       success: false,
-      error: 'Login failed'
+      error: 'Internal server error'
     });
   }
 });
 
-// POST /api/auth/register - Упрощенная регистрация
+// POST /api/auth/register - Реальная регистрация
 router.post('/register', async (req, res) => {
   try {
-    const { phoneNumber, name } = req.body;
-
-    if (!phoneNumber || !name) {
+    const { error, value } = registerSchema.validate(req.body);
+    
+    if (error) {
       return res.status(400).json({
         success: false,
-        error: 'Phone number and name are required'
+        error: error.details[0]?.message || 'Validation error'
       });
     }
 
-    // Всегда возвращаем успешную регистрацию с мок-пользователем
-    const mockUser = {
-      id: '12345678-1234-1234-1234-123456789012',
-      phoneNumber: phoneNumber,
-      name: name,
-      role: 'worker',
-      isActive: true,
-      isVerified: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    const { phoneNumber, name } = value;
+    const result = await AuthService.register({ phoneNumber, name });
 
-    const mockTokens = {
-      accessToken: 'mock-access-token-12345',
-      refreshToken: 'mock-refresh-token-12345'
-    };
+    if (result.success && result.user && result.tokens) {
+      logger.info('Успешная регистрация', { phoneNumber, userId: result.user.id });
 
-    return res.status(201).json({
-      success: true,
-      message: 'Registration successful',
-      data: {
-        user: mockUser,
-        tokens: mockTokens
-      }
-    });
+      return res.status(201).json({
+        success: true,
+        message: 'Registration successful',
+        data: {
+          user: result.user,
+          tokens: result.tokens
+        }
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: result.error || 'Registration failed'
+      });
+    }
 
   } catch (error) {
-    logger.error('Registration error', { error });
+    logger.error('Registration error', { error, phoneNumber: req.body.phoneNumber });
     return res.status(500).json({
       success: false,
-      error: 'Registration failed'
+      error: 'Internal server error'
     });
   }
 });

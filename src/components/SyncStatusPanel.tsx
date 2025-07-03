@@ -33,23 +33,24 @@ const SyncStatusPanel: React.FC = () => {
   useEffect(() => {
     loadSyncData();
     
+    let interval: NodeJS.Timeout | null = null;
+    
     if (autoRefresh) {
-      const interval = setInterval(loadSyncData, 30000); // Обновляем каждые 30 секунд
-      return () => {
-        clearInterval(interval);
-        // Очищаем таймаут при размонтировании компонента
-        if (forceSyncTimeoutRef.current) {
-          clearTimeout(forceSyncTimeoutRef.current);
-        }
-      };
+      interval = setInterval(loadSyncData, 30000); // Обновляем каждые 30 секунд
     }
 
+    // Единый cleanup для всех ресурсов
     return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+      // Очищаем таймаут при размонтировании компонента
       if (forceSyncTimeoutRef.current) {
         clearTimeout(forceSyncTimeoutRef.current);
+        forceSyncTimeoutRef.current = null;
       }
     };
-  }, [autoRefresh]);
+  }, [autoRefresh]); // Добавляем autoRefresh как зависимость
 
   const loadSyncData = async () => {
     try {

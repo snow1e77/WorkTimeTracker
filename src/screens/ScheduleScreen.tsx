@@ -11,6 +11,7 @@ import {
   Surface,
   Divider
 } from 'react-native-paper';
+import logger from '../utils/logger';
 
 interface ScheduleEntry {
   id: string;
@@ -363,7 +364,7 @@ export default function ScheduleScreen() {
                     )}
                     <Button
                       mode="text"
-                      onPress={() => console.log('View details:', entry.id)}
+                      onPress={() => logger.info('View schedule entry details', { entryId: entry.id }, 'schedule')}
                       compact
                     >
                       Details

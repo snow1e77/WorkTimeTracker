@@ -7,6 +7,7 @@ import { ActivityIndicator, View, Platform, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import WebApp from './src/components/WebApp';
 import { notificationService } from './src/services/NotificationService';
+import logger from './src/utils/logger';
 
 import { RootStackParamList } from './src/types';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
@@ -54,8 +55,11 @@ const AppNavigator = () => {
     const initNotifications = async () => {
       try {
         await notificationService.initialize();
-        } catch (error) {
-        }
+      } catch (error) {
+        logger.error('Failed to initialize notification service', { 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        }, 'app');
+      }
     };
 
     if (Platform.OS !== 'web') {
@@ -65,13 +69,55 @@ const AppNavigator = () => {
 
   // Автоматическая навигация к Home после аутентификации
   useEffect(() => {
-    if (isAuthenticated && navigationRef.current) {
+    logger.debug('Auth state changed', {
+      isAuthenticated,
+      isLoading,
+      hasNavigationRef: !!navigationRef.current
+    }, 'app');
+    
+    if (isAuthenticated && !isLoading && navigationRef.current) {
       try {
-        navigationRef.current.navigate('Home');
-      } catch (error) {
+        const currentRouteName = navigationRef.current.getCurrentRoute()?.name;
+        logger.debug('Current route', { currentRouteName }, 'app');
+        
+        // Навигируем только если мы не уже на главной странице
+        if (currentRouteName !== 'Home') {
+          logger.info('Navigating to Home screen after authentication', {}, 'app');
+          
+          // Небольшая задержка для обеспечения полной инициализации
+          setTimeout(() => {
+            if (navigationRef.current) {
+              navigationRef.current.reset({
+                index: 0,
+                routes: [{ name: 'Home' }],
+              });
+              logger.info('Navigation to Home completed', {}, 'app');
+            }
+          }, 100);
+        } else {
+          logger.debug('Already on Home screen, no navigation needed', {}, 'app');
         }
+      } catch (error) {
+        logger.error('Navigation error', { error: error instanceof Error ? error.message : 'Unknown error' }, 'app');
+      }
+    } else if (!isAuthenticated && !isLoading && navigationRef.current) {
+      const currentRouteName = navigationRef.current.getCurrentRoute()?.name;
+      logger.debug('User not authenticated', { currentRouteName }, 'app');
+      
+      // Если пользователь не аутентифицирован и не на экране входа, навигируем к Login
+      if (currentRouteName !== 'Login' && currentRouteName !== 'Register') {
+        logger.info('Navigating to Login screen', {}, 'app');
+        setTimeout(() => {
+          if (navigationRef.current) {
+            navigationRef.current.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          }
+        }, 100);
+      }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isLoading]);
 
   if (isLoading) {
     return (

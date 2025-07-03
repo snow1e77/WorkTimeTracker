@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import { AuthUser } from '../types';
+import logger from '../utils/logger';
 
 interface User {
   id: string;
@@ -53,10 +54,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) => {
         const data = await response.json();
         setUsers(data.data?.users || []);
       } else {
-        console.error('Failed to load users');
+        logger.error('Failed to load users', {}, 'admin');
       }
     } catch (error) {
-      console.error('Error loading users:', error);
+              logger.error('Error loading users', { error: error instanceof Error ? error.message : 'Unknown error' }, 'admin');
     } finally {
       setLoading(false);
     }

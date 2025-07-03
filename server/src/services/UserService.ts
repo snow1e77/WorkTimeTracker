@@ -8,10 +8,11 @@ export class UserService {
   static async createUser(userData: {
     phoneNumber: string;
     name: string;
-    role?: 'worker' | 'admin';
+    role?: 'worker' | 'foreman' | 'admin' | 'superadmin';
     companyId?: string;
+    foremanId?: string; // ID прораба для работников
   }): Promise<User> {
-    const { phoneNumber, name, role = 'worker', companyId } = userData;
+    const { phoneNumber, name, role = 'worker', companyId, foremanId } = userData;
     
     // Проверяем, не существует ли уже пользователь с таким номером
     const existingUser = await this.getUserByPhoneNumber(phoneNumber);
@@ -22,10 +23,10 @@ export class UserService {
     const userId = uuidv4();
 
     const result = await query(
-      `INSERT INTO users (id, phone_number, name, role, company_id, is_verified, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, phone_number, name, role, company_id, is_verified, is_active, created_at, updated_at`,
-      [userId, phoneNumber, name, role, companyId || null, true, true]
+      `INSERT INTO users (id, phone_number, name, role, company_id, foreman_id, is_verified, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, phone_number, name, role, company_id, foreman_id, is_verified, is_active, created_at, updated_at`,
+      [userId, phoneNumber, name, role, companyId || null, foremanId, true, true]
     );
 
     return this.mapRowToUser(result.rows[0]);
@@ -34,7 +35,7 @@ export class UserService {
   // Получение пользователя по номеру телефона
   static async getUserByPhoneNumber(phoneNumber: string): Promise<User | null> {
     const result = await query(
-      'SELECT id, phone_number, name, role, company_id, is_verified, is_active, created_at, updated_at FROM users WHERE phone_number = $1',
+      'SELECT id, phone_number, name, role, company_id, company_name, foreman_id, is_verified, is_active, created_at, updated_at FROM users WHERE phone_number = $1',
       [phoneNumber]
     );
 
@@ -54,7 +55,7 @@ export class UserService {
   // Получение пользователя по ID
   static async getUserById(userId: string): Promise<User | null> {
     const result = await query(
-      'SELECT id, phone_number, name, role, company_id, is_verified, is_active, created_at, updated_at FROM users WHERE id = $1',
+      'SELECT id, phone_number, name, role, company_id, company_name, foreman_id, is_verified, is_active, created_at, updated_at FROM users WHERE id = $1',
       [userId]
     );
 
@@ -65,7 +66,7 @@ export class UserService {
   static async getAllUsers(options: {
     page?: number;
     limit?: number;
-    role?: 'worker' | 'admin';
+    role?: 'worker' | 'foreman' | 'admin' | 'superadmin';
     isActive?: boolean;
     search?: string;
   } = {}): Promise<{ users: User[]; total: number }> {
@@ -103,7 +104,7 @@ export class UserService {
 
     // Получаем пользователей с пагинацией
     const usersResult = await query(
-      `SELECT id, phone_number, name, role, company_id, is_verified, is_active, created_at, updated_at 
+      `SELECT id, phone_number, name, role, company_id, company_name, foreman_id, is_verified, is_active, created_at, updated_at 
        FROM users ${whereClause} 
        ORDER BY created_at DESC 
        LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
@@ -118,10 +119,11 @@ export class UserService {
   // Обновление пользователя
   static async updateUser(userId: string, updates: {
     name?: string;
-    role?: 'worker' | 'admin';
+    role?: 'worker' | 'foreman' | 'admin' | 'superadmin';
     isActive?: boolean;
     isVerified?: boolean;
     companyId?: string;
+    foremanId?: string;
   }): Promise<User | null> {
     const updateFields: string[] = [];
     const queryParams: any[] = [];
@@ -152,6 +154,11 @@ export class UserService {
       queryParams.push(updates.companyId);
     }
 
+    if (updates.foremanId !== undefined) {
+      updateFields.push(`foreman_id = $${paramIndex++}`);
+      queryParams.push(updates.foremanId);
+    }
+
     if (updateFields.length === 0) {
       return this.getUserById(userId);
     }
@@ -161,7 +168,7 @@ export class UserService {
     const result = await query(
       `UPDATE users SET ${updateFields.join(', ')} 
        WHERE id = $${paramIndex} 
-       RETURNING id, phone_number, name, role, company_id, is_verified, is_active, created_at, updated_at`,
+       RETURNING id, phone_number, name, role, company_id, company_name, foreman_id, is_verified, is_active, created_at, updated_at`,
       queryParams
     );
 
@@ -194,6 +201,7 @@ export class UserService {
     total: number;
     active: number;
     workers: number;
+    foremen: number;
     admins: number;
     verified: number;
   }> {
@@ -202,6 +210,7 @@ export class UserService {
         COUNT(*) as total,
         COUNT(CASE WHEN is_active = true THEN 1 END) as active,
         COUNT(CASE WHEN role = 'worker' THEN 1 END) as workers,
+        COUNT(CASE WHEN role = 'foreman' THEN 1 END) as foremen,
         COUNT(CASE WHEN role = 'admin' THEN 1 END) as admins,
         COUNT(CASE WHEN is_verified = true THEN 1 END) as verified
       FROM users
@@ -212,9 +221,50 @@ export class UserService {
       total: parseInt(stats.total),
       active: parseInt(stats.active),
       workers: parseInt(stats.workers),
+      foremen: parseInt(stats.foremen),
       admins: parseInt(stats.admins),
       verified: parseInt(stats.verified),
     };
+  }
+
+  // Получение прораба по номеру телефона
+  static async getForemanByPhone(phoneNumber: string): Promise<User | null> {
+    const result = await query(
+      'SELECT id, phone_number, name, role, company_id, company_name, foreman_id, is_verified, is_active, created_at, updated_at FROM users WHERE phone_number = $1 AND role = $2',
+      [phoneNumber, 'foreman']
+    );
+
+    return result.rows.length > 0 ? this.mapRowToUser(result.rows[0]) : null;
+  }
+
+  // Получение всех прорабов
+  static async getAllForemen(): Promise<User[]> {
+    const result = await query(
+      'SELECT id, phone_number, name, role, company_id, company_name, foreman_id, is_verified, is_active, created_at, updated_at FROM users WHERE role = $1 AND is_active = true ORDER BY name',
+      ['foreman']
+    );
+
+    return result.rows.map(this.mapRowToUser);
+  }
+
+  // Получение работников под конкретным прорабом
+  static async getWorkersByForeman(foremanId: string): Promise<User[]> {
+    const result = await query(
+      'SELECT id, phone_number, name, role, company_id, company_name, foreman_id, is_verified, is_active, created_at, updated_at FROM users WHERE foreman_id = $1 AND role = $2 AND is_active = true ORDER BY name',
+      [foremanId, 'worker']
+    );
+
+    return result.rows.map(this.mapRowToUser);
+  }
+
+  // Назначение прораба работнику
+  static async assignForemanToWorker(workerId: string, foremanId: string): Promise<User | null> {
+    const result = await query(
+      'UPDATE users SET foreman_id = $1 WHERE id = $2 AND role = $3 RETURNING id, phone_number, name, role, company_id, company_name, foreman_id, is_verified, is_active, created_at, updated_at',
+      [foremanId, workerId, 'worker']
+    );
+
+    return result.rows.length > 0 ? this.mapRowToUser(result.rows[0]) : null;
   }
 
   // Маппинг строки БД в объект User
@@ -223,7 +273,7 @@ export class UserService {
       id: row.id,
       phoneNumber: row.phone_number,
       name: row.name,
-      role: row.role as 'worker' | 'admin',
+      role: row.role as 'worker' | 'foreman' | 'admin' | 'superadmin',
       isVerified: row.is_verified,
       isActive: row.is_active,
       createdAt: row.created_at,
@@ -232,6 +282,14 @@ export class UserService {
 
     if (row.company_id) {
       user.companyId = row.company_id;
+    }
+
+    if (row.company_name) {
+      user.companyName = row.company_name;
+    }
+
+    if (row.foreman_id) {
+      user.foremanId = row.foreman_id;
     }
 
     return user;

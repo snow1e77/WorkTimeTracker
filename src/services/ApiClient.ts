@@ -1,5 +1,6 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_CONFIG, ApiResponse } from '../config/api';
+import logger from '../utils/logger';
 
 export class ApiClient {
   private static instance: ApiClient;
@@ -24,7 +25,10 @@ export class ApiClient {
       this.accessToken = await AsyncStorage.getItem('accessToken');
       this.refreshToken = await AsyncStorage.getItem('refreshToken');
     } catch (error) {
-      }
+      logger.error('Failed to initialize tokens from storage', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'apiClient');
+    }
   }
 
   // Установка токенов
@@ -36,7 +40,10 @@ export class ApiClient {
       await AsyncStorage.setItem('accessToken', accessToken);
       await AsyncStorage.setItem('refreshToken', refreshToken);
     } catch (error) {
-      }
+      logger.error('Failed to save tokens to storage', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'apiClient');
+    }
   }
 
   // Очистка токенов
@@ -48,7 +55,10 @@ export class ApiClient {
       await AsyncStorage.removeItem('accessToken');
       await AsyncStorage.removeItem('refreshToken');
     } catch (error) {
-      }
+      logger.error('Failed to clear tokens from storage', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'apiClient');
+    }
   }
 
   // Получение заголовков для запроса
@@ -83,7 +93,11 @@ export class ApiClient {
         }
       }
     } catch (error) {
-      }
+      logger.error('Failed to refresh access token', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        baseURL: this.baseURL
+      }, 'apiClient');
+    }
 
     return false;
   }

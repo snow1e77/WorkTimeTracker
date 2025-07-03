@@ -5,6 +5,7 @@ import { APP_CONFIG } from '../config/appConfig';
 import { Notification } from '../types';
 import { AuthService } from './AuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import logger from '../utils/logger';
 
 // Типы уведомлений
 export type NotificationType = 
@@ -109,8 +110,11 @@ export class NotificationService {
       this.setupNotificationHandlers();
 
       this.isInitialized = true;
-      } catch (error) {
-      }
+    } catch (error) {
+      logger.error('Failed to initialize notification service', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'notifications');
+    }
   }
 
   // Создание каналов уведомлений
@@ -198,6 +202,9 @@ export class NotificationService {
 
       return token.data;
     } catch (error) {
+      logger.error('Failed to get push token', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'notifications');
       return null;
     }
   }
@@ -213,9 +220,13 @@ export class NotificationService {
       
       if (user) {
         // Здесь можно добавить API вызов для сохранения токена на сервере
-        }
-    } catch (error) {
       }
+    } catch (error) {
+      logger.error('Failed to save push token', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        token: token.substring(0, 10) + '...' // Log only first 10 chars for security
+      }, 'notifications');
+    }
   }
 
   // Настройка обработчиков уведомлений
@@ -231,7 +242,11 @@ export class NotificationService {
     // Обработчик получения уведомления в foreground
     Notifications.addNotificationReceivedListener(notification => {
       const data = notification.request.content.data;
-      });
+      logger.info('Notification received in foreground', {
+        type: data?.type,
+        title: notification.request.content.title
+      }, 'notifications');
+    });
   }
 
   // Обработка нажатия на уведомление
@@ -326,7 +341,11 @@ export class NotificationService {
     try {
       await Notifications.cancelScheduledNotificationAsync(identifier);
     } catch (error) {
-      }
+      logger.error('Failed to cancel notification', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        identifier
+      }, 'notifications');
+    }
   }
 
   // Отмена всех уведомлений
@@ -334,7 +353,10 @@ export class NotificationService {
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
     } catch (error) {
-      }
+      logger.error('Failed to cancel all notifications', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'notifications');
+    }
   }
 
   // Получение канала по типу уведомления
@@ -522,7 +544,11 @@ export class NotificationService {
     try {
       await AsyncStorage.setItem('notificationSettings', JSON.stringify(settings));
     } catch (error) {
-      }
+      logger.error('Failed to save notification settings', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        settings
+      }, 'notifications');
+    }
   }
 
   // Получение push токена (публичный метод)

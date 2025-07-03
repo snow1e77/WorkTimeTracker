@@ -11,6 +11,7 @@ import {
   IconButton,
   Surface
 } from 'react-native-paper';
+import logger from '../utils/logger';
 
 interface Document {
   id: string;
@@ -113,13 +114,13 @@ export default function DocumentsScreen() {
       try {
         await Linking.openURL(document.url);
       } catch (error) {
-        console.log('Could not open document:', error);
+        logger.error('Could not open document', { error: error instanceof Error ? error.message : 'Unknown error' }, 'documents');
       }
     }
   };
 
   const handleDownload = (document: Document) => {
-    console.log('Download document:', document.name);
+          logger.info('Download document', { documentName: document.name }, 'documents');
   };
 
   const filteredDocuments = getFilteredDocuments();

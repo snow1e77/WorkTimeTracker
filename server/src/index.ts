@@ -57,6 +57,7 @@ import reportRoutes from './routes/reports';
 import syncRoutes from './routes/sync';
 import notificationRoutes from './routes/notifications';
 import chatRoutes from './routes/chat';
+import adminLimitsRoutes from './routes/adminLimits';
 
 const app = express();
 const httpServer = createServer(app);
@@ -247,6 +248,7 @@ app.use('/api/reports', strictRateLimit, reportRoutes); // Строгий лим
 app.use('/api/sync', syncRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/admin-limits', strictRateLimit, adminLimitsRoutes); // Строгий лимит для админ-лимитов
 
 // Базовый маршрут для проверки здоровья сервера
 app.get('/health', async (req, res) => {

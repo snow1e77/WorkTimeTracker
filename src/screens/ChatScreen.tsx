@@ -29,6 +29,7 @@ import * as Location from 'expo-location';
 import { Audio } from 'expo-av';
 import { ApiDatabaseService } from '../services/ApiDatabaseService';
 import { flatListConfig } from '../config/scrollConfig';
+import logger from '../utils/logger';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -61,7 +62,7 @@ export default function ChatScreen() {
     (async () => {
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Разрешение', 'Нужно разрешение на использование микрофона для голосовых сообщений');
+        Alert.alert('Permission', 'We need microphone permission for voice messages');
       }
     })();
   }, []);
@@ -96,7 +97,11 @@ export default function ChatScreen() {
         }, 100);
       }
     } catch (error) {
-      }
+      logger.error('Failed to load chat messages', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        chatId: chat?.id
+      }, 'chat');
+    }
   };
 
   const loadTodaysTask = async (chatId: string) => {
@@ -106,7 +111,11 @@ export default function ChatScreen() {
         setTodaysTask(response.data);
       }
     } catch (error) {
-      }
+      logger.error('Failed to load today\'s task', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        chatId
+      }, 'chat');
+    }
   };
 
   const sendMessage = async (messageType: 'text' | 'photo' | 'audio', content: string, photoUri?: string, location?: { latitude: number; longitude: number }, audioUri?: string) => {
@@ -239,7 +248,7 @@ export default function ChatScreen() {
     try {
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Разрешение', 'Нужно разрешение на использование микрофона');
+        Alert.alert('Permission', 'We need microphone permission');
         return;
       }
 
@@ -255,7 +264,7 @@ export default function ChatScreen() {
       setRecording(recording);
       setIsRecording(true);
     } catch (err) {
-      Alert.alert('Ошибка', 'Не удалось начать запись');
+      Alert.alert('Error', 'Failed to start recording');
     }
   };
 
@@ -269,11 +278,11 @@ export default function ChatScreen() {
       setRecording(null);
 
       if (uri) {
-        // Отправляем голосовое сообщение
-        await sendMessage('audio', '🎤 Голосовое сообщение', undefined, undefined, uri);
+        // Send voice message
+        await sendMessage('audio', '🎤 Voice message', undefined, undefined, uri);
       }
     } catch (error) {
-      Alert.alert('Ошибка', 'Не удалось завершить запись');
+      Alert.alert('Error', 'Failed to complete recording');
     }
   };
 
@@ -284,7 +293,7 @@ export default function ChatScreen() {
         setRecording(null);
         setIsRecording(false);
       } catch (error) {
-        console.error('Ошибка отмены записи:', error);
+        logger.error('Recording cancellation error', { error: error instanceof Error ? error.message : 'Unknown error' }, 'chat');
       }
     }
   };
@@ -307,7 +316,7 @@ export default function ChatScreen() {
       const { sound } = await Audio.Sound.createAsync({ uri: audioUri });
       await sound.playAsync();
     } catch (error) {
-      Alert.alert('Ошибка', 'Не удалось воспроизвести аудио');
+      Alert.alert('Error', 'Failed to play audio');
     }
   };
 
@@ -324,19 +333,19 @@ export default function ChatScreen() {
             
             {item.messageType === 'task' && (
               <Chip icon="clipboard-text" style={styles.taskChip}>
-                Задача
+                Task
               </Chip>
             )}
             
             {item.messageType === 'photo' && (
               <Chip icon="camera" style={styles.photoChip}>
-                Фото
+                Photo
               </Chip>
             )}
             
             {item.messageType === 'audio' && (
               <Chip icon="microphone" style={styles.audioChip}>
-                Голосовое
+                Voice
               </Chip>
             )}
             
@@ -360,7 +369,7 @@ export default function ChatScreen() {
                     }}
                     style={styles.locationButton}
                   >
-                    Показать местоположение
+                    View Location
                   </Button>
                 )}
               </View>
@@ -378,7 +387,7 @@ export default function ChatScreen() {
                     size={20}
                   />
                 </TouchableOpacity>
-                <Text style={styles.audioText}>Нажмите для воспроизведения</Text>
+                <Text style={styles.audioText}>Tap to play</Text>
               </View>
             )}
             
@@ -443,7 +452,7 @@ export default function ChatScreen() {
             style={styles.textInput}
             value={newMessage}
             onChangeText={setNewMessage}
-            placeholder="Введите сообщение..."
+            placeholder="Type a message..."
             multiline
             maxLength={500}
           />
@@ -457,9 +466,9 @@ export default function ChatScreen() {
         </View>
       </View>
 
-      {/* Улучшенные кнопки внизу экрана */}
+      {/* Enhanced buttons at bottom */}
       <View style={styles.bottomButtonsContainer}>
-        {/* Кнопка камеры */}
+        {/* Camera button */}
         <TouchableOpacity
           style={styles.cameraButton}
           onPress={handleTakePhoto}
@@ -471,7 +480,7 @@ export default function ChatScreen() {
           />
         </TouchableOpacity>
 
-        {/* Кнопка голосового сообщения */}
+        {/* Voice message button */}
         <TouchableOpacity
           style={[styles.voiceButton, isRecording && styles.voiceButtonRecording]}
           onPress={isRecording ? stopRecording : startRecording}
@@ -484,7 +493,7 @@ export default function ChatScreen() {
           />
         </TouchableOpacity>
 
-        {/* Кнопка галереи */}
+        {/* Gallery button */}
         <TouchableOpacity
           style={styles.galleryButton}
           onPress={handleSendPhoto}
@@ -497,10 +506,10 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Индикатор записи */}
+      {/* Recording indicator */}
       {isRecording && (
         <View style={styles.recordingIndicator}>
-          <Text style={styles.recordingText}>🎤 Идет запись... Отпустите для отправки, удерживайте для отмены</Text>
+          <Text style={styles.recordingText}>🎤 Recording... Release to send, hold to cancel</Text>
         </View>
       )}
 

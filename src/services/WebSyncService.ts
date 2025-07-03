@@ -8,18 +8,30 @@
   WorkShift 
 } from '../types';
 import { WebDatabaseService } from './WebDatabaseService';
+import { API_CONFIG } from '../config/api';
+import NetworkService from './NetworkService';
+import MonitoringService from './MonitoringService';
+import axios, { AxiosResponse } from 'axios';
+import logger from '../utils/logger';
 
 export class WebSyncService {
   private static instance: WebSyncService;
   private dbService: WebDatabaseService;
+  private networkService: NetworkService;
+  private monitoringService: MonitoringService;
   private syncInProgress = false;
   private lastSyncTimestamp: Date | null = null;
   private autoSyncInterval: NodeJS.Timeout | null = null;
   private notificationTimeout: NodeJS.Timeout | null = null;
-  private apiBaseUrl: string = 'http://localhost:3001/api'; // URL сервера
+  private apiBaseUrl: string = API_CONFIG.BASE_URL;
+  private retryAttempts = 0;
+  private maxRetryAttempts = 3;
+  private retryDelay = 5000;
 
   private constructor() {
     this.dbService = WebDatabaseService.getInstance();
+    this.networkService = NetworkService.getInstance();
+    this.monitoringService = MonitoringService.getInstance();
     this.initializeSync();
   }
 
@@ -32,16 +44,42 @@ export class WebSyncService {
 
   private async initializeSync(): Promise<void> {
     try {
+      // Инициализируем сетевой сервис
+      await this.networkService.initialize();
+      
+      // Инициализируем мониторинг
+      await this.monitoringService.initialize();
+      
       const lastSync = localStorage.getItem('worktime_last_sync');
       if (lastSync) {
         this.lastSyncTimestamp = new Date(lastSync);
       }
       
+      // Запускаем мониторинг сети
+      this.networkService.startMonitoring(60000); // проверка каждую минуту
+      
+      // Добавляем слушатель изменений сети
+      this.networkService.addStatusListener((status) => {
+        this.monitoringService.trackEvent('network_status_changed', {
+          isConnected: status.isConnected,
+          type: status.type,
+          quality: status.quality
+        });
+        
+        // Автоматическая синхронизация при восстановлении соединения
+        if (status.isConnected && status.quality !== 'poor') {
+          setTimeout(() => this.syncData(), 1000);
+        }
+      });
+      
       // Запускаем автосинхронизацию
       this.startAutoSync();
       
-      } catch (error) {
-      }
+      this.monitoringService.trackEvent('sync_service_initialized');
+      
+    } catch (error) {
+      this.monitoringService.trackError(error instanceof Error ? error : new Error('Sync initialization failed'));
+    }
   }
 
   // Синхронизация данных с сервером
@@ -50,7 +88,24 @@ export class WebSyncService {
       return { success: false, error: 'Sync already in progress' };
     }
 
+    // Проверяем состояние сети
+    const networkStatus = this.networkService.getNetworkStatus();
+    if (!networkStatus.isConnected) {
+      this.monitoringService.trackSyncFailure('No network connection', 'network');
+      return { success: false, error: 'No network connection' };
+    }
+
+    // Получаем рекомендацию по синхронизации
+    const syncRecommendation = this.networkService.getSyncRecommendation();
+    if (!syncRecommendation.shouldSync) {
+      this.monitoringService.trackSyncFailure(syncRecommendation.reason, 'network');
+      return { success: false, error: syncRecommendation.reason };
+    }
+
     this.syncInProgress = true;
+    const startTime = Date.now();
+    this.monitoringService.trackSyncStart();
+    
     try {
       // Получаем JWT токен для авторизации
       const token = localStorage.getItem('worktime_admin_token');
@@ -64,12 +119,29 @@ export class WebSyncService {
       if (result.success) {
         this.lastSyncTimestamp = new Date();
         localStorage.setItem('worktime_last_sync', this.lastSyncTimestamp.toISOString());
-        }
+        
+        const duration = Date.now() - startTime;
+        this.monitoringService.trackSyncSuccess(duration);
+        this.retryAttempts = 0; // Сбрасываем счетчик попыток
+      } else {
+        this.monitoringService.trackSyncFailure(result.error || 'Unknown sync error', 'server');
+      }
 
       return result;
       
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorType = errorMessage.includes('network') || errorMessage.includes('fetch') ? 'network' : 'server';
+      
+      this.monitoringService.trackSyncFailure(error instanceof Error ? error : new Error(errorMessage), errorType);
+      
+      // Попытка повторной синхронизации при сетевых ошибках
+      if (errorType === 'network' && this.retryAttempts < this.maxRetryAttempts) {
+        this.retryAttempts++;
+        setTimeout(() => this.syncData(), this.retryDelay * this.retryAttempts);
+      }
+      
+      return { success: false, error: errorMessage };
     } finally {
       this.syncInProgress = false;
     }
@@ -89,26 +161,75 @@ export class WebSyncService {
         users: this.filterChangedUsers(users)
       };
 
-      // Отправляем POST запрос на сервер
-      const response = await fetch(`${this.apiBaseUrl}/sync/web-changes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(changes)
-      });
+      // Отправляем POST запрос на сервер с использованием axios
+      const response: AxiosResponse = await axios.post(
+        `${this.apiBaseUrl}/sync/web-changes`,
+        changes,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          timeout: 30000, // 30 секунд таймаут
+          validateStatus: (status) => status < 600 // Обрабатываем все коды < 600
+        }
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+      // Проверяем статус ответа
+      if (response.status >= 200 && response.status < 300) {
+        return { success: response.data?.success !== false };
+      } else if (response.status >= 400 && response.status < 500) {
+        const errorMessage = response.data?.error || response.data?.message || `Client error: ${response.status}`;
+        return { success: false, error: errorMessage };
+      } else if (response.status >= 500) {
+        const errorMessage = response.data?.error || response.data?.message || `Server error: ${response.status}`;
+        return { success: false, error: errorMessage };
       }
 
-      const result = await response.json();
-      return { success: result.success };
+      return { success: true };
 
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Network error' };
+      // Правильная обработка Axios ошибок
+      if (axios.isAxiosError(error)) {
+        // Таймаут
+        if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+          return { success: false, error: 'Превышено время ожидания запроса' };
+        }
+        
+        // Нет соединения с сетью
+        if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+          return { success: false, error: 'Нет соединения с сервером' };
+        }
+        
+        // Ответ сервера с ошибкой
+        if (error.response) {
+          const status = error.response.status;
+          const data = error.response.data;
+          
+          if (status === 401) {
+            return { success: false, error: 'Требуется авторизация' };
+          } else if (status === 403) {
+            return { success: false, error: 'Доступ запрещен' };
+          } else if (status === 404) {
+            return { success: false, error: 'Эндпоинт не найден' };
+          } else if (status >= 500) {
+            return { success: false, error: data?.error || data?.message || 'Ошибка сервера' };
+          } else {
+            return { success: false, error: data?.error || data?.message || `HTTP ${status}` };
+          }
+        }
+        
+        // Запрос был отправлен, но ответа не получено
+        if (error.request) {
+          return { success: false, error: 'Нет ответа от сервера' };
+        }
+        
+        // Ошибка настройки запроса
+        return { success: false, error: `Ошибка запроса: ${error.message}` };
+      }
+      
+      // Неизвестная ошибка
+      return { success: false, error: error instanceof Error ? error.message : 'Неизвестная ошибка сети' };
     }
   }
 
@@ -204,16 +325,18 @@ export class WebSyncService {
       }
       
       localStorage.setItem('worktime_mobile_shifts', JSON.stringify(shifts));
-      } catch (error) {
-      }
+    } catch (error) {
+      logger.error('Failed to save mobile shift', { error: error instanceof Error ? error.message : 'Unknown error', shiftId: shift.id }, 'sync');
+    }
   }
 
   // Обновить назначение от мобильного устройства
   private async updateAssignmentFromMobile(assignment: UserSiteAssignment): Promise<void> {
     try {
       await this.dbService.updateAssignment(assignment.id, assignment);
-      } catch (error) {
-      }
+    } catch (error) {
+      logger.error('Failed to update assignment from mobile', { error: error instanceof Error ? error.message : 'Unknown error', assignmentId: assignment.id }, 'sync');
+    }
   }
 
   // Получить статус синхронизации
@@ -237,7 +360,10 @@ export class WebSyncService {
       const result = await this.syncData();
       
       if (result.success) {
-        }
+        logger.info('Assignments sync completed successfully', {}, 'sync');
+      } else {
+        logger.error('Assignments sync failed', { error: result.error }, 'sync');
+      }
       
       return result;
     } catch (error) {
@@ -257,13 +383,15 @@ export class WebSyncService {
       }
     }, 5 * 60 * 1000); // 5 минут
 
-    }
+    logger.info('Auto sync started', { interval: '5 minutes' }, 'sync');
+  }
 
   public stopAutoSync(): void {
     if (this.autoSyncInterval) {
       clearInterval(this.autoSyncInterval);
       this.autoSyncInterval = null;
-      }
+      logger.info('Auto sync stopped', {}, 'sync');
+    }
 
     // Также очищаем таймаут уведомлений
     if (this.notificationTimeout) {
@@ -333,13 +461,29 @@ export class WebSyncService {
   // Проверка подключения к серверу
   public async checkServerConnection(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/health`, {
-        method: 'GET',
-        timeout: 5000
-      } as RequestInit);
+      // Сначала проверяем общее сетевое соединение
+      const hasInternetConnection = await this.networkService.checkInternetConnectivity();
+      if (!hasInternetConnection) {
+        return false;
+      }
 
-      return response.ok;
+      // Затем проверяем доступность нашего сервера
+      const response = await axios.get(`${this.apiBaseUrl}/health`, {
+        timeout: 10000,
+        validateStatus: (status) => status < 500
+      });
+      
+      const isServerOk = response.status >= 200 && response.status < 300;
+      
+      this.monitoringService.trackEvent('server_connection_check', {
+        success: isServerOk,
+        status: response.status,
+        latency: response.headers['x-response-time'] || 'unknown'
+      });
+      
+      return isServerOk;
     } catch (error) {
+      this.monitoringService.trackError(error instanceof Error ? error : new Error('Server connection check failed'));
       return false;
     }
   }

@@ -5,8 +5,10 @@ export interface AuthUser {
   id: string;
   phoneNumber: string;
   name: string;
-  role: 'worker' | 'admin';
+  role: 'worker' | 'foreman' | 'admin' | 'superadmin';
   companyId?: string;
+  companyName?: string;
+  foremanId?: string; // ID прораба для работников
   isVerified: boolean;
   isActive: boolean;
   createdAt: Date;
@@ -30,17 +32,39 @@ export interface AuthState {
 export interface User {
   id: string;
   name: string;
-  email: string;
-  role: 'worker' | 'admin';
-  companyId: string;
+  phoneNumber: string;
+  role: 'worker' | 'foreman' | 'admin' | 'superadmin';
+  companyId?: string;
+  companyName?: string;
+  foremanId?: string; // ID прораба для работников
+  isVerified: boolean;
   isActive: boolean;
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 export interface Company {
   id: string;
   name: string;
   createdAt: Date;
+}
+
+// Проект строительства
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  companyId: string;
+  startDate: Date;
+  endDate?: Date;
+  status: 'planning' | 'active' | 'paused' | 'completed' | 'cancelled';
+  budget?: number;
+  currency?: string;
+  address?: string;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt?: Date;
 }
 
 export interface ConstructionSite {
@@ -51,6 +75,7 @@ export interface ConstructionSite {
   longitude: number;
   radius: number; // radius in meters
   companyId?: string;
+  projectId?: string; // связь с проектом
   isActive: boolean;
   createdAt: Date;
   updatedAt?: Date;

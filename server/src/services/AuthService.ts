@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { query } from '../config/database';
 import { UserService } from './UserService';
-import { User } from '../types';
+import { User, JWTPayload } from '../types';
 import logger from '../utils/logger';
 
 export interface LoginRequest {
@@ -17,12 +17,6 @@ export interface RegisterRequest {
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
-}
-
-export interface JWTPayload {
-  userId: string;
-  phoneNumber: string;
-  role: string;
 }
 
 export class AuthService {
