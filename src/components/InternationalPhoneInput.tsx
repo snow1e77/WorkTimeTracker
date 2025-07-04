@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { TextInput, Button, List, Searchbar, Text, Card } from 'react-native-paper';
 import { CountryCode } from 'libphonenumber-js';
 import { 
@@ -178,19 +178,7 @@ export default function InternationalPhoneInput({
     onChangeText(formatted);
   };
 
-  const renderCountryItem = ({ item }: { item: CountryItem }) => (
-    <List.Item
-      title={item.name}
-      description={item.callingCode}
-      left={() => (
-        <View style={styles.flagContainer}>
-          <Text style={styles.flag}>{item.flag}</Text>
-        </View>
-      )}
-      onPress={() => handleCountrySelect(item)}
-      style={styles.countryItem}
-    />
-  );
+
 
   return (
     <View style={styles.container}>
@@ -260,13 +248,22 @@ export default function InternationalPhoneInput({
               style={styles.searchBar}
             />
             
-            <FlatList
-              data={filteredCountries.slice(0, 10)} // Ограничиваем до 10 стран для лучшей производительности
-              renderItem={renderCountryItem}
-              keyExtractor={item => item.code}
-              style={styles.countryList}
-              showsVerticalScrollIndicator={true}
-            />
+            <ScrollView style={styles.countryList} showsVerticalScrollIndicator={true}>
+              {filteredCountries.slice(0, 10).map((item) => (
+                <List.Item
+                  key={item.code}
+                  title={item.name}
+                  description={item.callingCode}
+                  left={() => (
+                    <View style={styles.flagContainer}>
+                      <Text style={styles.flag}>{item.flag}</Text>
+                    </View>
+                  )}
+                  onPress={() => handleCountrySelect(item)}
+                  style={styles.countryItem}
+                />
+              ))}
+            </ScrollView>
             
             <Button
               mode="text"
