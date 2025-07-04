@@ -1,4 +1,3 @@
-import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { query } from '../config/database';
 import { User, UserWithPassword, UserRow } from '../types';
@@ -181,19 +180,17 @@ export class UserService {
     return result.rowCount > 0;
   }
 
-  // Проверка пароля
+  // Проверка пароля (не используется в текущей системе аутентификации)
   static async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword);
+    // Пароли не используются в системе простой аутентификации по номеру телефона
+    return false;
   }
 
-  // Обновление пароля
+  // Обновление пароля (не используется в текущей системе аутентификации)
   static async updatePassword(userId: string, newPassword: string): Promise<boolean> {
-    const passwordHash = await bcrypt.hash(newPassword, 10);
-    const result = await query(
-      'UPDATE users SET password_hash = $1 WHERE id = $2',
-      [passwordHash, userId]
-    );
-    return result.rowCount > 0;
+    // Пароли не используются в системе простой аутентификации по номеру телефона
+    // Возвращаем false, чтобы API вернул ошибку о недоступности функции
+    return false;
   }
 
   // Получение статистики пользователей

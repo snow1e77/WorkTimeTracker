@@ -1,5 +1,4 @@
-﻿import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
+﻿import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../config/database';
 
 const seedDatabase = async (): Promise<void> => {
@@ -21,25 +20,22 @@ const seedDatabase = async (): Promise<void> => {
     const worker1Id = uuidv4();
     const worker2Id = uuidv4();
     
-    const adminPasswordHash = await bcrypt.hash('admin123', 10);
-    const workerPasswordHash = await bcrypt.hash('worker123', 10);
-    
     // Вставка администратора
     await client.query(`
-      INSERT INTO users (id, phone_number, name, role, is_verified, is_active, password_hash)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [adminId, '+1234567890', 'Администратор Иванов', 'admin', true, true, adminPasswordHash]);
+      INSERT INTO users (id, phone_number, name, role, is_verified, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [adminId, '+1234567890', 'Администратор Иванов', 'admin', true, true]);
     
     // Вставка рабочих
     await client.query(`
-      INSERT INTO users (id, phone_number, name, role, is_verified, is_active, password_hash)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [worker1Id, '+1234567891', 'Рабочий Петров', 'worker', true, true, workerPasswordHash]);
+      INSERT INTO users (id, phone_number, name, role, is_verified, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [worker1Id, '+1234567891', 'Рабочий Петров', 'worker', true, true]);
     
     await client.query(`
-      INSERT INTO users (id, phone_number, name, role, is_verified, is_active, password_hash)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [worker2Id, '+1234567892', 'Рабочий Сидоров', 'worker', true, true, workerPasswordHash]);
+      INSERT INTO users (id, phone_number, name, role, is_verified, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [worker2Id, '+1234567892', 'Рабочий Сидоров', 'worker', true, true]);
     
     // Создание строительных объектов
     const site1Id = uuidv4();
@@ -126,9 +122,9 @@ const seedDatabase = async (): Promise<void> => {
     console.log('✅ База данных успешно заполнена тестовыми данными!');
     console.log('');
     console.log('👥 Созданные пользователи:');
-    console.log('   📋 Администратор: +1234567890 (пароль: admin123)');
-    console.log('   👷 Рабочий 1: +1234567891 (пароль: worker123)');
-    console.log('   👷 Рабочий 2: +1234567892 (пароль: worker123)');
+    console.log('   📋 Администратор: +1234567890');
+    console.log('   👷 Рабочий 1: +1234567891');
+    console.log('   👷 Рабочий 2: +1234567892');
     console.log('');
     console.log('🏗️ Созданные строительные объекты:');
     console.log('   • Строительный объект Альфа (Москва)');

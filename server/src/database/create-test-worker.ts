@@ -38,9 +38,9 @@ const createTestWorker = async (): Promise<void> => {
     // Создаем пользователя сразу в основной таблице users
     const userId = uuidv4();
     await client.query(
-      `INSERT INTO users (id, phone_number, name, role, is_verified, is_active, password_hash)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [userId, testPhoneNumber, testWorkerName, 'worker', true, true, 'test_hash']
+      `INSERT INTO users (id, phone_number, name, role, is_verified, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [userId, testPhoneNumber, testWorkerName, 'worker', true, true]
     );
 
     console.log('✅ Тестовый аккаунт рабочего успешно создан!');
