@@ -135,7 +135,7 @@ const ViolationsReportScreen: React.FC = () => {
 
   const getStats = () => {
     const totalViolations = violations.length;
-    const resolvedViolations = violations.filter(v => v.isResolved).length;
+    const resolvedViolations = violations.filter(v => v.resolvedAt).length;
     const pendingViolations = totalViolations - resolvedViolations;
     const highSeverityViolations = violations.filter(v => v.severity === 'high').length;
     
@@ -283,10 +283,10 @@ const ViolationsReportScreen: React.FC = () => {
                   </View>
                   <View style={[
                     styles.statusBadge,
-                    violation.isResolved ? styles.resolvedBadge : styles.pendingBadge
+                    violation.resolvedAt ? styles.resolvedBadge : styles.pendingBadge
                   ]}>
                     <Text style={styles.statusBadgeText}>
-                      {violation.isResolved ? 'Resolved' : 'Pending'}
+                      {violation.resolvedAt ? 'Resolved' : 'Pending'}
                     </Text>
                   </View>
                 </View>
@@ -297,10 +297,10 @@ const ViolationsReportScreen: React.FC = () => {
               </Text>
 
               <Text style={styles.violationTime}>
-                {new Date(violation.timestamp).toLocaleString()}
+                {new Date(violation.createdAt).toLocaleString()}
               </Text>
 
-              {!violation.isResolved && (
+              {!violation.resolvedAt && (
                 <View style={styles.violationActions}>
                   <TouchableOpacity
                     style={styles.resolveButton}

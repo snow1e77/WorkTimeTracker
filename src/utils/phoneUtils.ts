@@ -226,27 +226,31 @@ export const detectUserCountryByTimezone = (): CountryCode | null => {
 };
 
 /**
- * Автоматическое определение страны пользователя (комбинированный метод)
+ * Автоматическое определение страны пользователя
  */
 export const autoDetectUserCountry = async (): Promise<CountryCode> => {
   try {
-    // Сначала пробуем определить по геолокации
+    // Сначала пытаемся определить по местоположению
     const locationCountry = await detectUserCountryByLocation();
     if (locationCountry) {
       return locationCountry;
     }
+  } catch (error) {
+    // Игнорируем ошибки геолокации
+  }
 
-    // Fallback: определяем по часовому поясу
+  try {
+    // Если не удалось по местоположению, пытаемся по часовому поясу
     const timezoneCountry = detectUserCountryByTimezone();
     if (timezoneCountry) {
       return timezoneCountry;
     }
-
-    // Если ничего не получилось, возвращаем США по умолчанию
-    return 'US';
   } catch (error) {
-    return 'US';
+    // Игнорируем ошибки определения часового пояса
   }
+
+  // Если ничего не удалось определить, возвращаем дефолтную страну
+  return 'US';
 };
 
 /**
@@ -314,11 +318,37 @@ export const formatNationalPhoneNumber = (phoneNumber: string, countryCode?: Cou
  */
 export const isValidInternationalPhoneNumber = (phoneNumber: string, countryCode?: CountryCode): boolean => {
   try {
-    if (!countryCode) {
-      return isValidPhoneNumber(phoneNumber);
+    // Если номер пустой, считаем невалидным
+    if (!phoneNumber || phoneNumber.trim() === '') {
+      return false;
     }
-    return isValidPhoneNumber(phoneNumber, countryCode);
-  } catch {
+
+    const cleanInput = phoneNumber.trim();
+
+    // Если номер начинается с +, пытаемся валидировать без кода страны
+    if (cleanInput.startsWith('+')) {
+      try {
+        return isValidPhoneNumber(cleanInput);
+      } catch (error) {
+        // Если не удалось валидировать, возвращаем false
+        return false;
+      }
+    }
+
+    // Если есть код страны, используем его
+    if (countryCode) {
+      try {
+        return isValidPhoneNumber(cleanInput, countryCode);
+      } catch (error) {
+        // Если не удалось валидировать с кодом страны, возвращаем false
+        return false;
+      }
+    }
+
+    // Если нет кода страны и номер не начинается с +, считаем невалидным
+    return false;
+  } catch (error) {
+    // В случае любой ошибки считаем номер невалидным
     return false;
   }
 };
@@ -328,25 +358,60 @@ export const isValidInternationalPhoneNumber = (phoneNumber: string, countryCode
  */
 export const getCleanInternationalPhoneNumber = (phoneNumber: string, countryCode?: CountryCode): string => {
   try {
-    let parsedNumber: PhoneNumber | undefined;
-    
-    if (!countryCode) {
-      parsedNumber = parsePhoneNumber(phoneNumber);
-    } else {
-      parsedNumber = parsePhoneNumber(phoneNumber, countryCode);
+    // Если номер пустой, возвращаем как есть
+    if (!phoneNumber || phoneNumber.trim() === '') {
+      return phoneNumber;
     }
+
+    // Убираем лишние пробелы
+    const cleanInput = phoneNumber.trim();
     
-    if (parsedNumber) {
-      return parsedNumber.format('E.164');
+    // Если номер уже начинается с +, пытаемся парсить без кода страны
+    if (cleanInput.startsWith('+')) {
+      try {
+        const parsedNumber = parsePhoneNumber(cleanInput);
+        if (parsedNumber && parsedNumber.isValid()) {
+          return parsedNumber.format('E.164');
+        }
+      } catch (error) {
+        // Если не удалось распарсить, возвращаем как есть
+        return cleanInput;
+      }
     }
-    
-    // Если не удалось распарсить, возвращаем только цифры с плюсом
+
+    // Если есть код страны, используем его
+    if (countryCode) {
+      try {
+        const parsedNumber = parsePhoneNumber(cleanInput, countryCode);
+        if (parsedNumber && parsedNumber.isValid()) {
+          return parsedNumber.format('E.164');
+        }
+      } catch (error) {
+        // Если не удалось распарсить с кодом страны, добавляем код вручную
+        const callingCode = getCallingCodeForCountry(countryCode);
+        if (callingCode) {
+          const withCode = `+${callingCode}${cleanInput.replace(/\D/g, '')}`;
+          return withCode;
+        }
+      }
+    }
+
+    // Если ничего не помогло, возвращаем только цифры с плюсом
+    const digitsOnly = cleanInput.replace(/\D/g, '');
+    return digitsOnly ? `+${digitsOnly}` : cleanInput;
+  } catch (error) {
+    // В случае любой ошибки возвращаем исходный номер
     const digitsOnly = phoneNumber.replace(/\D/g, '');
-    return digitsOnly.startsWith('+') ? phoneNumber : '+' + digitsOnly;
-  } catch {
-    const digitsOnly = phoneNumber.replace(/\D/g, '');
-    return '+' + digitsOnly;
+    return digitsOnly ? `+${digitsOnly}` : phoneNumber;
   }
+};
+
+/**
+ * Получает код страны по CountryCode
+ */
+const getCallingCodeForCountry = (countryCode: CountryCode): string | null => {
+  const countryData = POPULAR_COUNTRY_CODES.find(country => country.code === countryCode);
+  return countryData ? countryData.callingCode.replace('+', '') : null;
 };
 
 /**
@@ -354,9 +419,39 @@ export const getCleanInternationalPhoneNumber = (phoneNumber: string, countryCod
  */
 export const formatPhoneNumberAsYouType = (input: string, countryCode?: CountryCode): string => {
   try {
-    const formatter = new AsYouType(countryCode);
-    return formatter.input(input);
-  } catch {
+    // Если пустой ввод, возвращаем как есть
+    if (!input || input.trim() === '') {
+      return input;
+    }
+
+    const cleanInput = input.trim();
+
+    // Если номер начинается с +, используем форматирование без кода страны
+    if (cleanInput.startsWith('+')) {
+      try {
+        const formatter = new AsYouType();
+        return formatter.input(cleanInput);
+      } catch (error) {
+        // Если не удалось отформатировать, возвращаем как есть
+        return cleanInput;
+      }
+    }
+
+    // Если есть код страны, используем его
+    if (countryCode) {
+      try {
+        const formatter = new AsYouType(countryCode);
+        return formatter.input(cleanInput);
+      } catch (error) {
+        // Если не удалось отформатировать с кодом страны, возвращаем как есть
+        return cleanInput;
+      }
+    }
+
+    // Если нет кода страны и номер не начинается с +, возвращаем как есть
+    return cleanInput;
+  } catch (error) {
+    // В случае любой ошибки возвращаем исходный ввод
     return input;
   }
 };
@@ -479,4 +574,57 @@ export const formatSwedishPhoneNumber = (phoneNumber: string): string => formatI
 export const isValidUSPhoneNumber = (phoneNumber: string): boolean => isValidInternationalPhoneNumber(phoneNumber, 'US');
 export const isValidSwedishPhoneNumber = (phoneNumber: string): boolean => isValidInternationalPhoneNumber(phoneNumber, 'SE');
 export const getCleanPhoneNumber = (phoneNumber: string): string => getCleanInternationalPhoneNumber(phoneNumber);
-export const formatPhoneNumberForDisplay = (phoneNumber: string): string => formatInternationalPhoneNumber(phoneNumber); 
+export const formatPhoneNumberForDisplay = (phoneNumber: string): string => formatInternationalPhoneNumber(phoneNumber);
+
+/**
+ * Безопасное получение чистого номера телефона без использования libphonenumber-js
+ * Эта функция не выбрасывает исключения и всегда возвращает валидный результат
+ */
+export const getSafeCleanPhoneNumber = (phoneNumber: string, countryCode?: CountryCode): string => {
+  // Если номер пустой, возвращаем пустую строку
+  if (!phoneNumber || phoneNumber.trim() === '') {
+    return '';
+  }
+
+  const cleanInput = phoneNumber.trim();
+
+  // Если номер уже начинается с +, возвращаем его (убираем только лишние символы)
+  if (cleanInput.startsWith('+')) {
+    const digitsOnly = cleanInput.replace(/[^\d+]/g, '');
+    return digitsOnly;
+  }
+
+  // Если есть код страны, добавляем его
+  if (countryCode) {
+    const callingCode = getCallingCodeForCountry(countryCode);
+    if (callingCode) {
+      const digitsOnly = cleanInput.replace(/\D/g, '');
+      return `+${callingCode}${digitsOnly}`;
+    }
+  }
+
+  // Если нет кода страны, просто добавляем + к цифрам
+  const digitsOnly = cleanInput.replace(/\D/g, '');
+  return digitsOnly ? `+${digitsOnly}` : '';
+};
+
+/**
+ * Расширенная версия getCleanInternationalPhoneNumber с fallback
+ */
+export const getCleanInternationalPhoneNumberSafe = (phoneNumber: string, countryCode?: CountryCode): string => {
+  try {
+    // Пытаемся использовать основную функцию
+    const result = getCleanInternationalPhoneNumber(phoneNumber, countryCode);
+    
+    // Проверяем, что результат валиден
+    if (result && result.length > 0) {
+      return result;
+    }
+    
+    // Если основная функция не сработала, используем безопасную версию
+    return getSafeCleanPhoneNumber(phoneNumber, countryCode);
+  } catch (error) {
+    // В случае любой ошибки используем безопасную версию
+    return getSafeCleanPhoneNumber(phoneNumber, countryCode);
+  }
+}; 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, Switch, ActivityIndicator } from 'react-native';
 import { Card, Button, TextInput, DataTable, Dialog, Portal } from 'react-native-paper';
+import logger from '../utils/logger';
 
 interface AdminLimits {
   id: string;
@@ -109,7 +110,7 @@ export const AdminLimitsPanel: React.FC<AdminLimitsPanelProps> = ({
         Alert.alert('Ошибка', result.message || 'Не удалось загрузить данные');
       }
     } catch (error) {
-      console.error('Ошибка загрузки лимитов админов:', error);
+      logger.error('Failed to load admin limits', { error: error instanceof Error ? error.message : 'Unknown error' }, 'admin');
       Alert.alert('Ошибка', 'Не удалось загрузить данные');
     } finally {
       setLoading(false);
@@ -139,7 +140,7 @@ export const AdminLimitsPanel: React.FC<AdminLimitsPanelProps> = ({
         Alert.alert('Ошибка', result.message || 'Не удалось создать лимиты');
       }
     } catch (error) {
-      console.error('Ошибка создания лимитов:', error);
+      logger.error('Failed to create admin limits', { error: error instanceof Error ? error.message : 'Unknown error' }, 'admin');
       Alert.alert('Ошибка', 'Не удалось создать лимиты');
     } finally {
       setLoading(false);
@@ -185,7 +186,7 @@ export const AdminLimitsPanel: React.FC<AdminLimitsPanelProps> = ({
         Alert.alert('Ошибка', result.message || 'Не удалось экспортировать данные');
       }
     } catch (error) {
-      console.error('Ошибка экспорта:', error);
+      logger.error('Failed to export admin limits', { error: error instanceof Error ? error.message : 'Unknown error' }, 'admin');
       Alert.alert('Ошибка', 'Не удалось экспортировать данные');
     } finally {
       setLoading(false);

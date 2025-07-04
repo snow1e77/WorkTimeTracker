@@ -121,12 +121,14 @@ export interface TemporaryAbsence {
 export interface Violation {
   id: string;
   userId: string;
-  siteId?: string;
-  type: 'unauthorized_departure' | 'late_arrival' | 'early_departure' | 'no_show';
+  siteId: string;
+  shiftId?: string;
+  type: 'late_start' | 'early_end' | 'location_violation' | 'no_checkout' | 'other';
   description: string;
-  timestamp: Date;
   severity: 'low' | 'medium' | 'high';
-  isResolved: boolean;
+  resolvedAt?: Date;
+  resolvedBy?: string;
+  createdAt: Date;
 }
 
 export interface ViolationsSummary {

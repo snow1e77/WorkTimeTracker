@@ -5,6 +5,58 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
+// Мокируем MonitoringService
+jest.mock('./src/services/MonitoringService', () => ({
+  MonitoringService: {
+    getInstance: jest.fn(() => ({
+      initialize: jest.fn(),
+      trackError: jest.fn(),
+      trackSyncStart: jest.fn(),
+      trackSyncSuccess: jest.fn(),
+      trackSyncError: jest.fn(),
+      trackSyncFailure: jest.fn(),
+      trackPerformance: jest.fn(),
+      trackEvent: jest.fn(),
+      logError: jest.fn(),
+      logInfo: jest.fn(),
+      getPerformanceMetrics: jest.fn().mockReturnValue([]),
+      getRecentErrors: jest.fn().mockReturnValue([]),
+      getSyncMetrics: jest.fn().mockReturnValue({
+        totalSyncs: 0,
+        successfulSyncs: 0,
+        failedSyncs: 0,
+        lastSyncStatus: 'idle',
+        averageSyncDuration: 0,
+        networkErrors: 0
+      }),
+      getUptime: jest.fn().mockReturnValue(1000),
+      getHealthReport: jest.fn().mockReturnValue({
+        status: 'healthy',
+        issues: [],
+        metrics: {}
+      }),
+      getMetrics: jest.fn().mockReturnValue({
+        performance: [],
+        errors: [],
+        sync: {
+          totalSyncs: 0,
+          successfulSyncs: 0,
+          failedSyncs: 0
+        }
+      }),
+      resetMetrics: jest.fn(),
+      persistMetrics: jest.fn(),
+      exportMetrics: jest.fn().mockReturnValue('{}'),
+      getAppReport: jest.fn().mockReturnValue({
+        appVersion: '1.0.0',
+        crashCount: 0,
+        errorCount: 0,
+        uptime: 1000
+      })
+    }))
+  }
+}));
+
 // Мокируем React Navigation
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({

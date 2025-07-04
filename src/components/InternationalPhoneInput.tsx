@@ -137,10 +137,15 @@ export default function InternationalPhoneInput({
       const detectCountry = async () => {
         try {
           const detectedCountry = await autoDetectUserCountry();
-          setCurrentCountry(detectedCountry);
-          onCountryChange?.(detectedCountry);
+          if (detectedCountry) {
+            setCurrentCountry(detectedCountry);
+            onCountryChange?.(detectedCountry);
+          }
         } catch (error) {
           // Silently handle error - fallback to default country
+          console.warn('Country detection failed:', error);
+          setCurrentCountry('US');
+          onCountryChange?.('US');
         } finally {
           setIsDetectingCountry(false);
         }
@@ -153,8 +158,14 @@ export default function InternationalPhoneInput({
   useEffect(() => {
     // Format number on change
     if (value !== formattedValue) {
-      const formatted = formatPhoneNumberAsYouType(value, currentCountry);
-      setFormattedValue(formatted);
+      try {
+        const formatted = formatPhoneNumberAsYouType(value, currentCountry);
+        setFormattedValue(formatted);
+      } catch (error) {
+        // If formatting fails, use original value
+        console.warn('Phone formatting failed:', error);
+        setFormattedValue(value);
+      }
     }
   }, [value, currentCountry]);
 
@@ -166,19 +177,31 @@ export default function InternationalPhoneInput({
     
     // Reformat current number for new country
     if (value) {
-      const newFormatted = formatPhoneNumberAsYouType(value, country.code);
-      setFormattedValue(newFormatted);
-      onChangeText(newFormatted);
+      try {
+        const newFormatted = formatPhoneNumberAsYouType(value, country.code);
+        setFormattedValue(newFormatted);
+        onChangeText(newFormatted);
+      } catch (error) {
+        // If formatting fails, use original value
+        console.warn('Phone formatting failed:', error);
+        setFormattedValue(value);
+        onChangeText(value);
+      }
     }
   };
 
   const handleTextChange = (text: string) => {
-    const formatted = formatPhoneNumberAsYouType(text, currentCountry);
-    setFormattedValue(formatted);
-    onChangeText(formatted);
+    try {
+      const formatted = formatPhoneNumberAsYouType(text, currentCountry);
+      setFormattedValue(formatted);
+      onChangeText(formatted);
+    } catch (error) {
+      // If formatting fails, use original text
+      console.warn('Phone formatting failed:', error);
+      setFormattedValue(text);
+      onChangeText(text);
+    }
   };
-
-
 
   return (
     <View style={styles.container}>

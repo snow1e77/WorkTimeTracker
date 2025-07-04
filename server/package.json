@@ -10,8 +10,6 @@
     "dev": "nodemon --exec ts-node src/index.ts",
     "migrate": "ts-node src/database/migrate.ts",
     "migrate:prod": "set NODE_ENV=production && ts-node src/database/migrate.ts",
-    "seed": "ts-node src/database/seed.ts",
-    "create-test-worker": "ts-node src/database/create-test-worker.ts",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "lint": "eslint src/**/*.ts",

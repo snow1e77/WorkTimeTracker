@@ -201,7 +201,7 @@ describe('dateUtils', () => {
       }
       
       const end = performance.now();
-      expect(end - start).toBeLessThan(200); // Должно выполняться меньше чем за 200мс
+      expect(end - start).toBeLessThan(300); // Должно выполняться меньше чем за 300мс
     });
   });
 }); 

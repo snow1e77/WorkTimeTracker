@@ -8,9 +8,8 @@ import { RootStackParamList } from '../types';
 import { AuthService } from '../services/AuthService';
 import { useAuth } from '../contexts/AuthContext';
 import { 
-  getCleanInternationalPhoneNumber, 
-  isValidInternationalPhoneNumber,
-  getCleanPhoneNumber
+  getCleanInternationalPhoneNumberSafe, 
+  isValidInternationalPhoneNumber
 } from '../utils/phoneUtils';
 import InternationalPhoneInput from '../components/InternationalPhoneInput';
 import { t } from '../constants/localization';
@@ -35,12 +34,24 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const validatePhoneNumber = () => {
-    if (!isValidInternationalPhoneNumber(phoneNumber, selectedCountry)) {
+    try {
+      if (!phoneNumber || phoneNumber.trim() === '') {
+        setError(t('AUTH.ENTER_VALID_PHONE'));
+        return false;
+      }
+
+      if (!isValidInternationalPhoneNumber(phoneNumber, selectedCountry)) {
+        setError(t('AUTH.ENTER_VALID_PHONE'));
+        return false;
+      }
+
+      setError('');
+      return true;
+    } catch (error) {
+      console.warn('Phone validation failed:', error);
       setError(t('AUTH.ENTER_VALID_PHONE'));
       return false;
     }
-    setError('');
-    return true;
   };
 
   const handleLogin = async () => {
@@ -51,7 +62,7 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      const cleanPhone = getCleanPhoneNumber(phoneNumber);
+      const cleanPhone = getCleanInternationalPhoneNumberSafe(phoneNumber, selectedCountry);
       logger.auth('Starting login for phone', { phoneNumber: cleanPhone });
       
       const result = await login(cleanPhone);
@@ -63,8 +74,7 @@ export default function LoginScreen() {
         logger.auth('Navigation should happen automatically');
       } else if (result.needsContact) {
         logger.auth('User needs contact - showing restricted screen');
-        // @ts-ignore
-        navigation.navigate('RestrictedAccess');
+        setStep('restricted');
       } else if (result.error?.includes('не найден') || result.error?.includes('not found')) {
         logger.auth('User needs registration');
         setShowRegister(true);
@@ -74,7 +84,7 @@ export default function LoginScreen() {
       }
     } catch (error) {
       logger.error('Login exception occurred', { error: error instanceof Error ? error.message : 'Unknown error' }, 'auth');
-      Alert.alert('Ошибка', 'Произошла ошибка при входе');
+      Alert.alert('Ошибка', 'Произошла ошибка при входе. Проверьте номер телефона и попробуйте снова.');
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +98,7 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      const cleanPhone = getCleanPhoneNumber(phoneNumber);
+      const cleanPhone = getCleanInternationalPhoneNumberSafe(phoneNumber, selectedCountry);
       logger.auth('Starting registration for phone', { phoneNumber: cleanPhone });
       
       const result = await register(cleanPhone, name.trim());
@@ -104,7 +114,7 @@ export default function LoginScreen() {
       }
     } catch (error) {
       logger.error('Registration exception occurred', { error: error instanceof Error ? error.message : 'Unknown error' }, 'auth');
-      Alert.alert('Ошибка', 'Произошла ошибка при регистрации');
+      Alert.alert('Ошибка', 'Произошла ошибка при регистрации. Проверьте введенные данные и попробуйте снова.');
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +175,7 @@ export default function LoginScreen() {
       </Text>
 
       <Text style={styles.phoneNumber}>
-        {getCleanInternationalPhoneNumber(phoneNumber, selectedCountry)}
+        {getCleanInternationalPhoneNumberSafe(phoneNumber, selectedCountry)}
       </Text>
       
       <TextInput

@@ -14,50 +14,12 @@ export class WebDatabaseService {
   }
 
   async initDatabase(): Promise<void> {
-    // Инициализируем начальные данные если они не существуют
+    // Инициализируем пустые данные для продакшена
     if (!localStorage.getItem('worktime_users')) {
-      const defaultUsers: AuthUser[] = [
-        {
-          id: 'admin-1',
-          phoneNumber: '+1234567890',
-          name: 'Admin User',
-          role: 'admin',
-          companyId: 'default-company',
-          isVerified: true,
-          isActive: true,
-          createdAt: new Date(),
-        },
-        {
-          id: 'worker-1',
-          phoneNumber: '+1234567891',
-          name: 'John Worker',
-          role: 'worker',
-          companyId: 'default-company',
-          isVerified: true,
-          isActive: true,
-          createdAt: new Date(),
-        },
-        {
-          id: 'worker-2',
-          phoneNumber: '+1234567892',
-          name: 'Jane Worker',
-          role: 'worker',
-          companyId: 'default-company',
-          isVerified: true,
-          isActive: false,
-          createdAt: new Date(),
-        },
-      ];
-      
-      localStorage.setItem('worktime_users', JSON.stringify(defaultUsers));
-      
-      // Создаем пароли для демонстрации (в реальном проекте используйте хэширование)
-      const passwords = {
-        'admin-1': 'admin123',
-        'worker-1': 'worker123',
-        'worker-2': 'worker123',
-      };
-      localStorage.setItem('worktime_passwords', JSON.stringify(passwords));
+      localStorage.setItem('worktime_users', JSON.stringify([]));
+    }
+    if (!localStorage.getItem('worktime_passwords')) {
+      localStorage.setItem('worktime_passwords', JSON.stringify({}));
     }
   }
 
@@ -137,32 +99,8 @@ export class WebDatabaseService {
   async getConstructionSites(): Promise<ConstructionSite[]> {
     const sitesData = localStorage.getItem('worktime_sites');
     if (!sitesData) {
-      const defaultSites = [
-        {
-          id: 'site-1',
-          name: 'Construction Site Alpha',
-          address: '123 Main St, City',
-          latitude: 40.7128,
-          longitude: -74.0060,
-          radius: 100,
-          companyId: 'default-company',
-          isActive: true,
-          createdAt: new Date(),
-        },
-        {
-          id: 'site-2',
-          name: 'Construction Site Beta',
-          address: '456 Oak Ave, City',
-          latitude: 40.7589,
-          longitude: -73.9851,
-          radius: 150,
-          companyId: 'default-company',
-          isActive: true,
-          createdAt: new Date(),
-        },
-      ];
-      localStorage.setItem('worktime_sites', JSON.stringify(defaultSites));
-      return defaultSites;
+      localStorage.setItem('worktime_sites', JSON.stringify([]));
+      return [];
     }
     const sites = JSON.parse(sitesData);
     // Преобразуем строки createdAt обратно в Date объекты
@@ -189,72 +127,16 @@ export class WebDatabaseService {
 
   // Методы для отчетов о работе (заглушка)
   async getWorkReports(period: 'today' | 'week' | 'month'): Promise<WorkReport[]> {
-    // Возвращаем демонстрационные данные
-    const demoReports = [
-      {
-        userId: 'worker-1',
-        userName: 'John Worker',
-        siteId: 'site-1',
-        siteName: 'Construction Site Alpha',
-        totalHours: 8.5,
-        totalMinutes: 510,
-        shiftsCount: 1,
-        violations: 0,
-        date: new Date().toISOString(),
-      },
-      {
-        userId: 'worker-2',
-        userName: 'Jane Worker',
-        siteId: 'site-2',
-        siteName: 'Construction Site Beta',
-        totalHours: 7.2,
-        totalMinutes: 432,
-        shiftsCount: 1,
-        violations: 1,
-        date: new Date().toISOString(),
-      },
-      {
-        userId: 'worker-1',
-        userName: 'John Worker',
-        siteId: 'site-2',
-        siteName: 'Construction Site Beta',
-        totalHours: 9.0,
-        totalMinutes: 540,
-        shiftsCount: 1,
-        violations: 0,
-        date: new Date(Date.now() - 86400000).toISOString(), // вчера
-      },
-    ];
-    return demoReports;
+    // Возвращаем пустой массив - данные должны поступать из реального API
+    return [];
   }
 
   // Методы для назначений рабочих на объекты
   async getAllAssignments(): Promise<UserSiteAssignment[]> {
     const assignmentsData = localStorage.getItem('worktime_assignments');
     if (!assignmentsData) {
-      // Создаем демонстрационные назначения
-      const defaultAssignments: UserSiteAssignment[] = [
-        {
-          id: 'assignment-1',
-          userId: 'worker-1',
-          siteId: 'site-1',
-          assignedBy: 'admin-1',
-          isActive: true,
-          assignedAt: new Date(),
-          notes: 'Primary assignment for John Worker'
-        },
-        {
-          id: 'assignment-2',
-          userId: 'worker-2',
-          siteId: 'site-2',
-          assignedBy: 'admin-1',
-          isActive: true,
-          assignedAt: new Date(),
-          notes: 'Primary assignment for Jane Worker'
-        },
-      ];
-      localStorage.setItem('worktime_assignments', JSON.stringify(defaultAssignments));
-      return defaultAssignments;
+      localStorage.setItem('worktime_assignments', JSON.stringify([]));
+      return [];
     }
     
     const assignments = JSON.parse(assignmentsData);
@@ -322,40 +204,8 @@ export class WebDatabaseService {
 
   // Методы для отслеживания местоположения работников
   async getUsersCurrentLocations(): Promise<LocationEvent[]> {
-    // В веб версии возвращаем демонстрационные данные
-    const demoLocations: LocationEvent[] = [
-      {
-        id: 'location-1',
-        userId: 'worker-1',
-        latitude: 40.7128,
-        longitude: -74.0060,
-        timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 минут назад
-        eventType: 'site_entry',
-        siteId: 'site-1',
-        distance: 25,
-      },
-      {
-        id: 'location-2',
-        userId: 'worker-2',
-        latitude: 40.7589,
-        longitude: -73.9851,
-        timestamp: new Date(Date.now() - 2 * 60 * 1000), // 2 минуты назад
-        eventType: 'tracking_update',
-        siteId: 'site-2',
-        distance: 75,
-      },
-      {
-        id: 'location-3',
-        userId: 'worker-3',
-        latitude: 40.7505,
-        longitude: -73.9934,
-        timestamp: new Date(Date.now() - 10 * 60 * 1000), // 10 минут назад
-        eventType: 'site_exit',
-        distance: 250,
-      },
-    ];
-    
-    return demoLocations;
+    // В веб версии возвращаем пустой массив - данные должны поступать из реального API
+    return [];
   }
 
   async getRecentLocationEvents(userId?: string, limit: number = 100): Promise<LocationEvent[]> {
@@ -383,35 +233,8 @@ export class WebDatabaseService {
   async getPhotoReports(userId?: string, siteId?: string): Promise<PhotoReport[]> {
     const reportsData = localStorage.getItem('worktime_photo_reports');
     if (!reportsData) {
-      // Создаём демо данные для тестирования
-      const mockPhotoReports: PhotoReport[] = [
-        {
-          id: 'photo-1',
-          userId: 'worker-1',
-          siteId: 'site-1',
-          shiftId: 'shift-1',
-          photoUri: 'demo-photo-1.jpg',
-          latitude: 40.7128,
-          longitude: -74.0060,
-          timestamp: new Date(),
-          isValidated: false,
-          notes: 'Morning progress check'
-        },
-        {
-          id: 'photo-2',
-          userId: 'worker-2',
-          siteId: 'site-2',
-          shiftId: 'shift-2',
-          photoUri: 'demo-photo-2.jpg',
-          latitude: 40.7589,
-          longitude: -73.9851,
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          isValidated: true,
-          notes: 'Progress update'
-        }
-      ];
-      localStorage.setItem('worktime_photo_reports', JSON.stringify(mockPhotoReports));
-      return mockPhotoReports;
+      localStorage.setItem('worktime_photo_reports', JSON.stringify([]));
+      return [];
     }
     
     let reports: PhotoReport[] = JSON.parse(reportsData);
@@ -497,38 +320,8 @@ export class WebDatabaseService {
   async getWorkersLocations(): Promise<WorkerLocation[]> {
     const locationsData = localStorage.getItem('worktime_workers_locations');
     if (!locationsData) {
-      // Создаём демо данные для тестирования
-      const demoLocations: WorkerLocation[] = [
-        {
-          userId: 'worker-1',
-          userName: 'John Smith',
-          currentSiteId: 'site-1',
-          currentSiteName: 'Construction Site Alpha',
-          latitude: 40.7128,
-          longitude: -74.0060,
-          timestamp: new Date(),
-          isOnSite: true,
-          shiftStartTime: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 часа назад
-          timeOnSite: 240, // 4 часа в минутах
-          lastPhotoReportTime: new Date(Date.now() - 30 * 60 * 1000), // 30 минут назад
-          status: 'working'
-        },
-        {
-          userId: 'worker-2',
-          userName: 'Jane Doe',
-          currentSiteId: 'site-2',
-          currentSiteName: 'Construction Site Beta',
-          latitude: 40.7589,
-          longitude: -73.9851,
-          timestamp: new Date(),
-          isOnSite: false,
-          shiftStartTime: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 часа назад
-          timeOnSite: 0,
-          status: 'left_site'
-        }
-      ];
-      localStorage.setItem('worktime_workers_locations', JSON.stringify(demoLocations));
-      return demoLocations;
+      localStorage.setItem('worktime_workers_locations', JSON.stringify([]));
+      return [];
     }
     
     const locations: WorkerLocation[] = JSON.parse(locationsData);
@@ -768,40 +561,8 @@ export class WebDatabaseService {
   async getProjects(): Promise<Project[]> {
     const projectsData = localStorage.getItem('worktime_projects');
     if (!projectsData) {
-      const defaultProjects: Project[] = [
-        {
-          id: 'project-1',
-          name: 'Жилой комплекс "Северная звезда"',
-          description: 'Строительство многоэтажного жилого комплекса в северном районе города',
-          companyId: 'default-company',
-          startDate: new Date('2024-01-15'),
-          endDate: new Date('2025-12-31'),
-          status: 'active',
-          budget: 150000000,
-          currency: 'RUB',
-          address: 'ул. Северная, 123',
-          isActive: true,
-          createdBy: 'admin-1',
-          createdAt: new Date('2024-01-01'),
-        },
-        {
-          id: 'project-2',
-          name: 'Торговый центр "Горизонт"',
-          description: 'Реконструкция существующего торгового центра',
-          companyId: 'default-company',
-          startDate: new Date('2024-03-01'),
-          endDate: new Date('2024-11-30'),
-          status: 'planning',
-          budget: 75000000,
-          currency: 'RUB',
-          address: 'пр. Центральный, 45',
-          isActive: true,
-          createdBy: 'admin-1',
-          createdAt: new Date('2024-02-15'),
-        },
-      ];
-      localStorage.setItem('worktime_projects', JSON.stringify(defaultProjects));
-      return defaultProjects;
+      localStorage.setItem('worktime_projects', JSON.stringify([]));
+      return [];
     }
     
     const projects = JSON.parse(projectsData);

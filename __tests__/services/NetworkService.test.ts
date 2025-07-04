@@ -109,9 +109,12 @@ describe('NetworkService', () => {
     it('должен запускать мониторинг', () => {
       jest.useFakeTimers();
       
+      // Мокаем setInterval
+      const mockSetInterval = jest.spyOn(global, 'setInterval');
+      
       networkService.startMonitoring(10000);
       
-      expect(setInterval).toHaveBeenCalledWith(expect.any(Function), 10000);
+      expect(mockSetInterval).toHaveBeenCalledWith(expect.any(Function), 10000);
       
       jest.useRealTimers();
     });
@@ -119,10 +122,14 @@ describe('NetworkService', () => {
     it('должен останавливать мониторинг', () => {
       jest.useFakeTimers();
       
+      // Мокаем setInterval и clearInterval
+      const mockSetInterval = jest.spyOn(global, 'setInterval');
+      const mockClearInterval = jest.spyOn(global, 'clearInterval');
+      
       networkService.startMonitoring();
       networkService.stopMonitoring();
       
-      expect(clearInterval).toHaveBeenCalled();
+      expect(mockClearInterval).toHaveBeenCalled();
       
       jest.useRealTimers();
     });
@@ -139,7 +146,15 @@ describe('NetworkService', () => {
 
   describe('Ожидание соединения', () => {
     it('должен ждать восстановления соединения', async () => {
-      mockedIsOnline.mockResolvedValue(true);
+      // Устанавливаем статус как подключенный
+      const mockState = {
+        isConnected: true,
+        type: 'wifi',
+        details: { strength: 0.9 }
+      };
+      
+      mockedNetInfo.fetch.mockResolvedValue(mockState as any);
+      await networkService.initialize();
       
       const result = await networkService.waitForConnection(1000);
       
@@ -147,9 +162,15 @@ describe('NetworkService', () => {
     }, 10000);
 
     it('должен возвращать false при таймауте', async () => {
-      mockedIsOnline.mockResolvedValue(false);
+      // Принудительно устанавливаем статус отключенным
+      // @ts-ignore - доступ к приватному полю для теста
+      networkService['currentStatus'] = {
+        isConnected: false,
+        type: 'none',
+        quality: 'unknown'
+      };
       
-      const result = await networkService.waitForConnection(100);
+      const result = await networkService.waitForConnection(50); // Очень короткий таймаут
       
       expect(result).toBe(false);
     });

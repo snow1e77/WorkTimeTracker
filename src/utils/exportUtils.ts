@@ -214,8 +214,8 @@ export const exportViolationsToCSV = (violations: Violation[], period: string): 
       `"${violation.type.replace(/_/g, ' ')}"`,
       `"${violation.description}"`,
       violation.severity,
-      `"${new Date(violation.timestamp).toLocaleString()}"`,
-      violation.isResolved ? 'Resolved' : 'Pending'
+        `"${new Date(violation.createdAt).toLocaleString()}"`,
+      violation.resolvedAt ? 'Resolved' : 'Pending'
     ].join(','))
   ].join('\n');
 

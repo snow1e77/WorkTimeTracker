@@ -37,10 +37,10 @@ import UserManagementScreen from './src/screens/UserManagementScreen';
 
 // Enable scroll optimization for iOS simulator
 if (Platform.OS === 'ios' && __DEV__) {
-  // @ts-ignore
-  Text.defaultProps = Text.defaultProps || {};
-  // @ts-ignore
-  Text.defaultProps.allowFontScaling = false;
+  // Правильный способ отключения font scaling
+  const TextRender = Text as any;
+  TextRender.defaultProps = TextRender.defaultProps || {};
+  TextRender.defaultProps.allowFontScaling = false;
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -48,6 +48,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const AppNavigator = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Отладочная информация
   // Инициализация NotificationService
@@ -84,8 +85,13 @@ const AppNavigator = () => {
         if (currentRouteName !== 'Home') {
           logger.info('Navigating to Home screen after authentication', {}, 'app');
           
+          // Очищаем предыдущий таймер если он существует
+          if (navigationTimeoutRef.current) {
+            clearTimeout(navigationTimeoutRef.current);
+          }
+          
           // Небольшая задержка для обеспечения полной инициализации
-          setTimeout(() => {
+          navigationTimeoutRef.current = setTimeout(() => {
             if (navigationRef.current) {
               navigationRef.current.reset({
                 index: 0,
@@ -93,6 +99,7 @@ const AppNavigator = () => {
               });
               logger.info('Navigation to Home completed', {}, 'app');
             }
+            navigationTimeoutRef.current = null;
           }, 100);
         } else {
           logger.debug('Already on Home screen, no navigation needed', {}, 'app');
@@ -107,17 +114,33 @@ const AppNavigator = () => {
       // Если пользователь не аутентифицирован и не на экране входа, навигируем к Login
       if (currentRouteName !== 'Login' && currentRouteName !== 'Register') {
         logger.info('Navigating to Login screen', {}, 'app');
-        setTimeout(() => {
+        
+        // Очищаем предыдущий таймер если он существует
+        if (navigationTimeoutRef.current) {
+          clearTimeout(navigationTimeoutRef.current);
+        }
+        
+        navigationTimeoutRef.current = setTimeout(() => {
           if (navigationRef.current) {
             navigationRef.current.reset({
               index: 0,
               routes: [{ name: 'Login' }],
             });
           }
+          navigationTimeoutRef.current = null;
         }, 100);
       }
     }
   }, [isAuthenticated, isLoading]);
+  
+  // Очистка таймера при размонтировании
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (isLoading) {
     return (
