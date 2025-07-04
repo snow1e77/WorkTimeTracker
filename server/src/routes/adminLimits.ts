@@ -4,17 +4,17 @@ import { ExcelExportService } from '../services/ExcelExportService';
 import { authenticateToken } from '../middleware/auth';
 import { ExcelExportRequest, User } from '../types';
 
-// Расширяем интерфейс Request для TypeScript
+// Extend Request interface for TypeScript
 interface AuthenticatedRequest extends Request {
   user?: User;
 }
 
 const router = express.Router();
 
-// Применяем middleware аутентификации ко всем маршрутам
+// Apply authentication middleware to all routes
 router.use(authenticateToken);
 
-// Создание лимитов для админа (только для супер-админа)
+// Create admin limits (superadmin only)
 router.post('/create', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const currentUser = req.user;
@@ -22,15 +22,15 @@ router.post('/create', async (req: AuthenticatedRequest, res: Response) => {
     if (!currentUser) {
       return res.status(401).json({ 
         success: false, 
-        message: 'Пользователь не аутентифицирован' 
+        message: 'User not authenticated' 
       });
     }
     
-    // Проверяем права (только супер-админ может создавать лимиты)
+    // Check permissions (only superadmin can create limits)
     if (currentUser.role !== 'superadmin') {
       return res.status(403).json({ 
         success: false, 
-        message: 'Недостаточно прав для создания лимитов админов' 
+        message: 'Insufficient permissions to create admin limits' 
       });
     }
 
@@ -39,19 +39,19 @@ router.post('/create', async (req: AuthenticatedRequest, res: Response) => {
     res.json({
       success: true,
       data: adminLimits,
-      message: 'Лимиты админа успешно созданы'
+      message: 'Admin limits created successfully'
     });
     return;
   } catch (error) {
-    console.error('Ошибка создания лимитов админа:', error);
+    console.error('Error creating admin limits:', error);
     res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : 'Ошибка создания лимитов'
+      message: error instanceof Error ? error.message : 'Error creating limits'
     });
   }
 });
 
-// Получение лимитов админа
+// Get admin limits
 router.get('/admin/:adminId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { adminId } = req.params;
@@ -60,22 +60,22 @@ router.get('/admin/:adminId', async (req: AuthenticatedRequest, res: Response) =
     if (!adminId) {
       return res.status(400).json({ 
         success: false, 
-        message: 'ID админа обязателен' 
+        message: 'Admin ID is required' 
       });
     }
     
     if (!currentUser) {
       return res.status(401).json({ 
         success: false, 
-        message: 'Пользователь не аутентифицирован' 
+        message: 'User not authenticated' 
       });
     }
     
-    // Админ может видеть только свои лимиты, супер-админ - любые
+    // Admin can only view their own limits, superadmin can view any
     if (currentUser.role !== 'superadmin' && currentUser.id !== adminId) {
       return res.status(403).json({ 
         success: false, 
-        message: 'Недостаточно прав для просмотра лимитов' 
+        message: 'Insufficient permissions to view limits' 
       });
     }
 
@@ -84,7 +84,7 @@ router.get('/admin/:adminId', async (req: AuthenticatedRequest, res: Response) =
     if (!adminLimits) {
       return res.status(404).json({
         success: false,
-        message: 'Лимиты для данного админа не найдены'
+        message: 'Limits not found for this admin'
       });
     }
     
@@ -94,15 +94,15 @@ router.get('/admin/:adminId', async (req: AuthenticatedRequest, res: Response) =
     });
     return;
   } catch (error) {
-    console.error('Ошибка получения лимитов админа:', error);
+    console.error('Error getting admin limits:', error);
     res.status(500).json({
       success: false,
-      message: 'Ошибка получения лимитов'
+      message: 'Error retrieving limits'
     });
   }
 });
 
-// Обновление лимитов админа
+// Update admin limits
 router.patch('/admin/:adminId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { adminId } = req.params;
@@ -111,22 +111,22 @@ router.patch('/admin/:adminId', async (req: AuthenticatedRequest, res: Response)
     if (!adminId) {
       return res.status(400).json({ 
         success: false, 
-        message: 'ID админа обязателен' 
+        message: 'Admin ID is required' 
       });
     }
     
     if (!currentUser) {
       return res.status(401).json({ 
         success: false, 
-        message: 'Пользователь не аутентифицирован' 
+        message: 'User not authenticated' 
       });
     }
     
-    // Только супер-админ может обновлять лимиты
+    // Only superadmin can update limits
     if (currentUser.role !== 'superadmin') {
       return res.status(403).json({ 
         success: false, 
-        message: 'Недостаточно прав для изменения лимитов' 
+        message: 'Insufficient permissions to modify limits' 
       });
     }
 
@@ -139,19 +139,19 @@ router.patch('/admin/:adminId', async (req: AuthenticatedRequest, res: Response)
     res.json({
       success: true,
       data: updatedLimits,
-      message: 'Лимиты админа успешно обновлены'
+      message: 'Admin limits updated successfully'
     });
     return;
   } catch (error) {
-    console.error('Ошибка обновления лимитов админа:', error);
+    console.error('Error updating admin limits:', error);
     res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : 'Ошибка обновления лимитов'
+      message: error instanceof Error ? error.message : 'Error updating limits'
     });
   }
 });
 
-// Получение всех админов с лимитами
+// Get all admins with limits
 router.get('/all', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const currentUser = req.user;
@@ -159,15 +159,15 @@ router.get('/all', async (req: AuthenticatedRequest, res: Response) => {
     if (!currentUser) {
       return res.status(401).json({ 
         success: false, 
-        message: 'Пользователь не аутентифицирован' 
+        message: 'User not authenticated' 
       });
     }
     
-    // Только супер-админ может видеть всех админов
+    // Only superadmin can view all admins
     if (currentUser.role !== 'superadmin') {
       return res.status(403).json({ 
         success: false, 
-        message: 'Недостаточно прав для просмотра всех админов' 
+        message: 'Insufficient permissions to view all admins' 
       });
     }
 
@@ -192,15 +192,15 @@ router.get('/all', async (req: AuthenticatedRequest, res: Response) => {
     });
     return;
   } catch (error) {
-    console.error('Ошибка получения списка админов:', error);
+    console.error('Error getting admin list:', error);
     res.status(500).json({
       success: false,
-      message: 'Ошибка получения списка админов'
+      message: 'Error retrieving admin list'
     });
   }
 });
 
-// Проверка лимитов админа
+// Check admin limits
 router.get('/check/:adminId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { adminId } = req.params;
@@ -209,22 +209,22 @@ router.get('/check/:adminId', async (req: AuthenticatedRequest, res: Response) =
     if (!adminId) {
       return res.status(400).json({ 
         success: false, 
-        message: 'ID админа обязателен' 
+        message: 'Admin ID is required' 
       });
     }
     
     if (!currentUser) {
       return res.status(401).json({ 
         success: false, 
-        message: 'Пользователь не аутентифицирован' 
+        message: 'User not authenticated' 
       });
     }
     
-    // Админ может проверять только свои лимиты, супер-админ - любые
+    // Admin can only check their own limits, superadmin can check any
     if (currentUser.role !== 'superadmin' && currentUser.id !== adminId) {
       return res.status(403).json({ 
         success: false, 
-        message: 'Недостаточно прав для проверки лимитов' 
+        message: 'Insufficient permissions to check limits' 
       });
     }
 
@@ -236,15 +236,15 @@ router.get('/check/:adminId', async (req: AuthenticatedRequest, res: Response) =
     });
     return;
   } catch (error) {
-    console.error('Ошибка проверки лимитов админа:', error);
+    console.error('Error checking admin limits:', error);
     res.status(500).json({
       success: false,
-      message: 'Ошибка проверки лимитов'
+      message: 'Error checking limits'
     });
   }
 });
 
-// Удаление лимитов админа
+// Delete admin limits
 router.delete('/admin/:adminId', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { adminId } = req.params;
@@ -253,22 +253,22 @@ router.delete('/admin/:adminId', async (req: AuthenticatedRequest, res: Response
     if (!adminId) {
       return res.status(400).json({ 
         success: false, 
-        message: 'ID админа обязателен' 
+        message: 'Admin ID is required' 
       });
     }
     
     if (!currentUser) {
       return res.status(401).json({ 
         success: false, 
-        message: 'Пользователь не аутентифицирован' 
+        message: 'User not authenticated' 
       });
     }
     
-    // Только супер-админ может удалять лимиты
+    // Only superadmin can delete limits
     if (currentUser.role !== 'superadmin') {
       return res.status(403).json({ 
         success: false, 
-        message: 'Недостаточно прав для удаления лимитов' 
+        message: 'Insufficient permissions to delete limits' 
       });
     }
 
@@ -277,25 +277,25 @@ router.delete('/admin/:adminId', async (req: AuthenticatedRequest, res: Response
     if (!deleted) {
       return res.status(404).json({
         success: false,
-        message: 'Лимиты для данного админа не найдены'
+        message: 'Limits not found for this admin'
       });
     }
     
     res.json({
       success: true,
-      message: 'Лимиты админа успешно удалены'
+      message: 'Admin limits deleted successfully'
     });
     return;
   } catch (error) {
-    console.error('Ошибка удаления лимитов админа:', error);
+    console.error('Error deleting admin limits:', error);
     res.status(500).json({
       success: false,
-      message: 'Ошибка удаления лимитов'
+      message: 'Error deleting limits'
     });
   }
 });
 
-// Экспорт данных в Excel
+// Export data to Excel
 router.post('/export', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const currentUser = req.user;
@@ -303,18 +303,18 @@ router.post('/export', async (req: AuthenticatedRequest, res: Response) => {
     if (!currentUser) {
       return res.status(401).json({ 
         success: false, 
-        message: 'Пользователь не аутентифицирован' 
+        message: 'User not authenticated' 
       });
     }
     
-    // Проверяем лимиты админа на экспорт
+    // Check admin limits for export
     if (currentUser.role === 'admin') {
       const limitsCheck = await AdminLimitsService.checkAdminLimits(currentUser.id);
       
       if (limitsCheck.hasLimits && limitsCheck.limits && !limitsCheck.limits.canExportExcel) {
         return res.status(403).json({ 
           success: false, 
-          message: 'У вас нет прав на экспорт данных в Excel' 
+          message: 'You do not have permission to export data to Excel' 
         });
       }
     }
@@ -335,7 +335,7 @@ router.post('/export', async (req: AuthenticatedRequest, res: Response) => {
     if (!exportResult.success) {
       return res.status(500).json({
         success: false,
-        message: exportResult.error || 'Ошибка экспорта данных'
+        message: exportResult.error || 'Error exporting data'
       });
     }
 
@@ -346,14 +346,14 @@ router.post('/export', async (req: AuthenticatedRequest, res: Response) => {
       success: true,
       data: exportResult.data,
       filename: exportResult.filename,
-      message: 'Данные успешно экспортированы'
+      message: 'Data exported successfully'
     });
     return;
   } catch (error) {
-    console.error('Ошибка экспорта данных:', error);
+    console.error('Error exporting data:', error);
     res.status(500).json({
       success: false,
-      message: 'Ошибка экспорта данных'
+      message: 'Error exporting data'
     });
   }
 });

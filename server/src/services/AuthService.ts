@@ -30,7 +30,7 @@ export class AuthService {
   private static readonly JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '7d';
   private static readonly REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
 
-  // Простой вход только по номеру телефона
+  // Simple login with phone number only
   static async login(data: LoginRequest): Promise<{ 
     success: boolean; 
     user?: User; 
@@ -41,34 +41,34 @@ export class AuthService {
     try {
       const { phoneNumber } = data;
 
-      // Проверяем, существует ли пользователь в основной таблице
+      // Check if user exists in the main table
       const user = await UserService.getUserByPhoneNumber(phoneNumber);
 
       if (user) {
-        // Пользователь найден и уже полностью зарегистрирован
+        // User found and fully registered
         if (!user.isActive) {
-          return { success: false, error: 'Аккаунт деактивирован' };
+          return { success: false, error: 'Account is deactivated' };
         }
 
         const tokens = await this.generateTokens(user);
-        logger.info('Успешный вход пользователя', { userId: user.id, phoneNumber });
+        logger.info('Successful user login', { userId: user.id, phoneNumber });
         return { success: true, user, tokens };
       }
 
-      // Пользователь не найден в системе
-      logger.warn('Попытка входа несуществующего пользователя', { phoneNumber });
+      // User not found in system
+      logger.warn('Login attempt for non-existent user', { phoneNumber });
       return { 
         success: false, 
-        error: 'Ваш номер телефона не найден в системе. Обратитесь к прорабу или бригадиру для добавления в базу данных.',
+        error: 'Your phone number is not found in the system. Please contact your supervisor or team leader to be added to the database.',
         needsContact: true
       };
     } catch (error) {
-      logger.error('Ошибка входа', { error, phoneNumber: data.phoneNumber });
-      return { success: false, error: 'Ошибка входа в систему' };
+      logger.error('Login error', { error, phoneNumber: data.phoneNumber });
+      return { success: false, error: 'System login error' };
     }
   }
 
-  // Регистрация нового пользователя (устаревший endpoint - больше не используется)
+  // Register new user (deprecated endpoint - no longer used)
   static async register(data: RegisterRequest): Promise<{ 
     success: boolean; 
     user?: User; 
@@ -76,14 +76,14 @@ export class AuthService {
     error?: string;
   }> {
     try {
-      return { success: false, error: 'Регистрация больше не поддерживается. Пользователей добавляет администратор.' };
+      return { success: false, error: 'Registration is no longer supported. Users are added by administrators.' };
     } catch (error) {
-      logger.error('Ошибка регистрации', { error, phoneNumber: data.phoneNumber });
-      return { success: false, error: 'Ошибка регистрации' };
+      logger.error('Registration error', { error, phoneNumber: data.phoneNumber });
+      return { success: false, error: 'Registration error' };
     }
   }
 
-  // Обновление токена
+  // Refresh token
   static async refreshToken(refreshToken: string): Promise<{
     success: boolean;
     tokens?: AuthTokens;
@@ -106,10 +106,10 @@ export class AuthService {
         return { success: false, error: 'User not found or inactive' };
       }
 
-      // Удаляем старый refresh token
+      // Delete old refresh token
       await query('DELETE FROM refresh_tokens WHERE token = $1', [refreshToken]);
 
-      // Генерируем новые токены
+      // Generate new tokens
       const tokens = await this.generateTokens(user);
 
       return { success: true, tokens };
@@ -119,18 +119,18 @@ export class AuthService {
     }
   }
 
-  // Выход
+  // Logout
   static async logout(refreshToken: string): Promise<{ success: boolean }> {
     try {
       await query('DELETE FROM refresh_tokens WHERE token = $1', [refreshToken]);
       return { success: true };
     } catch (error) {
       logger.error('Logout error', { error });
-      return { success: true }; // Считаем успешным даже при ошибке
+      return { success: true }; // Consider successful even on error
     }
   }
 
-  // Проверка access токена
+  // Verify access token
   static verifyAccessToken(token: string): JWTPayload | null {
     try {
       return jwt.verify(token, this.JWT_SECRET) as JWTPayload;
@@ -139,7 +139,7 @@ export class AuthService {
     }
   }
 
-  // Генерация токенов
+  // Generate tokens
   private static async generateTokens(user: User): Promise<AuthTokens> {
     const payload: JWTPayload = {
       userId: user.id,
@@ -151,9 +151,9 @@ export class AuthService {
 
     const refreshToken = uuidv4();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30 дней
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
 
-    // Сохраняем refresh token в базе
+    // Save refresh token to database
     await query(
       'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
       [user.id, refreshToken, expiresAt]
@@ -162,7 +162,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  // Очистка истекших токенов
+  // Cleanup expired tokens
   static async cleanupExpiredTokens(): Promise<void> {
     try {
       await query('DELETE FROM refresh_tokens WHERE expires_at < NOW()');
