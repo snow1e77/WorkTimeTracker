@@ -39,9 +39,22 @@ const refreshTokenSchema = Joi.object({
 // POST /api/auth/login - Реальная аутентификация
 router.post('/login', async (req, res) => {
   try {
+    // Логируем входящий запрос
+    logger.info('Login request received', { 
+      body: req.body,
+      headers: req.headers['content-type'],
+      method: req.method
+    });
+
     const { error, value } = phoneSchema.validate(req.body);
     
     if (error) {
+      logger.error('Login validation error', { 
+        error: error.details[0]?.message || 'Validation error',
+        body: req.body,
+        validationDetails: error.details
+      });
+      
       return res.status(400).json({
         success: false,
         error: error.details[0]?.message || 'Validation error'

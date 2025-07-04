@@ -39,6 +39,13 @@ export class AuthService {
     needsContact?: boolean;
   }> {
     try {
+      // Логируем входящие данные
+      logger.info('AuthService login called', { 
+        data,
+        phoneNumber: data.phoneNumber,
+        dataKeys: Object.keys(data)
+      });
+
       const { phoneNumber } = data;
 
       // Check if user exists in the main table
