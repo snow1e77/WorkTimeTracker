@@ -287,6 +287,12 @@ export class AuthService {
       return null;
     } catch (error) {
       logger.error('Exception occurred', { error: error instanceof Error ? error.message : 'Unknown error' });
+      
+      // Re-throw specific errors like "User not found" so they can be handled by AuthContext
+      if (error instanceof Error && error.message.includes('User not found')) {
+        throw error;
+      }
+      
       return null;
     }
   }

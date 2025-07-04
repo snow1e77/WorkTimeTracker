@@ -60,7 +60,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       logger.error('Auth status check error', { error: error?.message || 'Unknown error' }, 'auth');
       
-      if (error?.message?.includes('401') || error?.message?.includes('Unauthorized')) {
+      // Check for specific "User not found" error to automatically clear tokens
+      if (error?.message?.includes('User not found')) {
+        logger.auth('User not found - clearing authentication tokens');
+        await authService.removeAuthToken();
+        setAuthState({ 
+          isLoading: false, 
+          isAuthenticated: false, 
+          user: null 
+        });
+      } else if (error?.message?.includes('401') || error?.message?.includes('Unauthorized')) {
         logger.auth('Attempting token refresh due to 401 error');
         
         try {
