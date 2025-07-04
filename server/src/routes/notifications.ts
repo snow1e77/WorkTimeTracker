@@ -1,25 +1,12 @@
 ﻿import { Router } from 'express';
 import { serverNotificationService } from '../services/NotificationService';
 import { Request, Response } from 'express';
+import { authenticateToken, requireAdmin } from '../middleware/auth';
 
 const router = Router();
 
-// Интерфейсы для типизации (используем существующий тип из middleware)
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    role: 'worker' | 'admin';
-    name: string;
-    phoneNumber: string;
-    isVerified: boolean;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-  };
-}
-
 // Сохранение push токена пользователя
-router.post('/register-token', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/register-token', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { pushToken } = req.body;
     const userId = req.user?.id;
@@ -81,17 +68,9 @@ router.post('/register-token', async (req: AuthenticatedRequest, res: Response) 
 });
 
 // Отправка тестового уведомления (только для админов)
-router.post('/send-test', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/send-test', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { pushToken, title, body } = req.body;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Admin access required' 
-      });
-    }
 
     if (!pushToken) {
       return res.status(400).json({ 
@@ -126,17 +105,9 @@ router.post('/send-test', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Отправка уведомления о нарушении (только для админов)
-router.post('/violation-alert', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/violation-alert', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { adminTokens, violationType, workerName, siteName, severity } = req.body;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Admin access required' 
-      });
-    }
 
     if (!adminTokens || !Array.isArray(adminTokens) || adminTokens.length === 0) {
       return res.status(400).json({ 
@@ -166,17 +137,9 @@ router.post('/violation-alert', async (req: AuthenticatedRequest, res: Response)
 });
 
 // Отправка уведомления о назначении (только для админов)
-router.post('/assignment-notification', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/assignment-notification', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { workerToken, siteName, assignmentType, details } = req.body;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Admin access required' 
-      });
-    }
 
     if (!workerToken || !siteName || !assignmentType) {
       return res.status(400).json({ 
@@ -205,17 +168,9 @@ router.post('/assignment-notification', async (req: AuthenticatedRequest, res: R
 });
 
 // Отправка напоминания о смене (только для админов)
-router.post('/shift-reminder', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/shift-reminder', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { workerToken, siteName, shiftType, minutesUntilShift } = req.body;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Admin access required' 
-      });
-    }
 
     if (!workerToken || !siteName || !shiftType) {
       return res.status(400).json({ 
@@ -244,17 +199,9 @@ router.post('/shift-reminder', async (req: AuthenticatedRequest, res: Response) 
 });
 
 // Отправка уведомления о сверхурочной работе (только для админов)
-router.post('/overtime-alert', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/overtime-alert', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { workerToken, hours, siteName } = req.body;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Admin access required' 
-      });
-    }
 
     if (!workerToken || !hours || !siteName) {
       return res.status(400).json({ 
@@ -282,17 +229,9 @@ router.post('/overtime-alert', async (req: AuthenticatedRequest, res: Response) 
 });
 
 // Массовая отправка уведомлений (только для админов)
-router.post('/broadcast', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/broadcast', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { workerTokens, title, message, data } = req.body;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Admin access required' 
-      });
-    }
 
     if (!workerTokens || !Array.isArray(workerTokens) || workerTokens.length === 0) {
       return res.status(400).json({ 
@@ -329,17 +268,9 @@ router.post('/broadcast', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Получение статуса доставки уведомлений (только для админов)
-router.post('/delivery-receipts', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/delivery-receipts', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { receiptIds } = req.body;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Admin access required' 
-      });
-    }
 
     if (!receiptIds || !Array.isArray(receiptIds) || receiptIds.length === 0) {
       return res.status(400).json({ 
@@ -364,7 +295,7 @@ router.post('/delivery-receipts', async (req: AuthenticatedRequest, res: Respons
 });
 
 // Валидация push токена
-router.post('/validate-token', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/validate-token', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { pushToken } = req.body;
 
@@ -394,17 +325,9 @@ router.post('/validate-token', async (req: AuthenticatedRequest, res: Response) 
 });
 
 // Очистка недействительных токенов (только для админов)
-router.post('/cleanup-tokens', async (req: AuthenticatedRequest, res: Response) => {
+router.post('/cleanup-tokens', authenticateToken, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { tokens } = req.body;
-    const userRole = req.user?.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Admin access required' 
-      });
-    }
 
     if (!tokens || !Array.isArray(tokens) || tokens.length === 0) {
       return res.status(400).json({ 
@@ -434,7 +357,7 @@ router.post('/cleanup-tokens', async (req: AuthenticatedRequest, res: Response) 
 });
 
 // Удаление push токена пользователя
-router.delete('/token', async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/token', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { pushToken } = req.body;
     const userId = req.user?.id;
@@ -468,7 +391,7 @@ router.delete('/token', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Получение настроек уведомлений пользователя
-router.get('/preferences', async (req: AuthenticatedRequest, res: Response) => {
+router.get('/preferences', authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
 
@@ -516,7 +439,7 @@ router.get('/preferences', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Обновление настроек уведомлений пользователя
-router.put('/preferences', async (req: AuthenticatedRequest, res: Response) => {
+router.put('/preferences', authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     const { isEnabled, sound, vibration, shiftReminders, breakReminders, gpsEvents, violations } = req.body;
