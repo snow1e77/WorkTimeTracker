@@ -83,6 +83,7 @@ export class SyncService {
   private maxRetryAttempts = 3;
   private retryDelay = 5000; // 5 секунд
   private retryTimeouts: Set<NodeJS.Timeout> = new Set();
+  private queueProcessingInProgress = false;
 
   private constructor() {
     this.dbService = ApiDatabaseService.getInstance();
@@ -211,19 +212,29 @@ export class SyncService {
 
   // Обработать очередь операций
   private async processQueue(): Promise<void> {
-    const pendingOps = this.syncQueue.operations.filter(op => op.status === 'pending');
+    // Prevent concurrent queue processing
+    if (this.queueProcessingInProgress) return;
     
-    for (const operation of pendingOps) {
-      const hasNetwork = await this.checkNetwork();
-      if (hasNetwork) {
-        await this.processQueueOperation(operation);
+    this.queueProcessingInProgress = true;
+    
+    try {
+      const pendingOps = this.syncQueue.operations.filter(op => op.status === 'pending');
+      
+      for (const operation of pendingOps) {
+        const hasNetwork = await this.checkNetwork();
+        if (hasNetwork) {
+          await this.processQueueOperation(operation);
+        }
       }
+    } finally {
+      this.queueProcessingInProgress = false;
     }
   }
 
   // Обработать одну операцию из очереди
   private async processQueueOperation(operation: SyncOperation): Promise<void> {
-    if (operation.status === 'syncing') return;
+    // Atomic check and set to prevent race conditions
+    if (operation.status === 'syncing' || operation.status === 'completed') return;
 
     operation.status = 'syncing';
     operation.attempts++;

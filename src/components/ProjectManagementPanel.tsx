@@ -160,8 +160,8 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
     setNewProject({
       name: project.name,
       description: safeDescription,
-      startDate: project.startDate.toISOString().split('T')[0],
-      endDate: project.endDate ? project.endDate.toISOString().split('T')[0] : '',
+      startDate: (project.startDate instanceof Date ? project.startDate.toISOString().split('T')[0] : new Date(project.startDate).toISOString().split('T')[0]) || '',
+      endDate: project.endDate ? ((project.endDate instanceof Date ? project.endDate.toISOString().split('T')[0] : new Date(project.endDate).toISOString().split('T')[0]) || '') : '',
       budget: safeBudget,
       currency: safeCurrency,
       address: safeAddress,

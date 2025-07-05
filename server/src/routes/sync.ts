@@ -26,14 +26,14 @@ router.get('/', async (req, res) => {
       ...(lastSyncTimestamp && { lastSyncTimestamp: new Date(lastSyncTimestamp as string) })
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: syncData,
       timestamp: new Date()
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to get sync data'
     });
@@ -61,14 +61,14 @@ router.post('/', async (req, res) => {
       data
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: result,
       timestamp: new Date()
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to process sync data'
     });
@@ -81,13 +81,13 @@ router.get('/status', async (req, res) => {
     const userId = req.user!.id;
     const status = await SyncService.getSyncStatus(userId);
 
-    res.json({
+    return res.json({
       success: true,
       data: status
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to get sync status'
     });
@@ -109,14 +109,14 @@ router.post('/full', async (req, res) => {
 
     const result = await SyncService.fullSync(userId, deviceId);
 
-    res.json({
+    return res.json({
       success: true,
       data: result,
       timestamp: new Date()
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to perform full sync'
     });
@@ -144,14 +144,14 @@ router.post('/web-changes', async (req, res) => {
       users
     });
 
-    res.json({
+    return res.json({
       success: result.success,
       message: result.message,
       timestamp: new Date()
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to process web admin changes'
     });
@@ -174,14 +174,14 @@ router.get('/devices/:userId', async (req, res) => {
 
     const devices = await SyncService.getActiveDevicesForUser(userId);
 
-    res.json({
+    return res.json({
       success: true,
       data: devices,
       timestamp: new Date()
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to get user devices'
     });
@@ -203,13 +203,13 @@ router.post('/init-tables', async (req, res) => {
 
     await SyncService.initializeSyncTables();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Sync tables initialized successfully'
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to initialize sync tables'
     });
@@ -250,14 +250,14 @@ router.get('/history', async (req, res) => {
       }
     ];
 
-    res.json({
+    return res.json({
       success: true,
       data: history,
       timestamp: new Date()
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to get sync history'
     });
@@ -283,14 +283,14 @@ router.post('/shift', async (req, res) => {
       data: { shifts: [{ ...data, id: entityId }] }
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: result,
       timestamp: new Date()
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to sync shift'
     });
@@ -316,14 +316,14 @@ router.post('/assignment', async (req, res) => {
       data: { assignments: [{ ...data, id: entityId }] }
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: result,
       timestamp: new Date()
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to sync assignment'
     });
@@ -346,14 +346,14 @@ router.get('/conflicts/:userId', async (req, res) => {
 
     const conflicts = await SyncService.getSyncConflicts(userId);
 
-    res.json({
+    return res.json({
       success: true,
       data: conflicts,
       timestamp: new Date()
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to get sync conflicts'
     });
@@ -379,14 +379,14 @@ router.post('/resolve-conflict', async (req, res) => {
       resolvedBy: userId
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: result,
       timestamp: new Date()
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to resolve conflict'
     });
@@ -407,14 +407,14 @@ router.get('/metrics', async (req, res) => {
 
     const metrics = await SyncService.getSyncMetrics();
 
-    res.json({
+    return res.json({
       success: true,
       data: metrics,
       timestamp: new Date()
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to get sync metrics'
     });
@@ -435,7 +435,7 @@ router.post('/force-all', async (req, res) => {
 
     const result = await SyncService.forceGlobalSync();
 
-    res.json({
+    return res.json({
       success: true,
       message: `Forced sync initiated for ${result.devicesNotified} devices`,
       data: result,
@@ -443,7 +443,7 @@ router.post('/force-all', async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to force global sync'
     });

@@ -55,12 +55,12 @@ router.post('/register-token', authenticateToken, async (req: Request, res: Resp
       await pool.query(updateQuery, [userId, pushToken]);
     }
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Push token registered successfully' 
     });
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
@@ -86,18 +86,18 @@ router.post('/send-test', authenticateToken, requireAdmin, async (req: Request, 
     });
 
     if (success) {
-      res.json({ 
+      return res.json({ 
         success: true, 
         message: 'Test notification sent successfully' 
       });
     } else {
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         message: 'Failed to send test notification' 
       });
     }
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
@@ -124,12 +124,12 @@ router.post('/violation-alert', authenticateToken, requireAdmin, async (req: Req
       severity || 'medium'
     );
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Violation alert sent to administrators' 
     });
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
@@ -155,12 +155,12 @@ router.post('/assignment-notification', authenticateToken, requireAdmin, async (
       details
     );
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Assignment notification sent successfully' 
     });
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
@@ -186,12 +186,12 @@ router.post('/shift-reminder', authenticateToken, requireAdmin, async (req: Requ
       minutesUntilShift || 0
     );
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Shift reminder sent successfully' 
     });
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
@@ -216,12 +216,12 @@ router.post('/overtime-alert', authenticateToken, requireAdmin, async (req: Requ
       siteName
     );
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Overtime notification sent successfully' 
     });
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
@@ -254,13 +254,13 @@ router.post('/broadcast', authenticateToken, requireAdmin, async (req: Request, 
       data
     );
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: `Broadcast sent to ${result.success} devices, ${result.failed} failed`,
       data: result
     });
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
@@ -281,13 +281,13 @@ router.post('/delivery-receipts', authenticateToken, requireAdmin, async (req: R
 
     const receipts = await serverNotificationService.getDeliveryReceipts(receiptIds);
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Delivery receipts retrieved successfully',
       data: receipts
     });
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
@@ -308,7 +308,7 @@ router.post('/validate-token', authenticateToken, async (req: Request, res: Resp
 
     const isValid = serverNotificationService.validatePushToken(pushToken);
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Token validation completed',
       data: { 
@@ -317,7 +317,7 @@ router.post('/validate-token', authenticateToken, async (req: Request, res: Resp
       }
     });
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
@@ -338,7 +338,7 @@ router.post('/cleanup-tokens', authenticateToken, requireAdmin, async (req: Requ
 
     const validTokens = await serverNotificationService.cleanupInvalidTokens(tokens);
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Token cleanup completed',
       data: { 
@@ -349,7 +349,7 @@ router.post('/cleanup-tokens', authenticateToken, requireAdmin, async (req: Requ
       }
     });
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
@@ -378,12 +378,12 @@ router.delete('/token', authenticateToken, async (req: Request, res: Response) =
     `;
     await pool.query(deleteQuery, [userId, pushToken]);
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Push token removed successfully' 
     });
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
@@ -425,13 +425,13 @@ router.get('/preferences', authenticateToken, async (req: Request, res: Response
       preferences = defaultResult.rows[0];
     }
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Notification preferences retrieved successfully',
       data: preferences
     });
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
@@ -476,13 +476,13 @@ router.put('/preferences', authenticateToken, async (req: Request, res: Response
 
     const updatedPreferences = result.rows[0];
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Notification preferences updated successfully',
       data: updatedPreferences
     });
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });

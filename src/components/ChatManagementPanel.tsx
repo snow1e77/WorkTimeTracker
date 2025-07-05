@@ -25,6 +25,7 @@ import {
 } from 'react-native-paper';
 import { Chat, ChatMessage, DailyTask } from '../types';
 import { WebDatabaseService } from '../services/WebDatabaseService';
+import logger from '../utils/logger';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -90,7 +91,11 @@ export default function ChatManagementPanel({ visible, onClose }: ChatManagement
         setMessages(response.data);
       }
     } catch (error) {
-      }
+      logger.error('Failed to load chat messages', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        chatId: selectedChat?.id 
+      }, 'chat');
+    }
   };
 
   const sendMessage = async () => {

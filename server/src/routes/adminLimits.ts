@@ -44,7 +44,7 @@ router.post('/create', async (req: AuthenticatedRequest, res: Response) => {
     return;
   } catch (error) {
     console.error('Error creating admin limits:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Error creating limits'
     });
@@ -95,7 +95,7 @@ router.get('/admin/:adminId', async (req: AuthenticatedRequest, res: Response) =
     return;
   } catch (error) {
     console.error('Error getting admin limits:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error retrieving limits'
     });
@@ -144,7 +144,7 @@ router.patch('/admin/:adminId', async (req: AuthenticatedRequest, res: Response)
     return;
   } catch (error) {
     console.error('Error updating admin limits:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Error updating limits'
     });
@@ -193,7 +193,7 @@ router.get('/all', async (req: AuthenticatedRequest, res: Response) => {
     return;
   } catch (error) {
     console.error('Error getting admin list:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error retrieving admin list'
     });
@@ -237,7 +237,7 @@ router.get('/check/:adminId', async (req: AuthenticatedRequest, res: Response) =
     return;
   } catch (error) {
     console.error('Error checking admin limits:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error checking limits'
     });
@@ -288,7 +288,7 @@ router.delete('/admin/:adminId', async (req: AuthenticatedRequest, res: Response
     return;
   } catch (error) {
     console.error('Error deleting admin limits:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error deleting limits'
     });
@@ -351,7 +351,7 @@ router.post('/export', async (req: AuthenticatedRequest, res: Response) => {
     return;
   } catch (error) {
     console.error('Error exporting data:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error exporting data'
     });

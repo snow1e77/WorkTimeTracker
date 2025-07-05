@@ -53,13 +53,13 @@ router.get('/work', async (req, res) => {
       groupBy
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: report
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to generate work report'
     });
@@ -80,13 +80,13 @@ router.get('/violations', requireAdmin, async (req, res) => {
 
     const report = await ReportService.generateViolationReport(value);
 
-    res.json({
+    return res.json({
       success: true,
       data: report
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to generate violation report'
     });
@@ -103,13 +103,13 @@ router.get('/statistics', requireAdmin, async (req, res) => {
       ...(endDate && { endDate: new Date(endDate as string) })
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: stats
     });
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to get statistics'
     });
@@ -138,10 +138,10 @@ router.get('/export/:type', requireAdmin, async (req, res) => {
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${type}_report_${new Date().toISOString().split('T')[0]}.csv"`);
-    res.send(csvData);
+    return res.send(csvData);
 
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Failed to export report'
     });

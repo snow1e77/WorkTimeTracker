@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { TextInput, Button, List, Searchbar, Text, Card } from 'react-native-paper';
 import { CountryCode } from 'libphonenumber-js';
@@ -9,6 +9,7 @@ import {
   POPULAR_COUNTRY_CODES,
   autoDetectUserCountry
 } from '../utils/phoneUtils';
+import logger from '../utils/logger';
 
 interface Props {
   value: string;
@@ -101,6 +102,7 @@ export default function InternationalPhoneInput({
   const [formattedValue, setFormattedValue] = useState(value);
   const [isFocused, setIsFocused] = useState(false);
   const [isDetectingCountry, setIsDetectingCountry] = useState(false);
+  const hasDetectedCountry = useRef(false);
 
   // Filter countries by search query with memoization
   const filteredCountries = useMemo(() => {
@@ -131,7 +133,8 @@ export default function InternationalPhoneInput({
 
   // Auto-detect country on component load
   useEffect(() => {
-    if (autoDetectCountry && !isDetectingCountry) {
+    if (autoDetectCountry && !isDetectingCountry && !hasDetectedCountry.current) {
+      hasDetectedCountry.current = true;
       setIsDetectingCountry(true);
       
       const detectCountry = async () => {
@@ -143,7 +146,7 @@ export default function InternationalPhoneInput({
           }
         } catch (error) {
           // Silently handle error - fallback to default country
-          console.warn('Country detection failed:', error);
+          logger.warn('Country detection failed', { error: error instanceof Error ? error.message : 'Unknown error' });
           setCurrentCountry('US');
           onCountryChange?.('US');
         } finally {
@@ -153,7 +156,7 @@ export default function InternationalPhoneInput({
       
       detectCountry();
     }
-  }, [autoDetectCountry, onCountryChange]);
+  }, [autoDetectCountry, isDetectingCountry]);
 
   useEffect(() => {
     // Format number on change
@@ -163,11 +166,11 @@ export default function InternationalPhoneInput({
         setFormattedValue(formatted);
       } catch (error) {
         // If formatting fails, use original value
-        console.warn('Phone formatting failed:', error);
+        logger.warn('Phone formatting failed', { error: error instanceof Error ? error.message : 'Unknown error', value });
         setFormattedValue(value);
       }
     }
-  }, [value, currentCountry]);
+  }, [value, currentCountry, formattedValue]);
 
   const handleCountrySelect = (country: CountryItem) => {
     setCurrentCountry(country.code);
@@ -183,7 +186,7 @@ export default function InternationalPhoneInput({
         onChangeText(newFormatted);
       } catch (error) {
         // If formatting fails, use original value
-        console.warn('Phone formatting failed:', error);
+        logger.warn('Phone formatting failed', { error: error instanceof Error ? error.message : 'Unknown error', value, country: country.code });
         setFormattedValue(value);
         onChangeText(value);
       }
@@ -197,7 +200,7 @@ export default function InternationalPhoneInput({
       onChangeText(formatted);
     } catch (error) {
       // If formatting fails, use original text
-      console.warn('Phone formatting failed:', error);
+      logger.warn('Phone formatting failed', { error: error instanceof Error ? error.message : 'Unknown error', text, country: currentCountry });
       setFormattedValue(text);
       onChangeText(text);
     }
