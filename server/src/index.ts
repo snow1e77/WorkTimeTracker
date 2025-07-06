@@ -10,7 +10,7 @@ import { testConnection } from './config/database';
 import { AuthService } from './services/AuthService';
 import { SyncService, setWebSocketServiceGetter } from './services/SyncService';
 import { WebSocketService } from './services/WebSocketService';
-import logger, { logSecurityEvent, logPerformance } from './utils/logger';
+import logger, { logSecurityEvent, logPerformance, logAPIRequest } from './utils/logger';
 import { 
   strictRateLimit, 
   authRateLimit,
@@ -70,21 +70,43 @@ let webSocketService: WebSocketService;
 export const getWebSocketService = (): WebSocketService => webSocketService;
 
 // Расширенная настройка CORS с проверкой origin
-const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || [
-  'http://localhost:19006',
-  'http://localhost:3000',
-  'http://localhost:8081'
+const allowedOrigins = process.env.CORS_ORIGINS?.split(',').map(origin => origin.trim()) || [
+  // Только для разработки
+  ...(process.env.NODE_ENV === 'development' ? [
+    'http://localhost:19006',
+    'http://localhost:3000',
+    'http://localhost:8081'
+  ] : [])
 ];
 
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Разрешаем запросы без origin (мобильные приложения)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin)) {
+    // В продакшене строго проверяем origin
+    if (process.env.NODE_ENV === 'production') {
+      if (!origin) {
+        // В продакшене не разрешаем запросы без origin
+        logger.warn('CORS: Request without origin blocked in production', { ip: 'unknown' });
+        return callback(new Error('Origin header required in production'), false);
+      }
+      
+      if (!allowedOrigins.includes(origin)) {
+        logger.warn('CORS: Blocked request from unauthorized origin', { origin });
+        logSecurityEvent('cors_violation', { origin, allowedOrigins }, 'medium');
+        return callback(new Error(`Origin ${origin} not allowed by CORS`), false);
+      }
+      
+      logger.info('CORS: Allowed request from authorized origin', { origin });
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'), false);
+      // В разработке разрешаем запросы без origin (мобильные приложения)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn('CORS: Blocked request from unauthorized origin in development', { origin });
+        callback(new Error(`Origin ${origin} not allowed by CORS`), false);
+      }
     }
   },
   credentials: true,
@@ -97,7 +119,14 @@ const corsOptions = {
     'X-Privacy-Consent',
     'X-Privacy-Consent-Timestamp'
   ],
-  maxAge: 86400 // 24 hours
+  exposedHeaders: [
+    'X-RateLimit-Limit',
+    'X-RateLimit-Remaining',
+    'X-RateLimit-Reset'
+  ],
+  maxAge: process.env.NODE_ENV === 'production' ? 86400 : 3600, // 24 hours в production, 1 час в dev
+  optionsSuccessStatus: 200, // Для legacy браузеров
+  preflightContinue: false
 };
 
 // Улучшенная конфигурация Helmet
@@ -107,20 +136,28 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: process.env.NODE_ENV === 'production' ? ["'self'"] : ["'self'", "'unsafe-eval'"],
+      scriptSrc: process.env.NODE_ENV === 'production' ? 
+        ["'self'"] : 
+        ["'self'", "'unsafe-eval'", "'unsafe-inline'"], // Только для разработки
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'", "wss:", "ws:"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
       frameSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"]
     },
   },
-  hsts: {
+  hsts: process.env.NODE_ENV === 'production' ? {
     maxAge: 31536000,
     includeSubDomains: true,
     preload: true
-  }
+  } : false, // Отключаем HSTS в разработке
+  frameguard: { action: 'deny' },
+  noSniff: true,
+  xssFilter: true,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
 
 app.use(cors(corsOptions));
@@ -179,27 +216,16 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   
   res.on('finish', () => {
     const duration = Date.now() - start;
-    const logData = {
-      requestId,
-      method: req.method,
-      url: req.originalUrl,
-      status: res.statusCode,
-      duration,
-      ip: req.ip,
-      userAgent: req.get('User-Agent'),
-      userId: req.user?.id,
-      contentLength: req.get('Content-Length'),
-      referer: req.get('Referer')
-    };
     
-    // Различные уровни логирования в зависимости от статуса
-    if (res.statusCode >= 500) {
-      logger.error('Server Error', logData);
-    } else if (res.statusCode >= 400) {
-      logger.warn('Client Error', logData);
-    } else {
-      logger.http('HTTP Request', logData);
-    }
+    // Используем безопасный API логгер
+    logAPIRequest(
+      req.method,
+      req.originalUrl,
+      res.statusCode,
+      duration,
+      req.user?.id,
+      { ip: req.ip, userAgent: req.get('User-Agent')?.substring(0, 100) }
+    );
     
     // Логируем медленные запросы
     if (duration > 1000) {
@@ -215,7 +241,8 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
       logSecurityEvent('unauthorized_access', {
         ip: req.ip,
         url: req.originalUrl,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get('User-Agent')?.substring(0, 100), // Ограничиваем длину
+        method: req.method
       });
     }
   });

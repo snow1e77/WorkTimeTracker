@@ -7,76 +7,128 @@ const { combine, timestamp, errors, json, simple, colorize, printf } = winston.f
 // Создаем директорию для логов
 const logDir = process.env.LOG_DIR || './logs';
 
-// Кастомный формат для консоли
-const consoleFormat = printf(({ level, message, timestamp, ...meta }) => {
-  const metaStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : '';
-  return `${timestamp} [${level}]: ${message} ${metaStr}`;
-});
+// Список чувствительных полей, которые нужно маскировать
+const SENSITIVE_FIELDS = [
+  'password',
+  'passwordHash',
+  'token',
+  'accessToken',
+  'refreshToken',
+  'secret',
+  'key',
+  'phoneNumber',
+  'email',
+  'authorization',
+  'cookie',
+  'x-api-key',
+  'jwt',
+  'auth'
+];
+
+// Функция для маскировки чувствительных данных
+const sanitizeLogData = (data: any): any => {
+  if (typeof data === 'string') {
+    // Маскируем номера телефонов
+    return data.replace(/\+?\d{1,3}[\s-]?\d{3,4}[\s-]?\d{3,4}[\s-]?\d{2,4}/g, '+***-***-****');
+  }
+  
+  if (Array.isArray(data)) {
+    return data.map(sanitizeLogData);
+  }
+  
+  if (data && typeof data === 'object') {
+    const sanitized: any = {};
+    
+    for (const [key, value] of Object.entries(data)) {
+      const lowerKey = key.toLowerCase();
+      
+      // Проверяем, является ли поле чувствительным
+      const isSensitive = SENSITIVE_FIELDS.some(field => 
+        lowerKey.includes(field) || lowerKey === field
+      );
+      
+      if (isSensitive) {
+        if (typeof value === 'string') {
+          // Показываем только первые и последние символы
+          sanitized[key] = value.length > 8 ? 
+            `${value.substring(0, 3)}***${value.substring(value.length - 3)}` : 
+            '***';
+        } else {
+          sanitized[key] = '[REDACTED]';
+        }
+      } else {
+        sanitized[key] = sanitizeLogData(value);
+      }
+    }
+    
+    return sanitized;
+  }
+  
+  return data;
+};
+
+// Кастомный формат с маскировкой чувствительных данных
+const secureFormat = winston.format.combine(
+  winston.format.timestamp(),
+  winston.format.errors({ stack: true }),
+  winston.format.printf(({ timestamp, level, message, ...meta }) => {
+    // Маскируем чувствительные данные в meta
+    const sanitizedMeta = sanitizeLogData(meta);
+    
+    const metaStr = Object.keys(sanitizedMeta).length > 0 ? 
+      JSON.stringify(sanitizedMeta, null, 2) : '';
+    
+    return `${timestamp} [${level.toUpperCase()}]: ${message}${metaStr ? '\n' + metaStr : ''}`;
+  })
+);
 
 // Создание транспортов
 const transports: winston.transport[] = [
-  // Консольный вывод
-  new winston.transports.Console({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: combine(
-      colorize(),
-      timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-      errors({ stack: true }),
-      consoleFormat
-    )
-  }),
+  // Консольный вывод только в разработке
+  ...(process.env.NODE_ENV !== 'production' ? [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        secureFormat
+      )
+    })
+  ] : []),
 
-  // Общий лог файл с ротацией
+  // Файлы логов с ротацией
   new DailyRotateFile({
     filename: path.join(logDir, 'application-%DATE%.log'),
     datePattern: 'YYYY-MM-DD',
+    zippedArchive: true,
     maxSize: '20m',
-    maxFiles: '30d',
-    level: 'info',
-    format: combine(
-      timestamp(),
-      errors({ stack: true }),
-      json()
-    )
+    maxFiles: process.env.LOG_RETENTION_DAYS || '14d',
+    level: 'info'
   }),
 
-  // Лог ошибок
+  // Отдельный файл для ошибок
   new DailyRotateFile({
     filename: path.join(logDir, 'error-%DATE%.log'),
     datePattern: 'YYYY-MM-DD',
+    zippedArchive: true,
     maxSize: '20m',
-    maxFiles: '30d',
-    level: 'error',
-    format: combine(
-      timestamp(),
-      errors({ stack: true }),
-      json()
-    )
+    maxFiles: process.env.LOG_RETENTION_DAYS || '30d',
+    level: 'error'
   }),
 
-  // Лог HTTP запросов
-  new DailyRotateFile({
-    filename: path.join(logDir, 'http-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    maxSize: '20m',
-    maxFiles: '14d',
-    level: 'http',
-    format: combine(
-      timestamp(),
-      json()
-    )
-  }),
-
-  // Лог безопасности
+  // Отдельный файл для событий безопасности
   new DailyRotateFile({
     filename: path.join(logDir, 'security-%DATE%.log'),
     datePattern: 'YYYY-MM-DD',
+    zippedArchive: true,
     maxSize: '20m',
-    maxFiles: '60d',
+    maxFiles: process.env.LOG_RETENTION_DAYS || '90d',
     level: 'warn',
-    format: combine(
-      timestamp(),
-      json()
+    format: winston.format.combine(
+      winston.format.timestamp(),
+      winston.format.printf(({ timestamp, level, message, ...meta }) => {
+        // Для логов безопасности применяем особую маскировку
+        const sanitizedMeta = sanitizeLogData(meta);
+        return `${timestamp} [SECURITY-${level.toUpperCase()}]: ${message} ${JSON.stringify(sanitizedMeta)}`;
+      })
     )
   })
 ];
@@ -84,11 +136,7 @@ const transports: winston.transport[] = [
 // Создание основного логгера
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
-  format: combine(
-    timestamp(),
-    errors({ stack: true }),
-    json()
-  ),
+  format: secureFormat,
   defaultMeta: {
     service: 'worktime-tracker-server',
     version: '1.0.0',
@@ -113,11 +161,13 @@ export const logSecurityEvent = (
   details: Record<string, any> = {},
   severity: 'low' | 'medium' | 'high' = 'medium'
 ): void => {
+  const sanitizedDetails = sanitizeLogData(details);
+  
   logger.warn('Security Event', {
     event,
     severity,
     timestamp: new Date().toISOString(),
-    ...details
+    ...sanitizedDetails
   });
 };
 
@@ -125,15 +175,15 @@ export const logSecurityEvent = (
 export const logPerformance = (
   operation: string,
   duration: number,
-  metadata: Record<string, any> = {}
+  details: Record<string, any> = {}
 ): void => {
-  const level = duration > 5000 ? 'warn' : duration > 1000 ? 'info' : 'debug';
+  const sanitizedDetails = sanitizeLogData(details);
   
-  logger.log(level, 'Performance Metric', {
+  logger.info('Performance Metric', {
     operation,
     duration,
     timestamp: new Date().toISOString(),
-    ...metadata
+    ...sanitizedDetails
   });
 };
 
@@ -149,11 +199,11 @@ export const logAuthEvent = (
     event,
     userId,
     timestamp: new Date().toISOString(),
-    ...details
+    ...sanitizeLogData(details)
   });
 };
 
-// Функция для логирования API вызовов
+// Функция для безопасного логирования API вызовов
 export const logApiCall = (
   method: string,
   endpoint: string,
@@ -163,6 +213,16 @@ export const logApiCall = (
   details: Record<string, any> = {}
 ): void => {
   const level = statusCode >= 400 ? 'error' : statusCode >= 300 ? 'warn' : 'http';
+  const sanitizedDetails = sanitizeLogData(details);
+  
+  // Ограничиваем размер логируемых данных
+  const limitedDetails = Object.fromEntries(
+    Object.entries(sanitizedDetails).map(([key, value]) => [
+      key,
+      typeof value === 'string' && value.length > 1000 ? 
+        value.substring(0, 1000) + '...[truncated]' : value
+    ])
+  );
   
   logger.log(level, 'API Call', {
     method,
@@ -171,9 +231,12 @@ export const logApiCall = (
     duration,
     userId,
     timestamp: new Date().toISOString(),
-    ...details
+    ...limitedDetails
   });
 };
+
+// Алиас для совместимости
+export const logAPIRequest = logApiCall;
 
 // Функция для логирования синхронизации
 export const logSyncEvent = (
@@ -187,7 +250,7 @@ export const logSyncEvent = (
     userId,
     deviceId,
     timestamp: new Date().toISOString(),
-    ...details
+    ...sanitizeLogData(details)
   });
 };
 
@@ -198,12 +261,15 @@ export const logDatabaseError = (
   query?: string,
   params?: any[]
 ): void => {
+  // Особая обработка для SQL запросов - маскируем потенциально чувствительные параметры
+  const sanitizedParams = params ? sanitizeLogData(params) : undefined;
+  
   logger.error('Database Error', {
     operation,
     error: error.message,
     stack: error.stack,
-    query,
-    params,
+    query: query?.substring(0, 200) + (query && query.length > 200 ? '...' : ''), // Ограничиваем длину запроса
+    params: sanitizedParams,
     timestamp: new Date().toISOString()
   });
 };

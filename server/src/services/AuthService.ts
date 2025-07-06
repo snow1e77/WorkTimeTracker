@@ -27,8 +27,8 @@ export class AuthService {
     }
     return secret;
   })();
-  private static readonly JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '7d';
-  private static readonly REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
+  private static readonly JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '15m';
+  private static readonly REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
   // Simple login with phone number only
   static async login(data: LoginRequest): Promise<{ 
@@ -39,11 +39,10 @@ export class AuthService {
     needsContact?: boolean;
   }> {
     try {
-      // Логируем входящие данные
+      // Логируем входящие данные (убираем чувствительную информацию)
       logger.info('AuthService login called', { 
-        data,
-        phoneNumber: data.phoneNumber,
-        dataKeys: Object.keys(data)
+        phoneNumber: data.phoneNumber?.replace(/\d(?=\d{4})/g, '*'), // Маскируем номер телефона
+        hasPhoneNumber: !!data.phoneNumber
       });
 
       const { phoneNumber } = data;
@@ -58,19 +57,27 @@ export class AuthService {
         }
 
         const tokens = await this.generateTokens(user);
-        logger.info('Successful user login', { userId: user.id, phoneNumber });
+        logger.info('Successful user login', { 
+          userId: user.id, 
+          phoneNumber: phoneNumber?.replace(/\d(?=\d{4})/g, '*') // Маскируем номер
+        });
         return { success: true, user, tokens };
       }
 
       // User not found in system
-      logger.warn('Login attempt for non-existent user', { phoneNumber });
+      logger.warn('Login attempt for non-existent user', { 
+        phoneNumber: phoneNumber?.replace(/\d(?=\d{4})/g, '*') // Маскируем номер
+      });
       return { 
         success: false, 
         error: 'Your phone number is not found in the system. Please contact your supervisor or team leader to be added to the database.',
         needsContact: true
       };
     } catch (error) {
-      logger.error('Login error', { error, phoneNumber: data.phoneNumber });
+      logger.error('Login error', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        phoneNumber: data.phoneNumber?.replace(/\d(?=\d{4})/g, '*') // Маскируем номер
+      });
       return { success: false, error: 'System login error' };
     }
   }
@@ -154,11 +161,11 @@ export class AuthService {
       role: user.role
     };
 
-    const accessToken = jwt.sign(payload, this.JWT_SECRET, { expiresIn: '7d' });
+    const accessToken = jwt.sign(payload, this.JWT_SECRET, { expiresIn: this.JWT_EXPIRES_IN });
 
     const refreshToken = uuidv4();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
     // Save refresh token to database
     await query(

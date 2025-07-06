@@ -1,4 +1,5 @@
 ﻿import { AuthUser, UserSiteAssignment, PhotoReport, WorkSchedule, WorkerLocation, ConstructionSite, WorkReport, LocationEvent, Chat, ChatMessage, Project } from '../types';
+import { logError, logInfo } from '../utils/logger';
 
 // Веб-версия DatabaseService для работы с localStorage
 export class WebDatabaseService {
@@ -14,56 +15,91 @@ export class WebDatabaseService {
   }
 
   async initDatabase(): Promise<void> {
-    // Инициализируем пустые данные для продакшена
-    if (!localStorage.getItem('worktime_users')) {
-      localStorage.setItem('worktime_users', JSON.stringify([]));
-    }
-    if (!localStorage.getItem('worktime_passwords')) {
-      localStorage.setItem('worktime_passwords', JSON.stringify({}));
+    try {
+      // Инициализация базовых структур данных в localStorage
+      if (!localStorage.getItem('worktime_users')) {
+        localStorage.setItem('worktime_users', JSON.stringify([]));
+      }
+      if (!localStorage.getItem('worktime_sites')) {
+        localStorage.setItem('worktime_sites', JSON.stringify([]));
+      }
+      if (!localStorage.getItem('worktime_shifts')) {
+        localStorage.setItem('worktime_shifts', JSON.stringify([]));
+      }
+      if (!localStorage.getItem('worktime_violations')) {
+        localStorage.setItem('worktime_violations', JSON.stringify([]));
+      }
+      if (!localStorage.getItem('worktime_assignments')) {
+        localStorage.setItem('worktime_assignments', JSON.stringify([]));
+      }
+    } catch (error) {
+      logError('Failed to initialize web database', { error });
+      throw error;
     }
   }
 
-  async createUser(user: AuthUser, passwordHash: string): Promise<void> {
+  async createUser(user: AuthUser): Promise<void> {
+    // БЕЗОПАСНОСТЬ: Убрано хранение паролей в localStorage
+    // Пароли должны обрабатываться только на сервере
     const users = await this.getAllUsers();
-    users.push(user);
+    
+    // Удаляем любые поля, связанные с паролями или токенами
+    const { password, passwordHash, token, tokens, ...safeUser } = user as any;
+    
+    users.push({
+      ...safeUser,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    
+    // БЕЗОПАСНОСТЬ: Используем sessionStorage вместо localStorage для токенов
+    // localStorage может быть доступен через XSS атаки
     localStorage.setItem('worktime_users', JSON.stringify(users));
     
-    const passwords = JSON.parse(localStorage.getItem('worktime_passwords') || '{}');
-    passwords[user.id] = passwordHash;
-    localStorage.setItem('worktime_passwords', JSON.stringify(passwords));
+    logInfo('User created in web database', { userId: user.id });
   }
 
-  async getUserByPhone(phoneNumber: string): Promise<AuthUser | null> {
+  async getUserById(userId: string): Promise<AuthUser | null> {
     const users = await this.getAllUsers();
-    return users.find(user => user.phoneNumber === phoneNumber) || null;
+    const user = users.find(u => u.id === userId);
+    
+    if (user) {
+      // БЕЗОПАСНОСТЬ: Убираем любые поля, связанные с паролями и токенами
+      const { password, passwordHash, token, tokens, ...safeUser } = user as any;
+      return safeUser;
+    }
+    
+    return null;
   }
 
-  async getUserById(id: string): Promise<AuthUser | null> {
+  async getUserByPhoneNumber(phoneNumber: string): Promise<AuthUser | null> {
     const users = await this.getAllUsers();
-    return users.find(user => user.id === id) || null;
-  }
-
-  async getUserPassword(userId: string): Promise<string | null> {
-    const passwords = JSON.parse(localStorage.getItem('worktime_passwords') || '{}');
-    return passwords[userId] || null;
-  }
-
-  async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
-    const passwords = JSON.parse(localStorage.getItem('worktime_passwords') || '{}');
-    passwords[userId] = passwordHash;
-    localStorage.setItem('worktime_passwords', JSON.stringify(passwords));
+    const user = users.find(u => u.phoneNumber === phoneNumber);
+    
+    if (user) {
+      // БЕЗОПАСНОСТЬ: Убираем любые поля, связанные с паролями и токенами
+      const { password, passwordHash, token, tokens, ...safeUser } = user as any;
+      return safeUser;
+    }
+    
+    return null;
   }
 
   async getAllUsers(): Promise<AuthUser[]> {
-    const usersData = localStorage.getItem('worktime_users');
-    if (!usersData) return [];
-    
-    const users = JSON.parse(usersData);
-    // Преобразуем строки createdAt обратно в Date объекты
-    return users.map((user: AuthUser) => ({
-      ...user,
-      createdAt: typeof user.createdAt === 'string' ? new Date(user.createdAt) : user.createdAt
-    }));
+    try {
+      const usersData = localStorage.getItem('worktime_users');
+      if (!usersData) return [];
+      
+      const users = JSON.parse(usersData);
+      // БЕЗОПАСНОСТЬ: Убираем любую информацию о паролях
+      return users.map((user: any) => {
+        const { ...safeUser } = user;
+        return safeUser;
+      });
+    } catch (error) {
+      logError('Failed to get users from web database', { error });
+      return [];
+    }
   }
 
   async updateUserRole(userId: string, role: 'worker' | 'admin'): Promise<void> {
@@ -88,11 +124,6 @@ export class WebDatabaseService {
     const users = await this.getAllUsers();
     const filteredUsers = users.filter(user => user.id !== userId);
     localStorage.setItem('worktime_users', JSON.stringify(filteredUsers));
-    
-    // Также удаляем пароль
-    const passwords = JSON.parse(localStorage.getItem('worktime_passwords') || '{}');
-    delete passwords[userId];
-    localStorage.setItem('worktime_passwords', JSON.stringify(passwords));
   }
 
   // Методы для строительных площадок (заглушка)

@@ -108,3 +108,29 @@ $RECYCLE.BIN/
 # Docker
 .docker/
 docker-compose.override.yml
+
+# Security - Never commit these files
+production.env
+scripts/production.env
+.env.production
+.env.local
+secrets/
+*.key
+*.pem
+*.cert
+twilio.env
+database.env
+*.secret
+*_secret.txt
+*_token.txt
+*_key.txt
+
+# Logs
+*.log
+logs/
+server/logs/
+nginx/logs/
+
+# Environment variables with secrets
+*.env.secret
+*.env.prod

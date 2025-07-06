@@ -3,6 +3,13 @@ import Joi from 'joi';
 import { AuthService } from '../services/AuthService';
 import { authenticateToken, validateJSON } from '../middleware/auth';
 import { LoginRequest, RegisterRequest } from '../types';
+import { 
+  authRateLimit, 
+  sanitizePhoneNumber, 
+  csrfProtection, 
+  logSuspiciousActivity,
+  generateCSRFToken 
+} from '../middleware/security';
 import logger from '../utils/logger';
 
 const router = express.Router();
@@ -36,66 +43,88 @@ const refreshTokenSchema = Joi.object({
   refreshToken: Joi.string().required()
 });
 
-// POST /api/auth/login - Реальная аутентификация
-router.post('/login', async (req, res) => {
-  try {
-    // Логируем входящий запрос
-    logger.info('Login request received', { 
-      body: req.body,
-      headers: req.headers['content-type'],
-      method: req.method
-    });
-
-    const { error, value } = phoneSchema.validate(req.body);
-    
-    if (error) {
-      logger.error('Login validation error', { 
-        error: error.details[0]?.message || 'Validation error',
-        body: req.body,
-        validationDetails: error.details
-      });
-      
-      return res.status(400).json({
-        success: false,
-        error: error.details[0]?.message || 'Validation error'
-      });
-    }
-
-    const { phoneNumber } = value;
-    const result = await AuthService.login({ phoneNumber });
-
-    if (result.success && result.user && result.tokens) {
-      logger.info('Успешный логин', { phoneNumber, userId: result.user.id });
-
-      return res.json({
-        success: true,
-        message: 'Login successful',
-        data: {
-          user: result.user,
-          tokens: result.tokens
-        }
-      });
-    } else if (result.needsContact) {
-      return res.status(403).json({
-        success: false,
-        error: 'Account access restricted. Please contact administrator.',
-        needsContact: true
-      });
-    } else {
-      return res.status(401).json({
-        success: false,
-        error: result.error || 'Login failed'
-      });
-    }
-
-  } catch (error) {
-    logger.error('Login error', { error, phoneNumber: req.body.phoneNumber });
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error'
-    });
-  }
+// GET /api/auth/csrf - Получение CSRF токена
+router.get('/csrf', (req, res) => {
+  const csrfToken = generateCSRFToken(req.user?.id);
+  res.json({
+    success: true,
+    csrfToken
+  });
 });
+
+// POST /api/auth/login - Реальная аутентификация
+router.post('/login', 
+  authRateLimit,
+  logSuspiciousActivity,
+  sanitizePhoneNumber,
+  csrfProtection,
+  async (req, res) => {
+    try {
+      // Логируем входящий запрос (без чувствительных данных)
+      logger.info('Login request received', { 
+        method: req.method,
+        hasPhoneNumber: !!req.body.phoneNumber,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')?.substring(0, 100) // Ограничиваем длину
+      });
+
+      const { error, value } = phoneSchema.validate(req.body);
+      
+      if (error) {
+        logger.error('Login validation error', { 
+          error: error.details[0]?.message || 'Validation error',
+          hasBody: !!req.body,
+          validationDetails: error.details.map(d => ({ message: d.message, path: d.path }))
+        });
+        
+        return res.status(400).json({
+          success: false,
+          error: error.details[0]?.message || 'Validation error'
+        });
+      }
+
+      const { phoneNumber } = value;
+      const result = await AuthService.login({ phoneNumber });
+
+      if (result.success && result.user && result.tokens) {
+        logger.info('Успешный логин', { 
+          phoneNumber: phoneNumber.replace(/\d(?=\d{4})/g, '*'), // Маскируем номер
+          userId: result.user.id 
+        });
+
+        return res.json({
+          success: true,
+          message: 'Login successful',
+          data: {
+            user: result.user,
+            tokens: result.tokens
+          }
+        });
+      } else if (result.needsContact) {
+        return res.status(403).json({
+          success: false,
+          error: 'Account access restricted. Please contact administrator.',
+          needsContact: true
+        });
+      } else {
+        return res.status(401).json({
+          success: false,
+          error: result.error || 'Login failed'
+        });
+      }
+
+    } catch (error) {
+      logger.error('Login error', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        hasPhoneNumber: !!req.body?.phoneNumber
+      });
+      return res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+      });
+    }
+  }
+);
 
 // POST /api/auth/register - Реальная регистрация
 router.post('/register', async (req, res) => {
