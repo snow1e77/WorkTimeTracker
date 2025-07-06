@@ -1,141 +1,38 @@
+# docker-compose.prod.yml
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: worktime-postgres-prod
+  db:
+    image: postgres:15
+    container_name: wt-db
     environment:
-      POSTGRES_DB: worktime_tracker_prod
+      POSTGRES_DB: worktime_tracker
       POSTGRES_USER: worktime_user
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+      POSTGRES_PASSWORD: your_secure_password
     volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
-      - ./server/src/database/migrations.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./postgres-prod.conf:/etc/postgresql/postgresql.conf
-    secrets:
-      - db_password
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     networks:
-      - worktime-network-prod
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '0.5'
-    security_opt:
-      - no-new-privileges:true
-    user: postgres
-    read_only: true
-    tmpfs:
-      - /tmp
-      - /var/run/postgresql
+      - wt-network
 
   server:
-    build: 
+    build:
       context: ./server
-      dockerfile: Dockerfile.prod
-    container_name: worktime-server-prod
+      dockerfile: Dockerfile
+    container_name: wt-server
     environment:
-      NODE_ENV: production
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: worktime_tracker_prod
-      DB_USER: worktime_user
-      PORT: 3001
-      DB_SSL: "true"
-    env_file:
-      - production.env
-    volumes:
-      - ./server/logs:/app/logs:rw
-      - ./server/uploads:/app/uploads:rw
-    networks:
-      - worktime-network-prod
-    restart: unless-stopped
-    depends_on:
-      - postgres
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-          cpus: '1.0'
-    security_opt:
-      - no-new-privileges:true
-    user: node
-    read_only: true
-    tmpfs:
-      - /tmp
-    secrets:
-      - jwt_secret
-      - encryption_key
-
-  nginx:
-    image: nginx:alpine
-    container_name: worktime-nginx-prod
+      - DB_HOST=db
+      - JWT_SECRET=your_super_secure_jwt_secret_minimum_32_characters
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-      - ./web/dist:/usr/share/nginx/html:ro
-      - ./nginx/logs:/var/log/nginx:rw
+      - "3001:3001"
+    depends_on:
+      - db
     networks:
-      - worktime-network-prod
-    restart: unless-stopped
-    depends_on:
-      - server
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: '0.25'
-    security_opt:
-      - no-new-privileges:true
-    user: nginx
-    read_only: true
-    tmpfs:
-      - /var/cache/nginx
-      - /var/run
-
-  # Security monitoring
-  fail2ban:
-    image: crazymax/fail2ban:latest
-    container_name: worktime-fail2ban
-    network_mode: "host"
-    environment:
-      - F2B_LOG_TARGET=STDOUT
-      - F2B_LOG_LEVEL=INFO
-      - F2B_DB_PURGE_AGE=30d
-    volumes:
-      - ./fail2ban:/data
-      - ./nginx/logs:/var/log/nginx:ro
-    restart: unless-stopped
-    depends_on:
-      - nginx
-
-secrets:
-  db_password:
-    file: ./secrets/db_password.txt
-  jwt_secret:
-    file: ./secrets/jwt_secret.txt
-  encryption_key:
-    file: ./secrets/encryption_key.txt
+      - wt-network
 
 volumes:
-  postgres_data_prod:
-    driver: local
-    driver_opts:
-      type: none
-      device: /var/lib/docker/volumes/worktime_postgres_data_prod/_data
-      o: bind
+  db_data:
 
 networks:
-  worktime-network-prod:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-    driver_opts:
-      com.docker.network.bridge.enable_icc: "false"
-      com.docker.network.bridge.enable_ip_masquerade: "true" 
+  wt-network:
