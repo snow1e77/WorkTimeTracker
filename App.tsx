@@ -5,7 +5,7 @@ import { PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, Platform, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import WebApp from './src/components/WebApp';
+import WebRouter from './src/components/WebRouter';
 import { notificationService } from './src/services/NotificationService';
 import logger from './src/utils/logger';
 
@@ -254,11 +254,11 @@ const AppNavigator = () => {
 };
 
 export default function App() {
-  // Если это веб-платформа, показываем специальную админ панель
+  // Если это веб-платформа, показываем веб-роутер (лендинг или админ-панель)
   if (Platform.OS === 'web') {
     return (
       <PaperProvider>
-        <WebApp />
+        <WebRouter />
       </PaperProvider>
     );
   }

@@ -161,7 +161,7 @@ export class AuthService {
       role: user.role
     };
 
-    const accessToken = jwt.sign(payload, this.JWT_SECRET, { expiresIn: this.JWT_EXPIRES_IN });
+    const accessToken = jwt.sign(payload, this.JWT_SECRET, { expiresIn: this.JWT_EXPIRES_IN } as jwt.SignOptions);
 
     const refreshToken = uuidv4();
     const expiresAt = new Date();

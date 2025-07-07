@@ -135,7 +135,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
   };
 
   const formatTimestamp = (timestamp: Date): string => {
-    return new Intl.DateTimeFormat('ru-RU', {
+    return new Intl.DateTimeFormat('en-US', {
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
@@ -163,19 +163,19 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
     }
   };
 
-  // Рендер вкладки "Рабочие"
+  // Workers tab render
   const renderWorkersTab = () => (
     <div style={styles.tabContent}>
       <div style={styles.header}>
         <h2 style={styles.title}>
           {selectedProject 
-            ? `Проект: ${selectedProject.name} - Рабочие` 
+            ? `Project: ${selectedProject.name} - Workers` 
             : 'Worker Tracking'
           }
         </h2>
         <p style={styles.subtitle}>
           {selectedProject 
-            ? `Текущее местоположение и статус рабочих на проекте "${selectedProject.name}"` 
+            ? `Current location and status of workers on project "${selectedProject.name}"` 
             : 'Current location and status of workers'
           }
         </p>
@@ -186,10 +186,10 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
               onClick={() => {
                 setSelectedProject(null);
                 setSelectedTab('projects');
-                loadData(); // Перезагружаем все данные
+                loadData(); // Reload all data
               }}
             >
-              ← Вернуться к проектам
+              ← Back to Projects
             </button>
           </div>
         )}
@@ -255,7 +255,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
     </div>
   );
 
-  // Рендер вкладки "Расписание"
+  // Schedule tab render
   const renderScheduleTab = () => (
     <div style={styles.tabContent}>
       <div style={styles.header}>
@@ -311,7 +311,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
     </div>
   );
 
-  // Рендер вкладки "Отчёты"
+  // Reports tab render
   const renderReportsTab = () => (
     <div style={styles.tabContent}>
       <div style={styles.header}>
@@ -319,7 +319,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
         <p style={styles.subtitle}>Work reports and photo reports</p>
       </div>
 
-      {/* Фотоотчёты */}
+      {/* Photo reports */}
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>Worker Photo Reports</h3>
         <div style={styles.photoGrid}>
@@ -355,7 +355,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
         </div>
       </div>
 
-      {/* Отчёты по времени работы */}
+      {/* Time work reports */}
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>Time Reports</h3>
         <div style={styles.reportsTable}>
@@ -388,7 +388,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
     </div>
   );
 
-  // Рендер вкладки "Список рабочих"
+  // Workers list tab render
   const renderUsersTab = () => (
     <div style={styles.tabContent}>
       <div style={styles.header}>
@@ -440,7 +440,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
                   </div>
                 </div>
 
-                {/* Назначенные объекты */}
+                {/* Assigned sites */}
                 <div style={styles.assignments}>
                   <strong>Assigned sites:</strong>
                   {userAssignments.length > 0 ? (
@@ -459,7 +459,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
                   )}
                 </div>
 
-                {/* Текущий статус */}
+                {/* Current status */}
                 {workerLocation && (
                   <div style={styles.currentStatus}>
                     <strong>Current status:</strong>
@@ -499,7 +499,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
           })}
       </div>
 
-      {/* Детальная информация о выбранном рабочем */}
+      {/* Selected worker detailed information */}
       {selectedUser && (
         <div style={styles.modal}>
           <div style={styles.modalContent}>
@@ -543,7 +543,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
 
   return (
     <div style={styles.container}>
-      {/* Навигационные вкладки */}
+      {/* Navigation tabs */}
       <div style={styles.tabs}>
         <button
           style={{
@@ -552,7 +552,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
           }}
           onClick={() => setSelectedTab('projects')}
         >
-          🏗️ Проекты
+          🏗️ Projects
         </button>
         <button
           style={{
@@ -639,7 +639,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
         </div>
       </div>
 
-      {/* Содержимое вкладок */}
+      {/* Tab content */}
       {selectedTab === 'projects' && (
         <ProjectManagementPanel 
           currentUser={currentUser || null}
@@ -700,7 +700,7 @@ const AdminWebPanel: React.FC<WebAdminPanelProps> = ({ onLogout, currentUser }) 
   );
 };
 
-// Стили компонента
+// Component styles
 const styles = {
   container: {
     minHeight: '100vh',
@@ -797,7 +797,7 @@ const styles = {
     margin: 0,
   } as React.CSSProperties,
 
-  // Стили для вкладки "Рабочие"
+  // Styles for workers tab
   workersGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
@@ -897,7 +897,7 @@ const styles = {
     color: '#666',
   } as React.CSSProperties,
 
-  // Стили для вкладки "Расписание"
+  // Styles for schedule tab
   scheduleGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
@@ -966,7 +966,7 @@ const styles = {
     fontWeight: '500',
   } as React.CSSProperties,
 
-  // Стили для вкладки "Отчёты"
+  // Styles for reports tab
   section: {
     marginBottom: '40px',
   } as React.CSSProperties,
@@ -1048,7 +1048,7 @@ const styles = {
     fontWeight: '500',
   } as React.CSSProperties,
 
-  // Стили для вкладки "Список рабочих"
+  // Styles for workers list tab
   searchSection: {
     marginBottom: '20px',
   } as React.CSSProperties,
@@ -1160,7 +1160,7 @@ const styles = {
     fontSize: '14px',
   } as React.CSSProperties,
 
-  // Модальное окно
+  // Modal window
   modal: {
     position: 'fixed' as const,
     top: 0,
@@ -1230,7 +1230,7 @@ const styles = {
     color: '#666',
   } as React.CSSProperties,
 
-  // Стили для проектов
+  // Styles for projects
   projectInfo: {
     marginBottom: '15px',
   } as React.CSSProperties,

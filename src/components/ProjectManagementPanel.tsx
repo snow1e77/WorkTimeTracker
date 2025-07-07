@@ -113,7 +113,7 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
   };
 
   const handleDeleteProject = async (projectId: string) => {
-    if (!window.confirm('Вы уверены, что хотите удалить этот проект?')) return;
+    if (!window.confirm('Are you sure you want to delete this project?')) return;
 
     try {
       await dbService.deleteProject(projectId);
@@ -151,7 +151,7 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
   const startEdit = (project: Project) => {
     setEditingProject(project);
     
-    // Приводим опциональные поля к строкам с дефолтными значениями
+    // Convert optional fields to strings with default values
     const safeDescription = project.description ?? '';
     const safeCurrency = project.currency ?? 'RUB';
     const safeAddress = project.address ?? '';
@@ -189,17 +189,17 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
 
   const getStatusText = (status: Project['status']): string => {
     switch (status) {
-      case 'active': return 'Активный';
-      case 'planning': return 'Планирование';
-      case 'paused': return 'Приостановлен';
-      case 'completed': return 'Завершён';
-      case 'cancelled': return 'Отменён';
+      case 'active': return 'Active';
+      case 'planning': return 'Planning';
+      case 'paused': return 'Paused';
+      case 'completed': return 'Completed';
+      case 'cancelled': return 'Cancelled';
       default: return status;
     }
   };
 
   const formatDate = (date: Date): string => {
-    return new Intl.DateTimeFormat('ru-RU', {
+    return new Intl.DateTimeFormat('en-US', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -207,7 +207,7 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
   };
 
   const formatCurrency = (amount: number, currency: string): string => {
-    return new Intl.NumberFormat('ru-RU', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency || 'RUB'
     }).format(amount);
@@ -216,21 +216,21 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>Управление проектами</h2>
+        <h2 style={styles.title}>Project Management</h2>
         <div style={styles.headerActions}>
           {selectedProject && (
             <button 
               style={styles.backButton}
               onClick={() => onSelectProject?.(null)}
             >
-              ← Назад к проектам
+              ← Back to Projects
             </button>
           )}
           <button 
             style={styles.createButton}
             onClick={() => setShowCreateForm(true)}
           >
-            + Создать проект
+            + Create Project
           </button>
         </div>
       </div>
@@ -239,11 +239,11 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
         <div style={styles.modal}>
           <div style={styles.modalContent}>
             <h3 style={styles.modalTitle}>
-              {editingProject ? 'Редактировать проект' : 'Создать новый проект'}
+              {editingProject ? 'Edit Project' : 'Create New Project'}
             </h3>
             <form onSubmit={editingProject ? handleUpdateProject : handleCreateProject}>
               <div style={styles.formGroup}>
-                <label style={styles.label}>Название проекта*</label>
+                <label style={styles.label}>Project Name*</label>
                 <input
                   type="text"
                   value={newProject.name}
@@ -254,7 +254,7 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Описание</label>
+                <label style={styles.label}>Description</label>
                 <textarea
                   value={newProject.description}
                   onChange={(e) => setNewProject({...newProject, description: e.target.value})}
@@ -265,7 +265,7 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
 
               <div style={styles.formRow}>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Дата начала*</label>
+                  <label style={styles.label}>Start Date*</label>
                   <input
                     type="date"
                     value={newProject.startDate}
@@ -276,7 +276,7 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Дата окончания</label>
+                  <label style={styles.label}>End Date</label>
                   <input
                     type="date"
                     value={newProject.endDate}
@@ -288,36 +288,36 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
 
               <div style={styles.formRow}>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Статус</label>
+                  <label style={styles.label}>Status</label>
                   <select
                     value={newProject.status}
                     onChange={(e) => setNewProject({...newProject, status: e.target.value as Project['status']})}
                     style={styles.select}
                   >
-                    <option value="planning">Планирование</option>
-                    <option value="active">Активный</option>
-                    <option value="paused">Приостановлен</option>
-                    <option value="completed">Завершён</option>
-                    <option value="cancelled">Отменён</option>
+                    <option value="planning">Planning</option>
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
                   </select>
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Валюта</label>
+                  <label style={styles.label}>Currency</label>
                   <select
                     value={newProject.currency}
                     onChange={(e) => setNewProject({...newProject, currency: e.target.value})}
                     style={styles.select}
                   >
-                    <option value="RUB">RUB - Рубль</option>
-                    <option value="USD">USD - Доллар</option>
-                    <option value="EUR">EUR - Евро</option>
+                    <option value="RUB">RUB - Ruble</option>
+                    <option value="USD">USD - Dollar</option>
+                    <option value="EUR">EUR - Euro</option>
                   </select>
                 </div>
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Бюджет</label>
+                <label style={styles.label}>Budget</label>
                 <input
                   type="number"
                   value={newProject.budget}
@@ -329,7 +329,7 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Адрес</label>
+                <label style={styles.label}>Address</label>
                 <input
                   type="text"
                   value={newProject.address}
@@ -340,10 +340,10 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
 
               <div style={styles.modalActions}>
                 <button type="button" onClick={cancelEdit} style={styles.cancelButton}>
-                  Отмена
+                  Cancel
                 </button>
                 <button type="submit" style={styles.submitButton}>
-                  {editingProject ? 'Обновить' : 'Создать'}
+                  {editingProject ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>
@@ -352,7 +352,7 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
       )}
 
       {loading ? (
-        <div style={styles.loading}>Загрузка проектов...</div>
+        <div style={styles.loading}>Loading projects...</div>
       ) : (
         <div style={styles.projectsGrid}>
           {projects.map((project) => (
@@ -363,14 +363,14 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
                   <button
                     onClick={() => onSelectProject?.(project)}
                     style={styles.selectButton}
-                    title="Выбрать проект"
+                    title="Select project"
                   >
-                    Выбрать
+                    Select
                   </button>
                   <button
                     onClick={() => startEdit(project)}
                     style={styles.editButton}
-                    title="Редактировать"
+                    title="Edit"
                   >
                     ✏️
                   </button>
@@ -380,14 +380,14 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
                       ...styles.toggleButton,
                       backgroundColor: project.isActive ? '#f44336' : '#4CAF50'
                     }}
-                    title={project.isActive ? 'Деактивировать' : 'Активировать'}
+                    title={project.isActive ? 'Deactivate' : 'Activate'}
                   >
                     {project.isActive ? '⏸️' : '▶️'}
                   </button>
                   <button
                     onClick={() => handleDeleteProject(project.id)}
                     style={styles.deleteButton}
-                    title="Удалить"
+                    title="Delete"
                   >
                     🗑️
                   </button>
@@ -410,26 +410,26 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
                 </div>
 
                 <div style={styles.projectDates}>
-                  <strong>Период:</strong> {formatDate(project.startDate)}
+                  <strong>Period:</strong> {formatDate(project.startDate)}
                   {project.endDate && ` - ${formatDate(project.endDate)}`}
                 </div>
 
                 {project.budget && (
                   <div style={styles.projectBudget}>
-                    <strong>Бюджет:</strong> {formatCurrency(project.budget, project.currency || 'RUB')}
+                    <strong>Budget:</strong> {formatCurrency(project.budget, project.currency || 'RUB')}
                   </div>
                 )}
 
                 {project.address && (
                   <div style={styles.projectAddress}>
-                    <strong>Адрес:</strong> {project.address}
+                    <strong>Address:</strong> {project.address}
                   </div>
                 )}
 
                 <div style={styles.projectMeta}>
-                  <small>Создан: {formatDate(project.createdAt)}</small>
+                  <small>Created: {formatDate(project.createdAt)}</small>
                   {!project.isActive && (
-                    <span style={styles.inactiveLabel}>Неактивен</span>
+                    <span style={styles.inactiveLabel}>Inactive</span>
                   )}
                 </div>
               </div>
@@ -440,8 +440,8 @@ const ProjectManagementPanel: React.FC<ProjectManagementPanelProps> = ({
 
       {projects.length === 0 && !loading && (
         <div style={styles.emptyState}>
-          <h3>Проекты не найдены</h3>
-          <p>Создайте первый проект для начала работы</p>
+          <h3>No projects found</h3>
+          <p>Create your first project to get started</p>
         </div>
       )}
     </div>

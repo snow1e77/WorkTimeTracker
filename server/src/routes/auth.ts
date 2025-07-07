@@ -1,4 +1,4 @@
-﻿import express from 'express';
+﻿import express, { Request, Response } from 'express';
 import Joi from 'joi';
 import { AuthService } from '../services/AuthService';
 import { authenticateToken, validateJSON } from '../middleware/auth';
@@ -44,7 +44,7 @@ const refreshTokenSchema = Joi.object({
 });
 
 // GET /api/auth/csrf - Получение CSRF токена
-router.get('/csrf', (req, res) => {
+router.get('/csrf', (req: Request, res: Response) => {
   const csrfToken = generateCSRFToken(req.user?.id);
   res.json({
     success: true,
@@ -58,7 +58,7 @@ router.post('/login',
   logSuspiciousActivity,
   sanitizePhoneNumber,
   csrfProtection,
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       // Логируем входящий запрос (без чувствительных данных)
       logger.info('Login request received', { 
@@ -127,7 +127,7 @@ router.post('/login',
 );
 
 // POST /api/auth/register - Реальная регистрация
-router.post('/register', async (req, res) => {
+router.post('/register', async (req: Request, res: Response) => {
   try {
     const { error, value } = registerSchema.validate(req.body);
     
@@ -169,7 +169,7 @@ router.post('/register', async (req, res) => {
 });
 
 // POST /api/auth/refresh - Обновление токена
-router.post('/refresh', validateJSON, async (req, res) => {
+router.post('/refresh', validateJSON, async (req: Request, res: Response) => {
   try {
     const { error, value } = refreshTokenSchema.validate(req.body);
     
@@ -205,7 +205,7 @@ router.post('/refresh', validateJSON, async (req, res) => {
 });
 
 // POST /api/auth/logout - Выход
-router.post('/logout', validateJSON, async (req, res) => {
+router.post('/logout', validateJSON, async (req: Request, res: Response) => {
   try {
     const { refreshToken } = req.body;
 
@@ -232,7 +232,7 @@ router.post('/logout', validateJSON, async (req, res) => {
 });
 
 // GET /api/auth/me - Получение текущего пользователя
-router.get('/me', authenticateToken, async (req, res) => {
+router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   try {
     return res.json({
       success: true,

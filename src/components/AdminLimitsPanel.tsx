@@ -107,11 +107,11 @@ export const AdminLimitsPanel: React.FC<AdminLimitsPanelProps> = ({
       if (result.success) {
         setAdminLimits(result.data);
       } else {
-        Alert.alert('Ошибка', result.message || 'Не удалось загрузить данные');
+        Alert.alert('Error', result.message || 'Failed to load data');
       }
     } catch (error) {
       logger.error('Failed to load admin limits', { error: error instanceof Error ? error.message : 'Unknown error' }, 'admin');
-      Alert.alert('Ошибка', 'Не удалось загрузить данные');
+      Alert.alert('Error', 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -132,16 +132,16 @@ export const AdminLimitsPanel: React.FC<AdminLimitsPanelProps> = ({
       const result = await response.json();
       
       if (result.success) {
-        Alert.alert('Успех', 'Лимиты админа успешно созданы');
+        Alert.alert('Success', 'Admin limits created successfully');
         setShowCreateDialog(false);
         resetForm();
         loadAdminLimits();
       } else {
-        Alert.alert('Ошибка', result.message || 'Не удалось создать лимиты');
+        Alert.alert('Error', result.message || 'Failed to create limits');
       }
     } catch (error) {
       logger.error('Failed to create admin limits', { error: error instanceof Error ? error.message : 'Unknown error' }, 'admin');
-      Alert.alert('Ошибка', 'Не удалось создать лимиты');
+      Alert.alert('Error', 'Failed to create limits');
     } finally {
       setLoading(false);
     }
@@ -180,14 +180,14 @@ export const AdminLimitsPanel: React.FC<AdminLimitsPanelProps> = ({
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
 
-        Alert.alert('Успех', 'Данные успешно экспортированы');
+        Alert.alert('Success', 'Data exported successfully');
         setShowExportDialog(false);
       } else {
-        Alert.alert('Ошибка', result.message || 'Не удалось экспортировать данные');
+        Alert.alert('Error', result.message || 'Failed to export data');
       }
     } catch (error) {
       logger.error('Failed to export admin limits', { error: error instanceof Error ? error.message : 'Unknown error' }, 'admin');
-      Alert.alert('Ошибка', 'Не удалось экспортировать данные');
+      Alert.alert('Error', 'Failed to export data');
     } finally {
       setLoading(false);
     }

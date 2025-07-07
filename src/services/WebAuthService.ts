@@ -3,10 +3,18 @@ import { WebDatabaseService } from './WebDatabaseService';
 import logger from '../utils/logger';
 
 export class WebAuthService {
+  private static instance: WebAuthService;
   private dbService: WebDatabaseService;
 
-  constructor() {
-    this.dbService = new WebDatabaseService();
+  private constructor() {
+    this.dbService = WebDatabaseService.getInstance();
+  }
+
+  static getInstance(): WebAuthService {
+    if (!WebAuthService.instance) {
+      WebAuthService.instance = new WebAuthService();
+    }
+    return WebAuthService.instance;
   }
 
   // БЕЗОПАСНАЯ аутентификация без паролей в localStorage

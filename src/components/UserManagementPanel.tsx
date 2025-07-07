@@ -76,30 +76,30 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
 
   const handleAddUser = async () => {
     if (!newUserData.phoneNumber.trim()) {
-      setError('Введите номер телефона');
+      setError('Enter phone number');
       return;
     }
 
     if (!newUserData.name.trim()) {
-      setError('Введите имя пользователя');
+      setError('Enter user name');
       return;
     }
 
     // Phone number validation
     const phoneRegex = /^\+[1-9]\d{1,14}$/;
     if (!phoneRegex.test(newUserData.phoneNumber)) {
-      setError('Номер телефона должен быть в международном формате (+79001234567)');
+      setError('Phone number must be in international format (+79001234567)');
       return;
     }
 
     // Foreman phone validation for workers
     if (newUserData.role === 'worker') {
       if (!newUserData.foremanPhone.trim()) {
-        setError('Введите номер телефона прораба для работника');
+        setError('Enter foreman phone number for worker');
         return;
       }
       if (!phoneRegex.test(newUserData.foremanPhone)) {
-        setError('Номер телефона прораба должен быть в международном формате');
+        setError('Foreman phone number must be in international format');
         return;
       }
     }
@@ -123,12 +123,12 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
         await loadUsers();
         setNewUserData({ phoneNumber: '', name: '', role: 'worker', foremanPhone: '' });
         setShowAddForm(false);
-        alert('Пользователь успешно зарегистрирован');
+        alert('User successfully registered');
       } else {
-        setError(data.error || 'Ошибка добавления пользователя');
+        setError(data.error || 'Error adding user');
       }
     } catch (error) {
-      setError('Ошибка соединения с сервером');
+      setError('Server connection error');
     } finally {
       setSubmitting(false);
     }
@@ -147,17 +147,17 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
 
       if (response.ok) {
         await loadUsers();
-        alert(`Пользователь ${!currentStatus ? 'активирован' : 'деактивирован'}`);
+        alert(`User ${!currentStatus ? 'activated' : 'deactivated'}`);
       } else {
-        alert('Ошибка изменения статуса пользователя');
+        alert('Error changing user status');
       }
     } catch (error) {
-      alert('Ошибка соединения с сервером');
+      alert('Server connection error');
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Вы уверены что хотите удалить этого пользователя?')) {
+    if (!confirm('Are you sure you want to delete this user?')) {
       return;
     }
 
@@ -171,17 +171,17 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
 
       if (response.ok) {
         await loadUsers();
-        alert('Пользователь удален');
+        alert('User deleted');
       } else {
-        alert('Ошибка удаления пользователя');
+        alert('Error deleting user');
       }
     } catch (error) {
-      alert('Ошибка соединения с сервером');
+      alert('Server connection error');
     }
   };
 
   const formatDate = (date: Date): string => {
-    return new Intl.DateTimeFormat('ru-RU', {
+    return new Intl.DateTimeFormat('en-US', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -191,7 +191,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
   };
 
   const formatPhoneNumber = (phone: string): string => {
-    // Форматируем номер телефона для лучшего отображения
+    // Format phone number for better display
     if (phone.startsWith('+7')) {
       return phone.replace(/^(\+7)(\d{3})(\d{3})(\d{2})(\d{2})$/, '$1 $2 $3-$4-$5');
     }
@@ -217,9 +217,9 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>Управление пользователями</h2>
+        <h2 style={styles.title}>User Management</h2>
         <p style={styles.subtitle}>
-          Регистрация и управление пользователями системы. Пользователи могут сразу входить в приложение.
+          Registration and management of system users. Users can immediately log into the application.
         </p>
       </div>
 
@@ -227,7 +227,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
         <div style={styles.searchRow}>
           <input
             type="text"
-            placeholder="Поиск по номеру телефона или имени"
+            placeholder="Search by phone number or name"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={styles.searchInput}
@@ -238,11 +238,11 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
             onChange={(e) => setFilterRole(e.target.value as any)}
             style={styles.filterSelect}
           >
-            <option value="all">Все роли</option>
-            <option value="worker">Рабочие</option>
-            <option value="foreman">Прорабы</option>
-            <option value="admin">Администраторы</option>
-            <option value="superadmin">Суперадмины</option>
+            <option value="all">All roles</option>
+            <option value="worker">Workers</option>
+            <option value="foreman">Foremen</option>
+            <option value="admin">Administrators</option>
+            <option value="superadmin">Super admins</option>
           </select>
 
           <select
@@ -250,9 +250,9 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
             onChange={(e) => setFilterStatus(e.target.value as any)}
             style={styles.filterSelect}
           >
-            <option value="all">Все статусы</option>
-            <option value="active">Активные</option>
-            <option value="inactive">Неактивные</option>
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
           </select>
         </div>
         
@@ -260,21 +260,21 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
           onClick={() => setShowAddForm(!showAddForm)}
           style={styles.addButton}
         >
-          {showAddForm ? 'Отмена' : 'Добавить пользователя'}
+          {showAddForm ? 'Cancel' : 'Add User'}
         </button>
       </div>
 
       {showAddForm && (
         <div style={styles.addForm}>
-          <h3 style={styles.formTitle}>Регистрация нового пользователя</h3>
+          <h3 style={styles.formTitle}>New User Registration</h3>
           <p style={styles.formSubtitle}>
-            Пользователь будет сразу зарегистрирован и сможет входить в приложение
+            User will be immediately registered and able to log into the application
           </p>
           
           {error && <div style={styles.error}>{error}</div>}
           
           <div style={styles.formField}>
-            <label style={styles.label}>Номер телефона:</label>
+            <label style={styles.label}>Phone number:</label>
             <input
               type="tel"
               placeholder="+79001234567"
@@ -285,10 +285,10 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
           </div>
 
           <div style={styles.formField}>
-            <label style={styles.label}>Имя:</label>
+            <label style={styles.label}>Name:</label>
             <input
               type="text"
-              placeholder="Иван Иванов"
+              placeholder="John Doe"
               value={newUserData.name}
               onChange={(e) => setNewUserData(prev => ({ ...prev, name: e.target.value }))}
               style={styles.input}
@@ -296,21 +296,21 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
           </div>
 
           <div style={styles.formField}>
-            <label style={styles.label}>Роль:</label>
+            <label style={styles.label}>Role:</label>
             <select
               value={newUserData.role}
               onChange={(e) => setNewUserData(prev => ({ ...prev, role: e.target.value as 'worker' | 'foreman' | 'admin', foremanPhone: e.target.value !== 'worker' ? '' : prev.foremanPhone }))}
               style={styles.select}
             >
-              <option value="worker">Рабочий</option>
-              <option value="foreman">Прораб</option>
-              <option value="admin">Администратор</option>
+              <option value="worker">Worker</option>
+              <option value="foreman">Foreman</option>
+              <option value="admin">Administrator</option>
             </select>
           </div>
 
           {newUserData.role === 'worker' && (
             <div style={styles.formField}>
-              <label style={styles.label}>Номер телефона прораба:</label>
+              <label style={styles.label}>Foreman phone number:</label>
               <input
                 type="tel"
                 placeholder="+79001234567"
@@ -327,7 +327,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
               disabled={submitting}
               style={styles.submitButton}
             >
-              {submitting ? 'Регистрация...' : 'Зарегистрировать пользователя'}
+              {submitting ? 'Registering...' : 'Register User'}
             </button>
           </div>
         </div>
@@ -335,21 +335,21 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
 
       <div style={styles.tableContainer}>
         {loading ? (
-          <div style={styles.loading}>Загрузка пользователей...</div>
+          <div style={styles.loading}>Loading users...</div>
         ) : filteredUsers.length === 0 ? (
           <div style={styles.emptyState}>
-            {searchTerm ? 'Пользователи не найдены' : 'Нет зарегистрированных пользователей'}
+            {searchTerm ? 'No users found' : 'No registered users'}
           </div>
         ) : (
           <table style={styles.table}>
             <thead>
               <tr style={styles.tableHeader}>
-                <th style={styles.tableHeaderCell}>Номер телефона</th>
-                <th style={styles.tableHeaderCell}>Имя</th>
-                <th style={styles.tableHeaderCell}>Роль</th>
-                <th style={styles.tableHeaderCell}>Статус</th>
-                <th style={styles.tableHeaderCell}>Дата регистрации</th>
-                <th style={styles.tableHeaderCell}>Действия</th>
+                <th style={styles.tableHeaderCell}>Phone Number</th>
+                <th style={styles.tableHeaderCell}>Name</th>
+                <th style={styles.tableHeaderCell}>Role</th>
+                <th style={styles.tableHeaderCell}>Status</th>
+                <th style={styles.tableHeaderCell}>Registration Date</th>
+                <th style={styles.tableHeaderCell}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -366,15 +366,15 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
                       user.role === 'foreman' ? styles.foremanBadge :
                       styles.workerBadge
                     }>
-                      {user.role === 'superadmin' ? 'Суперадмин' :
-                       user.role === 'admin' ? 'Администратор' :
-                       user.role === 'foreman' ? 'Прораб' :
-                       'Рабочий'}
+                      {user.role === 'superadmin' ? 'Super Admin' :
+                       user.role === 'admin' ? 'Administrator' :
+                       user.role === 'foreman' ? 'Foreman' :
+                       'Worker'}
                     </span>
                   </td>
                   <td style={styles.tableCell}>
                     <span style={user.isActive ? styles.activeBadge : styles.inactiveBadge}>
-                      {user.isActive ? 'Активен' : 'Неактивен'}
+                      {user.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td style={styles.tableCell}>
@@ -385,17 +385,17 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser }
                       <button
                         onClick={() => handleToggleUserStatus(user.id, user.isActive)}
                         style={user.isActive ? styles.deactivateButton : styles.activateButton}
-                        title={user.isActive ? 'Деактивировать' : 'Активировать'}
+                        title={user.isActive ? 'Deactivate' : 'Activate'}
                       >
-                        {user.isActive ? 'Деактивировать' : 'Активировать'}
+                        {user.isActive ? 'Deactivate' : 'Activate'}
                       </button>
                       
                       <button
                         onClick={() => handleDeleteUser(user.id)}
                         style={styles.deleteButton}
-                        title="Удалить пользователя"
+                        title="Delete user"
                       >
-                        Удалить
+                        Delete
                       </button>
                     </div>
                   </td>
