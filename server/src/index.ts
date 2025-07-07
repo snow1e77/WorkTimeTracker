@@ -70,7 +70,7 @@ let webSocketService: WebSocketService;
 export const getWebSocketService = (): WebSocketService => webSocketService;
 
 // Расширенная настройка CORS с проверкой origin
-const allowedOrigins = process.env.CORS_ORIGINS?.split(',').map(origin => origin.trim()) || [
+const allowedOrigins = process.env.CORS_ORIGINS?.split(',').map((origin: string) => origin.trim()) || [
   // Только для разработки
   ...(process.env.NODE_ENV === 'development' ? [
     'http://localhost:19006',

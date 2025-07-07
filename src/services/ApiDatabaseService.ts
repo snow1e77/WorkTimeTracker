@@ -1,7 +1,38 @@
 ﻿import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthUser, ConstructionSite, WorkShift, UserSiteAssignment, Violation, Chat, ChatMessage, DailyTask, SyncDataResponse, SyncStatusResponse, SyncMetricsResponse, ValidationResponse, LocationCheckResponse, AssignmentStatsResponse, NotificationDeliveryReceipt, ViolationAlertData, AssignmentNotificationData, ShiftReminderData, BroadcastNotificationData, OvertimeAlertData, WorkReport, SyncPayload, SyncConflict, LocationEvent, WorkerLocation } from '../types';
+import {
+  AuthUser,
+  ConstructionSite,
+  WorkShift,
+  UserSiteAssignment,
+  Violation,
+  Chat,
+  ChatMessage,
+  DailyTask,
+  SyncDataResponse,
+  SyncStatusResponse,
+  SyncMetricsResponse,
+  ValidationResponse,
+  LocationCheckResponse,
+  AssignmentStatsResponse,
+  NotificationDeliveryReceipt,
+  ViolationAlertData,
+  AssignmentNotificationData,
+  ShiftReminderData,
+  BroadcastNotificationData,
+  OvertimeAlertData,
+  WorkReport,
+  SyncPayload,
+  SyncConflict,
+  LocationEvent,
+  WorkerLocation,
+} from '../types';
 import { notificationService } from './NotificationService';
-import { API_CONFIG, getApiUrl, getHealthUrl, ApiResponse } from '../config/api';
+import {
+  API_CONFIG,
+  getApiUrl,
+  getHealthUrl,
+  ApiResponse,
+} from '../config/api';
 import { apiClient } from './ApiClient';
 import logger from '../utils/logger';
 
@@ -11,12 +42,15 @@ const getAuthToken = async (): Promise<string | null> => {
 };
 
 // Helper function to make authenticated API calls
-const apiCall = async (endpoint: string, options: RequestInit = {}): Promise<ApiResponse> => {
+const apiCall = async (
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<ApiResponse> => {
   const token = await getAuthToken();
-  
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
+    ...((options.headers as Record<string, string>) || {}),
   };
 
   if (token) {
@@ -57,16 +91,35 @@ export class ApiDatabaseService {
     try {
       // Инициализируем ApiClient
       await apiClient.initialize();
-      
+
       // Проверяем соединение с сервером
       const isConnected = await apiClient.checkConnection();
       if (!isConnected) {
-        } else {
-        }
+        logger.warn(
+          'Failed to connect to server during initialization',
+          {},
+          'api'
+        );
+      } else {
+        logger.info('Successfully connected to server', {}, 'api');
+      }
 
       this.isInitialized = true;
     } catch (error) {
+
+
+      logger.error('initDatabase failed', {
+
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+
+      }, 'api');
+
+
       throw error;
+
+
     }
   }
 
@@ -77,19 +130,28 @@ export class ApiDatabaseService {
         ...user,
         passwordHash,
       });
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to create user');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to create User', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
   async getUserByPhone(phoneNumber: string): Promise<AuthUser | null> {
     try {
-      const response = await apiClient.get(`/users/by-phone/${encodeURIComponent(phoneNumber)}`);
+      const response = await apiClient.get(
+        `/users/by-phone/${encodeURIComponent(phoneNumber)}`
+      );
       return response.success ? (response.data as AuthUser) : null;
     } catch (error) {
       return null;
@@ -108,22 +170,36 @@ export class ApiDatabaseService {
   async getUserPassword(userId: string): Promise<string | null> {
     try {
       const response = await apiClient.get(`/users/${userId}/password`);
-      return response.success ? (response.data as { passwordHash: string }).passwordHash : null;
+      return response.success
+        ? (response.data as { passwordHash: string }).passwordHash
+        : null;
     } catch (error) {
       return null;
     }
   }
 
-  async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
+  async updateUserPassword(
+    userId: string,
+    passwordHash: string
+  ): Promise<void> {
     try {
-      const response = await apiClient.put(`/users/${userId}/password`, { passwordHash });
-      
+      const response = await apiClient.put(`/users/${userId}/password`, {
+        passwordHash,
+      });
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to update password');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to get UserByPhone', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
@@ -133,65 +209,107 @@ export class ApiDatabaseService {
       const response = await apiClient.get('/sites');
       return response.success ? (response.data as ConstructionSite[]) : [];
     } catch (error) {
-      logger.error('Error getting construction sites', { error: error instanceof Error ? error.message : 'Unknown error' }, 'api');
+      logger.error(
+        'Error getting construction sites',
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        'api'
+      );
       return [];
     }
   }
 
-  async createConstructionSite(site: Omit<ConstructionSite, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> {
+  async createConstructionSite(
+    site: Omit<ConstructionSite, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<void> {
     try {
-      const response = await apiClient.post('/sites', site as unknown as Record<string, unknown>);
-      
+      const response = await apiClient.post(
+        '/sites',
+        site as unknown as Record<string, unknown>
+      );
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to create site');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to get ConstructionSites', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
   async deleteConstructionSite(siteId: string): Promise<void> {
     try {
       const response = await apiClient.delete(`/sites/${siteId}`);
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to delete site');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to delete ConstructionSite', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
   async updateSiteStatus(siteId: string, isActive: boolean): Promise<void> {
     try {
       const response = await apiClient.put(`/sites/${siteId}`, { isActive });
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to update site status');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to update SiteStatus', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
   async updateConstructionSite(site: ConstructionSite): Promise<void> {
     try {
-      const response = await apiClient.put(`/sites/${site.id}`, site as unknown as Record<string, unknown>);
-      
+      const response = await apiClient.put(
+        `/sites/${site.id}`,
+        site as unknown as Record<string, unknown>
+      );
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to update site');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to update ConstructionSite', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
   // Work Reports methods
-  async getWorkReports(period: 'today' | 'week' | 'month'): Promise<WorkReport[]> {
+  async getWorkReports(
+    period: 'today' | 'week' | 'month'
+  ): Promise<WorkReport[]> {
     try {
       const response = await apiClient.get(`/reports/work?period=${period}`);
       return response.success ? (response.data as WorkReport[]) : [];
@@ -209,82 +327,123 @@ export class ApiDatabaseService {
     bySeverity: { low: number; medium: number; high: number };
   }> {
     try {
-      const response = await apiClient.get(`/violations/summary?period=${period}`);
-      return response.success ? (response.data as {
-        total: number;
-        resolved: number;
-        unresolved: number;
-        byType: { [key: string]: number };
-        bySeverity: { low: number; medium: number; high: number };
-      }) : {
-        total: 0,
-        resolved: 0,
-        unresolved: 0,
-        byType: {},
-        bySeverity: { low: 0, medium: 0, high: 0 }
-      };
+      const response = await apiClient.get(
+        `/violations/summary?period=${period}`
+      );
+      return response.success
+        ? (response.data as {
+            total: number;
+            resolved: number;
+            unresolved: number;
+            byType: { [key: string]: number };
+            bySeverity: { low: number; medium: number; high: number };
+          })
+        : {
+            total: 0,
+            resolved: 0,
+            unresolved: 0,
+            byType: {},
+            bySeverity: { low: 0, medium: 0, high: 0 },
+          };
     } catch (error) {
       return {
         total: 0,
         resolved: 0,
         unresolved: 0,
         byType: {},
-        bySeverity: { low: 0, medium: 0, high: 0 }
+        bySeverity: { low: 0, medium: 0, high: 0 },
       };
     }
   }
 
-  async getViolations(period: 'today' | 'week' | 'month', severity: 'all' | 'low' | 'medium' | 'high' = 'all'): Promise<Violation[]> {
+  async getViolations(
+    period: 'today' | 'week' | 'month',
+    severity: 'all' | 'low' | 'medium' | 'high' = 'all'
+  ): Promise<Violation[]> {
     try {
-      const response = await apiClient.get(`/violations?period=${period}&severity=${severity}`);
+      const response = await apiClient.get(
+        `/violations?period=${period}&severity=${severity}`
+      );
       if (!response.success) {
         throw new Error(response.error || 'Failed to get violations');
       }
       return response.data as Violation[];
     } catch (error) {
-      logger.error('Error getting violations', { error: error instanceof Error ? error.message : 'Unknown error', period, severity }, 'api');
+      logger.error(
+        'Error getting violations',
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          period,
+          severity,
+        },
+        'api'
+      );
       throw error;
     }
   }
 
   async resolveViolation(violationId: string): Promise<void> {
     try {
-      const response = await apiClient.put(`/violations/${violationId}/resolve`);
-      
+      const response = await apiClient.put(
+        `/violations/${violationId}/resolve`
+      );
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to resolve violation');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to update ConstructionSite', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
   async deleteViolation(violationId: string): Promise<void> {
     try {
       const response = await apiClient.delete(`/violations/${violationId}`);
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to delete violation');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to delete Violation', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
   async createViolation(violation: Omit<Violation, 'id'>): Promise<string> {
     try {
       const response = await apiClient.post('/violations', violation);
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to create violation');
       }
-      
+
       const violationId = (response.data as { id: string })?.id;
       return violationId || '';
     } catch (error) {
+
+      logger.error('Failed to create Violation', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
@@ -297,58 +456,86 @@ export class ApiDatabaseService {
       }
       return response.data as AuthUser[];
     } catch (error) {
-      logger.error('Error getting users', { error: error instanceof Error ? error.message : 'Unknown error' }, 'api');
+      logger.error(
+        'Error getting users',
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        'api'
+      );
       throw error;
     }
   }
 
-  async updateUserRole(userId: string, role: 'worker' | 'admin'): Promise<void> {
+  async updateUserRole(
+    userId: string,
+    role: 'worker' | 'admin'
+  ): Promise<void> {
     try {
       const response = await apiClient.put(`/users/${userId}`, { role });
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to update user role');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to get AllUsers', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
   async updateUserStatus(userId: string, isActive: boolean): Promise<void> {
     try {
       const response = await apiClient.put(`/users/${userId}`, { isActive });
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to update user status');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to update UserStatus', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
   async deleteUser(userId: string): Promise<void> {
     try {
       const response = await apiClient.delete(`/users/${userId}`);
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to delete user');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to delete User', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
   // Location and tracking methods
-  async createLocationEvent(event: { 
-    userId: string; 
-    siteId?: string; 
-    latitude: number; 
-    longitude: number; 
-    timestamp: Date; 
-    eventType: 'site_entry' | 'site_exit' | 'tracking_update'; 
+  async createLocationEvent(event: {
+    userId: string;
+    siteId?: string;
+    latitude: number;
+    longitude: number;
+    timestamp: Date;
+    eventType: 'site_entry' | 'site_exit' | 'tracking_update';
     distance?: number;
   }): Promise<void> {
     try {
@@ -362,25 +549,37 @@ export class ApiDatabaseService {
         eventType: event.eventType,
         distance: event.distance,
       };
-      
+
       const response = await apiClient.post('/locations/events', eventData);
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to create location event');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to delete User', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
-  async getRecentLocationEvents(userId?: string, limit: number = 100): Promise<LocationEvent[]> {
+  async getRecentLocationEvents(
+    userId?: string,
+    limit: number = 100
+  ): Promise<LocationEvent[]> {
     try {
       const params = new URLSearchParams();
       if (userId) params.append('userId', userId);
       params.append('limit', limit.toString());
-      
-      const response = await apiClient.get(`/locations/events?${params.toString()}`);
+
+      const response = await apiClient.get(
+        `/locations/events?${params.toString()}`
+      );
       return response.success ? (response.data as LocationEvent[]) : [];
     } catch (error) {
       return [];
@@ -407,25 +606,45 @@ export class ApiDatabaseService {
     }
   }
 
-  async startWorkShift(shift: Omit<WorkShift, 'id' | 'createdAt'>): Promise<string> {
+  async startWorkShift(
+    shift: Omit<WorkShift, 'id' | 'createdAt'>
+  ): Promise<string> {
     try {
       const response = await apiClient.post('/shifts/start', shift);
       return response.success ? (response.data as { id: string }).id : '';
     } catch (error) {
+
+      logger.error('Failed to delete User', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
-  async endWorkShift(shiftId: string, endData: { endTime: Date; notes?: string }): Promise<void> {
+  async endWorkShift(
+    shiftId: string,
+    endData: { endTime: Date; notes?: string }
+  ): Promise<void> {
     try {
       const response = await apiClient.put(`/shifts/${shiftId}/end`, endData);
-      
+
       if (!response.success) {
         throw new Error(response.error || 'Failed to end work shift');
       }
-      
     } catch (error) {
+
+      logger.error('Failed to get WorkShifts', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
@@ -439,38 +658,69 @@ export class ApiDatabaseService {
     }
   }
 
-  async createUserSiteAssignment(assignment: UserSiteAssignment): Promise<ApiResponse<UserSiteAssignment[]>> {
-    const response = await apiClient.post('/assignments', assignment as unknown as Record<string, unknown>);
+  async createUserSiteAssignment(
+    assignment: UserSiteAssignment
+  ): Promise<ApiResponse<UserSiteAssignment[]>> {
+    const response = await apiClient.post(
+      '/assignments',
+      assignment as unknown as Record<string, unknown>
+    );
     return {
       success: response.success,
-      data: response.success ? (response.data as UserSiteAssignment[]) : undefined,
-      error: response.error
+      data: response.success
+        ? (response.data as UserSiteAssignment[])
+        : undefined,
+      error: response.error,
     };
   }
 
-  async updateUserSiteAssignment(assignmentId: string, updates: Partial<UserSiteAssignment>): Promise<void> {
+  async updateUserSiteAssignment(
+    assignmentId: string,
+    updates: Partial<UserSiteAssignment>
+  ): Promise<void> {
     try {
-      const response = await apiClient.put(`/assignments/${assignmentId}`, updates);
-      
+      const response = await apiClient.put(
+        `/assignments/${assignmentId}`,
+        updates
+      );
+
       if (!response.success) {
-        throw new Error(response.error || 'Failed to update user site assignment');
+        throw new Error(
+          response.error || 'Failed to update user site assignment'
+        );
       }
-      
     } catch (error) {
+
+      logger.error('Failed to get UserSiteAssignments', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
   async deleteUserSiteAssignment(assignmentId: string): Promise<void> {
     try {
       const response = await apiClient.delete(`/assignments/${assignmentId}`);
-      
+
       if (!response.success) {
-        throw new Error(response.error || 'Failed to delete user site assignment');
+        throw new Error(
+          response.error || 'Failed to delete user site assignment'
+        );
       }
-      
     } catch (error) {
+
+      logger.error('Failed to delete UserSiteAssignment', {
+
+        error: error instanceof Error ? error.message : 'Unknown error'
+
+      }, 'api');
+
       throw error;
+
     }
   }
 
@@ -483,8 +733,14 @@ export class ApiDatabaseService {
     return await apiClient.get('/chat/foreman');
   }
 
-  async getChatMessages(chatId: string, limit: number = 50, offset: number = 0): Promise<ApiResponse<ChatMessage[]>> {
-    return await apiClient.get(`/chat/${chatId}/messages?limit=${limit}&offset=${offset}`);
+  async getChatMessages(
+    chatId: string,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<ApiResponse<ChatMessage[]>> {
+    return await apiClient.get(
+      `/chat/${chatId}/messages?limit=${limit}&offset=${offset}`
+    );
   }
 
   async sendMessage(messageData: {
@@ -495,7 +751,10 @@ export class ApiDatabaseService {
     latitude?: number;
     longitude?: number;
   }): Promise<ApiResponse<ChatMessage>> {
-    return await apiClient.post(`/chat/${messageData.chatId}/messages`, messageData);
+    return await apiClient.post(
+      `/chat/${messageData.chatId}/messages`,
+      messageData
+    );
   }
 
   async assignTask(taskData: {
@@ -509,25 +768,39 @@ export class ApiDatabaseService {
     return await apiClient.get(`/chat/${chatId}/task`);
   }
 
-  async validatePhoto(reportId: string, notes?: string): Promise<ApiResponse<ValidationResponse>> {
+  async validatePhoto(
+    reportId: string,
+    notes?: string
+  ): Promise<ApiResponse<ValidationResponse>> {
     return await apiClient.post(`/reports/${reportId}/validate`, { notes });
   }
 
   // Sync methods
-  async getSyncData(lastSyncTimestamp?: Date): Promise<ApiResponse<SyncDataResponse>> {
-    const params = lastSyncTimestamp ? `?since=${lastSyncTimestamp.toISOString()}` : '';
+  async getSyncData(
+    lastSyncTimestamp?: Date
+  ): Promise<ApiResponse<SyncDataResponse>> {
+    const params = lastSyncTimestamp
+      ? `?since=${lastSyncTimestamp.toISOString()}`
+      : '';
     return await apiClient.get(`/sync/data${params}`);
   }
 
-  async postSyncData(syncData: SyncPayload): Promise<ApiResponse<SyncConflict[]>> {
-    return await apiClient.post('/sync/data', syncData as unknown as Record<string, unknown>);
+  async postSyncData(
+    syncData: SyncPayload
+  ): Promise<ApiResponse<SyncConflict[]>> {
+    return await apiClient.post(
+      '/sync/data',
+      syncData as unknown as Record<string, unknown>
+    );
   }
 
   async getSyncStatus(): Promise<ApiResponse<SyncStatusResponse>> {
     return await apiClient.get('/sync/status');
   }
 
-  async performFullSync(deviceId: string): Promise<ApiResponse<SyncDataResponse>> {
+  async performFullSync(
+    deviceId: string
+  ): Promise<ApiResponse<SyncDataResponse>> {
     return await apiClient.post('/sync/full', { deviceId });
   }
 
@@ -535,8 +808,14 @@ export class ApiDatabaseService {
     return await apiClient.get(`/sync/conflicts?userId=${userId}`);
   }
 
-  async resolveSyncConflict(conflictId: string, resolution: SyncConflict): Promise<ApiResponse<boolean>> {
-    return await apiClient.post(`/sync/conflicts/${conflictId}/resolve`, resolution as unknown as Record<string, unknown>);
+  async resolveSyncConflict(
+    conflictId: string,
+    resolution: SyncConflict
+  ): Promise<ApiResponse<boolean>> {
+    return await apiClient.post(
+      `/sync/conflicts/${conflictId}/resolve`,
+      resolution as unknown as Record<string, unknown>
+    );
   }
 
   async getSyncMetrics(): Promise<ApiResponse<SyncMetricsResponse>> {
@@ -556,32 +835,63 @@ export class ApiDatabaseService {
     return await apiClient.post('/notifications/test');
   }
 
-  async sendViolationAlert(violationData: ViolationAlertData): Promise<ApiResponse<NotificationDeliveryReceipt>> {
-    return await apiClient.post('/notifications/violation-alert', violationData as unknown as Record<string, unknown>);
+  async sendViolationAlert(
+    violationData: ViolationAlertData
+  ): Promise<ApiResponse<NotificationDeliveryReceipt>> {
+    return await apiClient.post(
+      '/notifications/violation-alert',
+      violationData as unknown as Record<string, unknown>
+    );
   }
 
-  async sendAssignmentNotification(assignmentData: AssignmentNotificationData): Promise<ApiResponse<NotificationDeliveryReceipt>> {
-    return await apiClient.post('/notifications/assignment', assignmentData as unknown as Record<string, unknown>);
+  async sendAssignmentNotification(
+    assignmentData: AssignmentNotificationData
+  ): Promise<ApiResponse<NotificationDeliveryReceipt>> {
+    return await apiClient.post(
+      '/notifications/assignment',
+      assignmentData as unknown as Record<string, unknown>
+    );
   }
 
-  async sendShiftReminder(reminderData: ShiftReminderData): Promise<ApiResponse<NotificationDeliveryReceipt>> {
-    return await apiClient.post('/notifications/shift-reminder', reminderData as unknown as Record<string, unknown>);
+  async sendShiftReminder(
+    reminderData: ShiftReminderData
+  ): Promise<ApiResponse<NotificationDeliveryReceipt>> {
+    return await apiClient.post(
+      '/notifications/shift-reminder',
+      reminderData as unknown as Record<string, unknown>
+    );
   }
 
-  async sendBroadcastNotification(notificationData: BroadcastNotificationData): Promise<ApiResponse<NotificationDeliveryReceipt>> {
-    return await apiClient.post('/notifications/broadcast', notificationData as unknown as Record<string, unknown>);
+  async sendBroadcastNotification(
+    notificationData: BroadcastNotificationData
+  ): Promise<ApiResponse<NotificationDeliveryReceipt>> {
+    return await apiClient.post(
+      '/notifications/broadcast',
+      notificationData as unknown as Record<string, unknown>
+    );
   }
 
-  async sendOvertimeAlert(overtimeData: OvertimeAlertData): Promise<ApiResponse<NotificationDeliveryReceipt>> {
-    return await apiClient.post('/notifications/overtime-alert', overtimeData as unknown as Record<string, unknown>);
+  async sendOvertimeAlert(
+    overtimeData: OvertimeAlertData
+  ): Promise<ApiResponse<NotificationDeliveryReceipt>> {
+    return await apiClient.post(
+      '/notifications/overtime-alert',
+      overtimeData as unknown as Record<string, unknown>
+    );
   }
 
-  async validatePushToken(token: string): Promise<ApiResponse<ValidationResponse>> {
+  async validatePushToken(
+    token: string
+  ): Promise<ApiResponse<ValidationResponse>> {
     return await apiClient.post('/notifications/validate-token', { token });
   }
 
-  async getDeliveryReceipts(receiptIds: string[]): Promise<ApiResponse<NotificationDeliveryReceipt[]>> {
-    return await apiClient.post('/notifications/delivery-receipts', { receiptIds });
+  async getDeliveryReceipts(
+    receiptIds: string[]
+  ): Promise<ApiResponse<NotificationDeliveryReceipt[]>> {
+    return await apiClient.post('/notifications/delivery-receipts', {
+      receiptIds,
+    });
   }
 
   // Additional site methods
@@ -597,8 +907,15 @@ export class ApiDatabaseService {
     }
   }
 
-  async checkSiteLocation(siteId: string, latitude: number, longitude: number): Promise<ApiResponse<LocationCheckResponse>> {
-    return await apiClient.post(`/sites/${siteId}/check-location`, { latitude, longitude });
+  async checkSiteLocation(
+    siteId: string,
+    latitude: number,
+    longitude: number
+  ): Promise<ApiResponse<LocationCheckResponse>> {
+    return await apiClient.post(`/sites/${siteId}/check-location`, {
+      latitude,
+      longitude,
+    });
   }
 
   // Additional assignment methods
@@ -645,7 +962,10 @@ export class ApiDatabaseService {
     }
   }
 
-  async updateShift(shiftId: string, updates: Partial<WorkShift>): Promise<ApiResponse<WorkShift>> {
+  async updateShift(
+    shiftId: string,
+    updates: Partial<WorkShift>
+  ): Promise<ApiResponse<WorkShift>> {
     return await apiClient.put(`/shifts/${shiftId}`, updates);
   }
 
@@ -654,18 +974,25 @@ export class ApiDatabaseService {
   }
 
   // Auth status method
-  async getAuthStatus(): Promise<ApiResponse<{ isAuthenticated: boolean; user?: AuthUser }>> {
+  async getAuthStatus(): Promise<
+    ApiResponse<{ isAuthenticated: boolean; user?: AuthUser }>
+  > {
     return await apiClient.get('/auth/status');
   }
 
   // Site assignments methods
-  async getSiteAssignments(siteId: string): Promise<ApiResponse<UserSiteAssignment[]>> {
+  async getSiteAssignments(
+    siteId: string
+  ): Promise<ApiResponse<UserSiteAssignment[]>> {
     try {
       const response = await apiClient.get(`/assignments/site/${siteId}`);
       return {
         success: response.success,
-        data: response.success && Array.isArray(response.data) ? response.data as UserSiteAssignment[] : undefined,
-        error: response.error
+        data:
+          response.success && Array.isArray(response.data)
+            ? (response.data as UserSiteAssignment[])
+            : undefined,
+        error: response.error,
       };
     } catch (error) {
       return { success: false, error: 'Failed to get site assignments' };
@@ -722,7 +1049,13 @@ export class ApiDatabaseService {
     }
   }
 
-  async resolveConflict(conflictId: string, resolution: SyncConflict): Promise<ApiResponse<unknown>> {
-    return await apiClient.post(`/sync/conflicts/${conflictId}/resolve`, resolution as unknown as Record<string, unknown>);
+  async resolveConflict(
+    conflictId: string,
+    resolution: SyncConflict
+  ): Promise<ApiResponse<unknown>> {
+    return await apiClient.post(
+      `/sync/conflicts/${conflictId}/resolve`,
+      resolution as unknown as Record<string, unknown>
+    );
   }
-} 
+}

@@ -1,17 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { 
-  Card, 
-  Title, 
-  Paragraph, 
-  Text,
-  Chip,
-  Button,
-  IconButton,
-  Surface,
-  Divider
-} from 'react-native-paper';
-import logger from '../utils/logger';
+import React, { useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  Text as RNText,
+  TouchableOpacity,
+} from 'react-native';
 
 interface ScheduleEntry {
   id: string;
@@ -28,25 +23,26 @@ interface ScheduleEntry {
 }
 
 export default function ScheduleScreen() {
-  const [selectedWeek, setSelectedWeek] = useState(0);
+  const [_selectedWeek, _setSelectedWeek] = useState(0);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const [schedule, setSchedule] = useState<ScheduleEntry[]>([
+  const [schedule, _setSchedule] = useState<ScheduleEntry[]>([
     {
       id: '1',
-      date: new Date('2024-01-22'),
-      siteName: 'Office Building A',
+      date: new Date('2025-07-08'),
+      siteName: 'Site A – Central building area',
       startTime: '08:00',
-      endTime: '17:00',
+      endTime: '16:00',
       lunchStart: '12:00',
       lunchEnd: '13:00',
       status: 'scheduled',
       estimatedHours: 8,
-      notes: 'Electrical work on second floor'
+      notes: 'General construction labor',
     },
     {
       id: '2',
-      date: new Date('2024-01-23'),
+      date: new Date('2025-07-09'),
       siteName: 'Construction Site B',
       startTime: '07:30',
       endTime: '16:30',
@@ -54,22 +50,22 @@ export default function ScheduleScreen() {
       lunchEnd: '12:30',
       status: 'confirmed',
       estimatedHours: 8.5,
-      notes: 'Foundation inspection'
+      notes: 'Foundation inspection',
     },
     {
       id: '3',
-      date: new Date('2024-01-24'),
+      date: new Date('2025-07-10'),
       siteName: 'Office Building A',
       startTime: '08:00',
       endTime: '17:00',
       lunchStart: '12:00',
       lunchEnd: '13:00',
-      status: 'scheduled',
-      estimatedHours: 8
+      status: 'completed',
+      estimatedHours: 8,
     },
     {
       id: '4',
-      date: new Date('2024-01-25'),
+      date: new Date('2025-07-11'),
       siteName: 'Residential Complex C',
       startTime: '09:00',
       endTime: '18:00',
@@ -77,11 +73,11 @@ export default function ScheduleScreen() {
       lunchEnd: '14:00',
       status: 'scheduled',
       estimatedHours: 8,
-      notes: 'Plumbing installation'
+      notes: 'Plumbing installation',
     },
     {
       id: '5',
-      date: new Date('2024-01-26'),
+      date: new Date('2025-07-14'),
       siteName: 'Commercial Center E',
       startTime: '08:30',
       endTime: '17:30',
@@ -89,291 +85,272 @@ export default function ScheduleScreen() {
       lunchEnd: '13:30',
       status: 'scheduled',
       estimatedHours: 8,
-      notes: 'HVAC system setup'
-    }
+      notes: 'HVAC system setup',
+    },
   ]);
 
-  const getWeekDates = (weekOffset: number) => {
-    const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay() + 1 + (weekOffset * 7));
-    
-    const weekDates = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + i);
-      weekDates.push(date);
+  // Generate calendar data for July 2025
+  const generateCalendarData = () => {
+    const year = 2025;
+    const month = 6; // July (0-indexed)
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+
+    const calendarDays = [];
+
+    // Add previous month's trailing days
+    const prevMonth = new Date(year, month - 1, 0);
+    for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+      calendarDays.push({
+        date: prevMonth.getDate() - i,
+        isCurrentMonth: false,
+        isWeekend: false,
+        hasWork: false,
+        workHours: 0,
+        status: 'none',
+      });
     }
-    return weekDates;
-  };
 
-  const getScheduleForWeek = (weekOffset: number) => {
-    const weekDates = getWeekDates(weekOffset);
-    if (weekDates.length < 7) return [];
-    
-    const startDate = weekDates[0]!;
-    const endDate = weekDates[6]!;
-    
-    return schedule.filter(entry => 
-      entry.date >= startDate && entry.date <= endDate
-    );
-  };
+    // Add current month's days
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dayOfWeek = date.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-  const getStatusColor = (status: ScheduleEntry['status']) => {
-    switch (status) {
-      case 'confirmed': return '#27ae60';
-      case 'completed': return '#2ecc71';
-      case 'scheduled': return '#3498db';
-      case 'cancelled': return '#e74c3c';
-      default: return '#95a5a6';
+      const scheduleEntry = schedule.find(
+        (entry) =>
+          entry.date.getDate() === day &&
+          entry.date.getMonth() === month &&
+          entry.date.getFullYear() === year
+      );
+
+      calendarDays.push({
+        date: day,
+        fullDate: date,
+        isCurrentMonth: true,
+        isWeekend,
+        hasWork: !!scheduleEntry,
+        workHours: scheduleEntry ? scheduleEntry.estimatedHours : 0,
+        status: scheduleEntry?.status || 'none',
+        scheduleEntry,
+      });
     }
-  };
 
-  const getStatusIcon = (status: ScheduleEntry['status']) => {
-    switch (status) {
-      case 'confirmed': return 'check-circle';
-      case 'completed': return 'check-circle-outline';
-      case 'scheduled': return 'clock-outline';
-      case 'cancelled': return 'cancel';
-      default: return 'help-circle';
+    // Add next month's leading days to fill grid
+    const totalCells = Math.ceil(calendarDays.length / 7) * 7;
+    let nextMonthDay = 1;
+    for (let i = calendarDays.length; i < totalCells; i++) {
+      calendarDays.push({
+        date: nextMonthDay++,
+        isCurrentMonth: false,
+        isWeekend: false,
+        hasWork: false,
+        workHours: 0,
+        status: 'none',
+      });
     }
+
+    return calendarDays;
   };
 
-  const getStatusLabel = (status: ScheduleEntry['status']) => {
-    switch (status) {
-      case 'confirmed': return 'Confirmed';
-      case 'completed': return 'Completed';
-      case 'scheduled': return 'Scheduled';
-      case 'cancelled': return 'Cancelled';
-      default: return 'Unknown';
-    }
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours || '0');
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes || '00'} ${ampm}`;
-  };
-
-  const calculateWorkingHours = (entry: ScheduleEntry) => {
-    const start = new Date(`2000-01-01T${entry.startTime}:00`);
-    const end = new Date(`2000-01-01T${entry.endTime}:00`);
-    let workingMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
-    
-    if (entry.lunchStart && entry.lunchEnd) {
-      const lunchStart = new Date(`2000-01-01T${entry.lunchStart}:00`);
-      const lunchEnd = new Date(`2000-01-01T${entry.lunchEnd}:00`);
-      const lunchMinutes = (lunchEnd.getTime() - lunchStart.getTime()) / (1000 * 60);
-      workingMinutes -= lunchMinutes;
-    }
-    
-    return workingMinutes / 60;
-  };
-
-  const getTotalHoursForWeek = (weekOffset: number) => {
-    const weekSchedule = getScheduleForWeek(weekOffset);
-    return weekSchedule.reduce((total, entry) => {
-      if (entry.status !== 'cancelled') {
-        return total + calculateWorkingHours(entry);
+  const getDateColor = (day: any) => {
+    if (!day.isCurrentMonth) return '#F8F9FA'; // Light gray for other months
+    if (day.hasWork) {
+      switch (day.status) {
+        case 'completed':
+          return '#404B46'; // Dark green for completed
+        case 'confirmed':
+          return '#404B46'; // Dark green for confirmed
+        case 'scheduled':
+          return '#E1F4FF'; // Light blue for scheduled
+        default:
+          return '#E1F4FF';
       }
-      return total;
-    }, 0);
+    }
+    return day.isWeekend ? '#F8F9FA' : '#FFFFFF'; // Light for weekends, white for regular days
+  };
+
+  const getDateTextColor = (day: any) => {
+    if (!day.isCurrentMonth) return '#C0C0C0';
+    if (
+      day.hasWork &&
+      (day.status === 'completed' || day.status === 'confirmed')
+    ) {
+      return '#FFFFFF';
+    }
+    return '#404B46';
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     setRefreshing(false);
   };
 
-  const handleConfirmSchedule = (entryId: string) => {
-    setSchedule(prev => prev.map(entry => 
-      entry.id === entryId ? { ...entry, status: 'confirmed' } : entry
-    ));
-  };
-
-  const weekSchedule = getScheduleForWeek(selectedWeek);
-  const weekDates = getWeekDates(selectedWeek);
-  const totalHours = getTotalHoursForWeek(selectedWeek);
-
-  const getWeekLabel = (weekOffset: number) => {
-    if (weekOffset === 0) return 'This Week';
-    if (weekOffset === 1) return 'Next Week';
-    if (weekOffset === -1) return 'Last Week';
-    return `Week ${weekOffset > 0 ? '+' : ''}${weekOffset}`;
-  };
+  const calendarDays = generateCalendarData();
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   return (
     <View style={styles.container}>
-      <Surface style={styles.header} elevation={2}>
-        <Title style={styles.headerTitle}>Work Schedule</Title>
-        <Paragraph style={styles.headerSubtitle}>
-          View your weekly work schedule and assignments
-        </Paragraph>
-      </Surface>
+      {/* Header */}
+      <View style={styles.header}>
+        <RNText style={styles.headerTitle}>Work shifts</RNText>
 
-      <ScrollView 
+        <View style={styles.monthNavigation}>
+          <TouchableOpacity style={styles.navButton}>
+            <RNText style={styles.navArrow}>‹</RNText>
+          </TouchableOpacity>
+
+          <RNText style={styles.monthYear}>July 2025</RNText>
+
+          <TouchableOpacity style={styles.navButton}>
+            <RNText style={styles.navArrow}>›</RNText>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView
         style={styles.scrollView}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <Card style={styles.navigationCard}>
-          <Card.Content>
-            <View style={styles.weekNavigation}>
-              <Button
-                mode="outlined"
-                onPress={() => setSelectedWeek(selectedWeek - 1)}
-                style={styles.navButton}
-                compact
+        {/* Calendar Grid */}
+        <View style={styles.calendarContainer}>
+          {/* Week day headers */}
+          <View style={styles.weekDaysContainer}>
+            {weekDays.map((day, index) => (
+              <View key={index} style={styles.weekDayHeader}>
+                <RNText style={styles.weekDayText}>{day}</RNText>
+              </View>
+            ))}
+          </View>
+
+          {/* Calendar grid */}
+          <View style={styles.calendarGrid}>
+            {calendarDays.map((day, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.calendarDay,
+                  { backgroundColor: getDateColor(day) },
+                ]}
+                onPress={() =>
+                  day.scheduleEntry && setSelectedDate(day.fullDate)
+                }
               >
-                Previous
-              </Button>
-              
-              <View style={styles.weekInfo}>
-                <Text style={styles.weekLabel}>{getWeekLabel(selectedWeek)}</Text>
-                <Text style={styles.weekDates}>
-                  {weekDates.length >= 7 ? `${formatDate(weekDates[0]!)} - ${formatDate(weekDates[6]!)}` : 'Invalid week'}
-                </Text>
+                <RNText
+                  style={[
+                    styles.calendarDayText,
+                    { color: getDateTextColor(day) },
+                  ]}
+                >
+                  {day.date}
+                </RNText>
+                {day.hasWork && (
+                  <RNText
+                    style={[
+                      styles.workHoursText,
+                      { color: getDateTextColor(day) },
+                    ]}
+                  >
+                    {day.workHours}h
+                  </RNText>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Selected Date Details */}
+        {selectedDate && (
+          <View style={styles.detailsContainer}>
+            <RNText style={styles.detailsTitle}>
+              Shift details for Tuesday, July 8, 2025
+            </RNText>
+
+            <View style={styles.detailsContent}>
+              <View style={styles.detailRow}>
+                <RNText style={styles.detailLabel}>Work hours:</RNText>
+                <RNText style={styles.detailValue}>08:00 – 16:00</RNText>
               </View>
-              
-              <Button
-                mode="outlined"
-                onPress={() => setSelectedWeek(selectedWeek + 1)}
-                style={styles.navButton}
-                compact
-              >
-                Next
-              </Button>
+
+              <View style={styles.detailRow}>
+                <RNText style={styles.detailLabel}>Duration:</RNText>
+                <RNText style={styles.detailValue}>8 hours</RNText>
+              </View>
+
+              <View style={styles.detailRow}>
+                <RNText style={styles.detailLabel}>Role:</RNText>
+                <RNText style={styles.detailValue}>
+                  General construction labor
+                </RNText>
+              </View>
+
+              <View style={styles.detailRow}>
+                <RNText style={styles.detailLabel}>Location:</RNText>
+                <RNText style={styles.detailValue}>
+                  Site A – Central building area
+                </RNText>
+              </View>
             </View>
-          </Card.Content>
-        </Card>
+          </View>
+        )}
 
-        <Card style={styles.summaryCard}>
-          <Card.Content>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{weekSchedule.length}</Text>
-                <Text style={styles.summaryLabel}>Days Scheduled</Text>
+        {/* Schedule List */}
+        <View style={styles.scheduleList}>
+          <RNText style={styles.sectionTitle}>Upcoming Shifts</RNText>
+
+          {schedule.map((entry) => (
+            <TouchableOpacity
+              key={entry.id}
+              style={styles.scheduleItem}
+              onPress={() => setSelectedDate(entry.date)}
+            >
+              <View style={styles.scheduleItemContent}>
+                <View style={styles.scheduleDateContainer}>
+                  <View
+                    style={[
+                      styles.statusDot,
+                      {
+                        backgroundColor:
+                          entry.status === 'completed' ||
+                          entry.status === 'confirmed'
+                            ? '#404B46'
+                            : '#E1F4FF',
+                      },
+                    ]}
+                  />
+                  <View style={styles.scheduleDate}>
+                    <RNText style={styles.scheduleDateText}>
+                      {entry.date.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </RNText>
+                    <RNText style={styles.scheduleTimeText}>
+                      {entry.startTime} - {entry.endTime}
+                    </RNText>
+                  </View>
+                </View>
+
+                <View style={styles.scheduleInfo}>
+                  <RNText style={styles.scheduleTitle}>{entry.siteName}</RNText>
+                  {entry.notes && (
+                    <RNText style={styles.scheduleNotes}>{entry.notes}</RNText>
+                  )}
+                  <View style={styles.hoursContainer}>
+                    <RNText style={styles.hoursText}>
+                      {entry.estimatedHours}h
+                    </RNText>
+                  </View>
+                </View>
               </View>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{totalHours.toFixed(1)}h</Text>
-                <Text style={styles.summaryLabel}>Total Hours</Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>
-                  {weekSchedule.filter(e => e.status === 'confirmed').length}
-                </Text>
-                <Text style={styles.summaryLabel}>Confirmed</Text>
-              </View>
-            </View>
-          </Card.Content>
-        </Card>
-
-        <View style={styles.scheduleContainer}>
-          {weekSchedule.length === 0 ? (
-            <Card style={styles.emptyCard}>
-              <Card.Content style={styles.emptyContent}>
-                <IconButton
-                  icon="calendar-blank"
-                  size={60}
-                  iconColor="#95a5a6"
-                />
-                <Text style={styles.emptyTitle}>No schedule for this week</Text>
-                <Paragraph style={styles.emptyText}>
-                  You have no scheduled work for the selected week
-                </Paragraph>
-              </Card.Content>
-            </Card>
-          ) : (
-            weekSchedule.map(entry => {
-              const workingHours = calculateWorkingHours(entry);
-              
-              return (
-                <Card key={entry.id} style={styles.scheduleCard}>
-                  <Card.Content>
-                    <View style={styles.entryHeader}>
-                      <View style={styles.entryInfo}>
-                        <Text style={styles.entryDate}>{formatDate(entry.date)}</Text>
-                        <Text style={styles.entrySite}>📍 {entry.siteName}</Text>
-                      </View>
-                      <Chip
-                        icon={getStatusIcon(entry.status)}
-                        style={[styles.statusChip, { backgroundColor: getStatusColor(entry.status) }]}
-                        textStyle={styles.chipText}
-                      >
-                        {getStatusLabel(entry.status)}
-                      </Chip>
-                    </View>
-
-                    <Divider style={styles.divider} />
-
-                    <View style={styles.timeContainer}>
-                      <View style={styles.timeRow}>
-                        <View style={styles.timeItem}>
-                          <Text style={styles.timeLabel}>Start Time</Text>
-                          <Text style={styles.timeValue}>{formatTime(entry.startTime)}</Text>
-                        </View>
-                        <View style={styles.timeItem}>
-                          <Text style={styles.timeLabel}>End Time</Text>
-                          <Text style={styles.timeValue}>{formatTime(entry.endTime)}</Text>
-                        </View>
-                        <View style={styles.timeItem}>
-                          <Text style={styles.timeLabel}>Working Hours</Text>
-                          <Text style={styles.timeValue}>{workingHours.toFixed(1)}h</Text>
-                        </View>
-                      </View>
-
-                      {entry.lunchStart && entry.lunchEnd && (
-                        <View style={styles.lunchRow}>
-                          <Text style={styles.lunchLabel}>
-                            🍽️ Lunch: {formatTime(entry.lunchStart)} - {formatTime(entry.lunchEnd)}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {entry.notes && (
-                      <View style={styles.notesContainer}>
-                        <Text style={styles.notesLabel}>Notes:</Text>
-                        <Text style={styles.notesText}>{entry.notes}</Text>
-                      </View>
-                    )}
-                  </Card.Content>
-
-                  <Card.Actions>
-                    {entry.status === 'scheduled' && (
-                      <Button
-                        mode="outlined"
-                        onPress={() => handleConfirmSchedule(entry.id)}
-                        style={styles.confirmButton}
-                        compact
-                      >
-                        Confirm
-                      </Button>
-                    )}
-                    <Button
-                      mode="text"
-                      onPress={() => logger.info('View schedule entry details', { entryId: entry.id }, 'schedule')}
-                      compact
-                    >
-                      Details
-                    </Button>
-                  </Card.Actions>
-                </Card>
-              );
-            })
-          )}
+            </TouchableOpacity>
+          ))}
         </View>
       </ScrollView>
     </View>
@@ -383,173 +360,220 @@ export default function ScheduleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#FFFFFF',
   },
   header: {
-    padding: 20,
-    backgroundColor: 'white',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: '#FFFFFF',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
+    fontFamily: 'Poppins-Medium',
+    fontSize: 25,
+    color: '#000000',
+    marginBottom: 20,
+    textAlign: 'center',
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginTop: 4,
+  monthNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E1F4FF',
+    borderRadius: 100,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  navButton: {
+    padding: 8,
+  },
+  navArrow: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 18,
+    color: '#000000',
+  },
+  monthYear: {
+    fontFamily: 'Poppins-Regular',
+    fontSize: 15,
+    letterSpacing: -1,
+    color: '#000000',
+    marginHorizontal: 20,
+    minWidth: 80,
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,
-    padding: 16,
   },
-  navigationCard: {
-    marginBottom: 16,
+  calendarContainer: {
+    backgroundColor: '#FFFFFF',
+    margin: 16,
+    borderRadius: 37,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  weekNavigation: {
+  weekDaysContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 10,
   },
-  navButton: {
-    borderColor: '#3498db',
-  },
-  weekInfo: {
-    alignItems: 'center',
+  weekDayHeader: {
     flex: 1,
-  },
-  weekLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  weekDates: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    marginTop: 4,
-  },
-  summaryCard: {
-    marginBottom: 16,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  summaryItem: {
     alignItems: 'center',
+    paddingVertical: 8,
   },
-  summaryValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
+  weekDayText: {
+    fontFamily: 'Poppins-Medium',
+    fontSize: 10,
+    letterSpacing: -0.5,
+    color: '#404B46',
   },
-  summaryLabel: {
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarDay: {
+    width: '14.28%',
+    height: 45,
+    borderRadius: 8,
+    margin: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  calendarDayText: {
+    fontFamily: 'Poppins-Medium',
     fontSize: 12,
-    color: '#7f8c8d',
-    marginTop: 4,
+    lineHeight: 16,
   },
-  scheduleContainer: {
+  workHoursText: {
+    fontFamily: 'Poppins-Light',
+    fontSize: 8,
+    position: 'absolute',
+    bottom: 4,
+  },
+  detailsContainer: {
+    backgroundColor: '#E1F4FF',
+    margin: 16,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  detailsTitle: {
+    fontFamily: 'Poppins-Medium',
+    fontSize: 16,
+    color: '#404B46',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  detailsContent: {
     gap: 12,
   },
-  scheduleCard: {
-    marginBottom: 12,
-  },
-  entryHeader: {
+  detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    alignItems: 'center',
   },
-  entryInfo: {
-    flex: 1,
+  detailLabel: {
+    fontFamily: 'Poppins-Light',
+    fontSize: 14,
+    color: '#404B46',
   },
-  entryDate: {
+  detailValue: {
+    fontFamily: 'Poppins-Medium',
+    fontSize: 14,
+    color: '#404B46',
+  },
+  scheduleList: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  sectionTitle: {
+    fontFamily: 'Poppins-Medium',
     fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 4,
-  },
-  entrySite: {
-    fontSize: 14,
-    color: '#7f8c8d',
-  },
-  statusChip: {
-    height: 32,
-  },
-  chipText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  divider: {
-    marginVertical: 12,
-  },
-  timeContainer: {
-    marginBottom: 12,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  timeItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  timeLabel: {
-    fontSize: 12,
-    color: '#7f8c8d',
-    marginBottom: 4,
-  },
-  timeValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  lunchRow: {
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  lunchLabel: {
-    fontSize: 14,
-    color: '#7f8c8d',
-    fontStyle: 'italic',
-  },
-  notesContainer: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: '#ecf0f1',
-    borderRadius: 8,
-  },
-  notesLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 4,
-  },
-  notesText: {
-    fontSize: 14,
-    color: '#34495e',
-    lineHeight: 18,
-  },
-  confirmButton: {
-    borderColor: '#27ae60',
-  },
-  emptyCard: {
-    marginTop: 40,
-  },
-  emptyContent: {
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#7f8c8d',
-    marginBottom: 8,
-  },
-  emptyText: {
+    color: '#000000',
+    marginBottom: 16,
     textAlign: 'center',
-    color: '#7f8c8d',
   },
-}); 
+  scheduleItem: {
+    backgroundColor: '#FAF5ED',
+    borderRadius: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  scheduleItemContent: {
+    flexDirection: 'row',
+    padding: 16,
+    alignItems: 'center',
+  },
+  scheduleDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 12,
+  },
+  scheduleDate: {
+    alignItems: 'center',
+    minWidth: 70,
+  },
+  scheduleDateText: {
+    fontFamily: 'Poppins-Medium',
+    fontSize: 12,
+    color: '#404B46',
+    textAlign: 'center',
+  },
+  scheduleTimeText: {
+    fontFamily: 'Poppins-Light',
+    fontSize: 10,
+    color: '#666666',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  scheduleInfo: {
+    flex: 1,
+  },
+  scheduleTitle: {
+    fontFamily: 'Poppins-Medium',
+    fontSize: 14,
+    color: '#000000',
+    marginBottom: 4,
+  },
+  scheduleNotes: {
+    fontFamily: 'Poppins-Light',
+    fontSize: 12,
+    color: '#666666',
+    marginBottom: 8,
+  },
+  hoursContainer: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E1F4FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  hoursText: {
+    fontFamily: 'Poppins-Medium',
+    fontSize: 10,
+    color: '#404B46',
+  },
+});

@@ -301,6 +301,14 @@ Generated on: ${new Date().toLocaleString()}
     // For now, just copy to clipboard (would need Clipboard API)
     return Promise.resolve();
   } catch (error) {
+
+    logger.error('Export operation failed', {
+
+      error: error instanceof Error ? error.message : 'Unknown error'
+
+    }, 'export');
+
     throw error;
+
   }
 }; 

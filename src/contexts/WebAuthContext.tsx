@@ -53,6 +53,9 @@ export const WebAuthProvider: React.FC<WebAuthProviderProps> = ({ children }) =>
         throw new Error(result.error || 'Login failed');
       }
     } catch (error) {
+      logger.error('Login failed', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 'webAuth');
       throw error;
     } finally {
       setIsLoading(false);

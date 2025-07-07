@@ -4,7 +4,8 @@ import { View, Text, StyleSheet, Platform, Linking } from 'react-native';
 const LandingPage: React.FC = () => {
   const handleDownloadAndroid = () => {
     // Замените на ссылку вашего APK или Google Play Store
-    const androidUrl = 'https://play.google.com/store/apps/details?id=com.snow1e77.WorkTimeTracker';
+    const androidUrl =
+      'https://play.google.com/store/apps/details?id=com.snow1e77.WorkTimeTracker';
     if (Platform.OS === 'web') {
       window.open(androidUrl, '_blank');
     } else {
@@ -28,9 +29,9 @@ const LandingPage: React.FC = () => {
     }
   };
 
-  if (Platform.OS === 'web') {
-    // Ensure body can scroll
-    React.useEffect(() => {
+  // Ensure body can scroll on web
+  React.useEffect(() => {
+    if (Platform.OS === 'web') {
       // Reset any conflicting styles
       document.body.style.overflow = 'auto';
       document.body.style.height = 'auto';
@@ -40,7 +41,7 @@ const LandingPage: React.FC = () => {
       document.documentElement.style.overflow = 'auto';
       document.documentElement.style.margin = '0';
       document.documentElement.style.padding = '0';
-      
+
       // Add global scroll behavior
       const style = document.createElement('style');
       style.textContent = `
@@ -54,7 +55,7 @@ const LandingPage: React.FC = () => {
         }
       `;
       document.head.appendChild(style);
-      
+
       return () => {
         // Cleanup on unmount
         document.body.style.overflow = '';
@@ -69,8 +70,10 @@ const LandingPage: React.FC = () => {
           style.parentNode.removeChild(style);
         }
       };
-    }, []);
+    }
+  }, []);
 
+  if (Platform.OS === 'web') {
     return (
       <div style={webStyles.container}>
         {/* Header */}
@@ -94,11 +97,15 @@ const LandingPage: React.FC = () => {
               Professional Time Tracking Solution
             </h1>
             <p style={webStyles.heroSubtitle}>
-              Streamline your workforce management with our comprehensive time tracking application. 
-              Perfect for construction, field work, and remote teams.
+              Streamline your workforce management with our comprehensive time
+              tracking application. Perfect for construction, field work, and
+              remote teams.
             </p>
             <div style={webStyles.downloadButtons}>
-              <button style={webStyles.downloadButton} onClick={handleDownloadAndroid}>
+              <button
+                style={webStyles.downloadButton}
+                onClick={handleDownloadAndroid}
+              >
                 <div style={webStyles.buttonContent}>
                   <span style={webStyles.buttonIcon}>📱</span>
                   <div>
@@ -107,7 +114,10 @@ const LandingPage: React.FC = () => {
                   </div>
                 </div>
               </button>
-              <button style={webStyles.downloadButton} onClick={handleDownloadIOS}>
+              <button
+                style={webStyles.downloadButton}
+                onClick={handleDownloadIOS}
+              >
                 <div style={webStyles.buttonContent}>
                   <span style={webStyles.buttonIcon}>🍎</span>
                   <div>
@@ -136,14 +146,16 @@ const LandingPage: React.FC = () => {
                 <div style={webStyles.featureIcon}>📍</div>
                 <h3 style={webStyles.featureTitle}>Location Monitoring</h3>
                 <p style={webStyles.featureDescription}>
-                  Real-time location tracking to ensure workers are at designated sites
+                  Real-time location tracking to ensure workers are at
+                  designated sites
                 </p>
               </div>
               <div style={webStyles.featureCard}>
                 <div style={webStyles.featureIcon}>📊</div>
                 <h3 style={webStyles.featureTitle}>Reporting</h3>
                 <p style={webStyles.featureDescription}>
-                  Comprehensive reports and analytics for better workforce management
+                  Comprehensive reports and analytics for better workforce
+                  management
                 </p>
               </div>
               <div style={webStyles.featureCard}>
@@ -176,10 +188,14 @@ const LandingPage: React.FC = () => {
           <div style={webStyles.ctaContent}>
             <h2 style={webStyles.ctaTitle}>Ready to Get Started?</h2>
             <p style={webStyles.ctaSubtitle}>
-              Download our app today and revolutionize your time tracking process
+              Download our app today and revolutionize your time tracking
+              process
             </p>
             <div style={webStyles.downloadButtons}>
-              <button style={webStyles.downloadButton} onClick={handleDownloadAndroid}>
+              <button
+                style={webStyles.downloadButton}
+                onClick={handleDownloadAndroid}
+              >
                 <div style={webStyles.buttonContent}>
                   <span style={webStyles.buttonIcon}>📱</span>
                   <div>
@@ -188,7 +204,10 @@ const LandingPage: React.FC = () => {
                   </div>
                 </div>
               </button>
-              <button style={webStyles.downloadButton} onClick={handleDownloadIOS}>
+              <button
+                style={webStyles.downloadButton}
+                onClick={handleDownloadIOS}
+              >
                 <div style={webStyles.buttonContent}>
                   <span style={webStyles.buttonIcon}>🍎</span>
                   <div>
@@ -519,4 +538,4 @@ const webStyles = {
   } as React.CSSProperties,
 };
 
-export default LandingPage; 
+export default LandingPage;

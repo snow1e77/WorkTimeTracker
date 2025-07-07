@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import logger from '../utils/logger';
 
 // Типы уведомлений
-export type NotificationType = 
+export type NotificationType =
   | 'shift_reminder'
   | 'break_reminder'
   | 'gps_event'
@@ -55,7 +55,10 @@ export interface ScheduledNotificationData {
   body: string;
   type: NotificationType;
   data?: NotificationData;
-  trigger: Date | Notifications.TimeIntervalTriggerInput | Notifications.DateTriggerInput;
+  trigger:
+    | Date
+    | Notifications.TimeIntervalTriggerInput
+    | Notifications.DateTriggerInput;
   categoryId?: string;
 }
 
@@ -82,11 +85,11 @@ export class NotificationService {
       // Настройка обработчика уведомлений
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
-                shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+          shouldShowBanner: true,
+          shouldShowList: true,
         }),
       });
 
@@ -95,11 +98,11 @@ export class NotificationService {
 
       // Запрос разрешений
       const { status } = await this.requestPermissions();
-      
+
       if (status === 'granted') {
         // Получение push токена
         this.expoPushToken = await this.getPushToken();
-        
+
         // Сохранение токена в БД
         if (this.expoPushToken) {
           await this.savePushToken(this.expoPushToken);
@@ -111,9 +114,13 @@ export class NotificationService {
 
       this.isInitialized = true;
     } catch (error) {
-      logger.error('Failed to initialize notification service', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, 'notifications');
+      logger.error(
+        'Failed to initialize notification service',
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        'notifications'
+      );
     }
   }
 
@@ -175,14 +182,15 @@ export class NotificationService {
   // Запрос разрешений на уведомления
   private async requestPermissions(): Promise<{ status: string }> {
     if (Device.isDevice) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-      
+
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
-      
+
       return { status: finalStatus };
     } else {
       return { status: 'granted' }; // Для симулятора
@@ -202,9 +210,13 @@ export class NotificationService {
 
       return token.data;
     } catch (error) {
-      logger.error('Failed to get push token', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, 'notifications');
+      logger.error(
+        'Failed to get push token',
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        'notifications'
+      );
       return null;
     }
   }
@@ -213,39 +225,47 @@ export class NotificationService {
   private async savePushToken(token: string): Promise<void> {
     try {
       await AsyncStorage.setItem('expoPushToken', token);
-      
+
       // Сохранение в БД для отправки с сервера
       const authService = AuthService.getInstance();
       const user = await authService.getCurrentUser();
-      
+
       if (user) {
         // Здесь можно добавить API вызов для сохранения токена на сервере
       }
     } catch (error) {
-      logger.error('Failed to save push token', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        token: token.substring(0, 10) + '...' // Log only first 10 chars for security
-      }, 'notifications');
+      logger.error(
+        'Failed to save push token',
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          token: token.substring(0, 10) + '...', // Log only first 10 chars for security
+        },
+        'notifications'
+      );
     }
   }
 
   // Настройка обработчиков уведомлений
   private setupNotificationHandlers(): void {
     // Обработчик нажатия на уведомление
-    Notifications.addNotificationResponseReceivedListener(response => {
+    Notifications.addNotificationResponseReceivedListener((response) => {
       const { notification } = response;
       const data = notification.request.content.data;
-      
+
       this.handleNotificationPress(data);
     });
 
     // Обработчик получения уведомления в foreground
-    Notifications.addNotificationReceivedListener(notification => {
+    Notifications.addNotificationReceivedListener((notification) => {
       const data = notification.request.content.data;
-      logger.info('Notification received in foreground', {
-        type: data?.type,
-        title: notification.request.content.title
-      }, 'notifications');
+      logger.info(
+        'Notification received in foreground',
+        {
+          type: data?.type,
+          title: notification.request.content.title,
+        },
+        'notifications'
+      );
     });
   }
 
@@ -276,8 +296,8 @@ export class NotificationService {
     data?: NotificationData
   ): Promise<string> {
     try {
-      const channelId = this.getChannelIdByType(type);
-      
+      const _channelId = this.getChannelIdByType(type);
+
       const notificationData: NotificationData = {
         type,
         timestamp: new Date().toISOString(),
@@ -297,28 +317,39 @@ export class NotificationService {
 
       return identifier;
     } catch (error) {
+      logger.error(
+        'Failed to send local notification',
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          title,
+          type,
+        },
+        'notifications'
+      );
       throw error;
     }
   }
 
   // Планирование уведомления
-  public async scheduleNotification(notificationData: ScheduledNotificationData): Promise<string> {
+  public async scheduleNotification(
+    notificationData: ScheduledNotificationData
+  ): Promise<string> {
     try {
       const channelId = this.getChannelIdByType(notificationData.type);
-      
+
       let trigger: Notifications.NotificationTriggerInput;
-      
+
       if (notificationData.trigger instanceof Date) {
         // Для Date используем DateTriggerInput
         trigger = {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: notificationData.trigger
+          date: notificationData.trigger,
         } as Notifications.DateTriggerInput;
       } else {
         // Уже правильно типизированный trigger
         trigger = notificationData.trigger;
       }
-      
+
       const identifier = await Notifications.scheduleNotificationAsync({
         content: {
           title: notificationData.title,
@@ -332,6 +363,15 @@ export class NotificationService {
 
       return identifier;
     } catch (error) {
+      logger.error(
+        'Failed to schedule notification',
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          title: notificationData.title,
+          type: notificationData.type,
+        },
+        'notifications'
+      );
       throw error;
     }
   }
@@ -341,10 +381,14 @@ export class NotificationService {
     try {
       await Notifications.cancelScheduledNotificationAsync(identifier);
     } catch (error) {
-      logger.error('Failed to cancel notification', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        identifier
-      }, 'notifications');
+      logger.error(
+        'Failed to cancel notification',
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          identifier,
+        },
+        'notifications'
+      );
     }
   }
 
@@ -353,9 +397,13 @@ export class NotificationService {
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
     } catch (error) {
-      logger.error('Failed to cancel all notifications', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, 'notifications');
+      logger.error(
+        'Failed to cancel all notifications',
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        'notifications'
+      );
     }
   }
 
@@ -381,13 +429,13 @@ export class NotificationService {
     siteName: string,
     shiftType: 'start' | 'end' = 'start'
   ): Promise<string> {
-    const title = shiftType === 'start' 
-      ? 'Shift Starting Soon' 
-      : 'Shift Ending Soon';
-    
-    const body = shiftType === 'start'
-      ? `Your shift at ${siteName} starts in 15 minutes`
-      : `Your shift at ${siteName} ends in 15 minutes`;
+    const title =
+      shiftType === 'start' ? 'Shift Starting Soon' : 'Shift Ending Soon';
+
+    const body =
+      shiftType === 'start'
+        ? `Your shift at ${siteName} starts in 15 minutes`
+        : `Your shift at ${siteName} ends in 15 minutes`;
 
     return this.scheduleNotification({
       id: `shift_${shiftType}_${Date.now()}`,
@@ -405,17 +453,18 @@ export class NotificationService {
     siteName: string,
     timestamp: Date = new Date()
   ): Promise<string> {
-    const title = type === 'entry' ? 'Site Entry Detected' : 'Site Exit Detected';
-    const body = type === 'entry' 
-      ? `You have entered ${siteName}` 
-      : `You have left ${siteName}`;
+    const title =
+      type === 'entry' ? 'Site Entry Detected' : 'Site Exit Detected';
+    const body =
+      type === 'entry'
+        ? `You have entered ${siteName}`
+        : `You have left ${siteName}`;
 
-    return this.sendLocalNotification(
-      title,
-      body,
-      'gps_event',
-      { eventType: type, siteName, timestamp: timestamp.toISOString() }
-    );
+    return this.sendLocalNotification(title, body, 'gps_event', {
+      eventType: type,
+      siteName,
+      timestamp: timestamp.toISOString(),
+    });
   }
 
   // Уведомление о нарушении
@@ -424,14 +473,13 @@ export class NotificationService {
     description: string,
     severity: 'low' | 'medium' | 'high' = 'medium'
   ): Promise<string> {
-    const title = severity === 'high' ? '🚨 Urgent Violation Alert' : '⚠️ Violation Alert';
-    
-    return this.sendLocalNotification(
-      title,
-      description,
-      'violation_alert',
-      { violationType, severity }
-    );
+    const title =
+      severity === 'high' ? '🚨 Urgent Violation Alert' : '⚠️ Violation Alert';
+
+    return this.sendLocalNotification(title, description, 'violation_alert', {
+      violationType,
+      severity,
+    });
   }
 
   // Уведомление о сверхурочных
@@ -442,12 +490,10 @@ export class NotificationService {
     const title = '⏰ Overtime Alert';
     const body = `You have worked ${hours} hours today at ${siteName}. Consider taking a break.`;
 
-    return this.sendLocalNotification(
-      title,
-      body,
-      'overtime_alert',
-      { hours, siteName }
-    );
+    return this.sendLocalNotification(title, body, 'overtime_alert', {
+      hours,
+      siteName,
+    });
   }
 
   // Уведомление о назначении
@@ -478,12 +524,11 @@ export class NotificationService {
       body += `\n${details}`;
     }
 
-    return this.sendLocalNotification(
-      title,
-      body,
-      'assignment_update',
-      { siteName, assignmentType, details }
-    );
+    return this.sendLocalNotification(title, body, 'assignment_update', {
+      siteName,
+      assignmentType,
+      details,
+    });
   }
 
   // Уведомление о перерыве
@@ -509,15 +554,17 @@ export class NotificationService {
   }> {
     try {
       const settings = await AsyncStorage.getItem('notificationSettings');
-      return settings ? JSON.parse(settings) : {
-        enabled: true,
-        sound: true,
-        vibration: true,
-        shiftReminders: true,
-        breakReminders: true,
-        gpsEvents: true,
-        violations: true,
-      };
+      return settings
+        ? JSON.parse(settings)
+        : {
+            enabled: true,
+            sound: true,
+            vibration: true,
+            shiftReminders: true,
+            breakReminders: true,
+            gpsEvents: true,
+            violations: true,
+          };
     } catch (error) {
       return {
         enabled: true,
@@ -542,12 +589,19 @@ export class NotificationService {
     violations: boolean;
   }): Promise<void> {
     try {
-      await AsyncStorage.setItem('notificationSettings', JSON.stringify(settings));
+      await AsyncStorage.setItem(
+        'notificationSettings',
+        JSON.stringify(settings)
+      );
     } catch (error) {
-      logger.error('Failed to save notification settings', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        settings
-      }, 'notifications');
+      logger.error(
+        'Failed to save notification settings',
+        {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          settings,
+        },
+        'notifications'
+      );
     }
   }
 
@@ -564,7 +618,7 @@ export class NotificationService {
   }> {
     const { status } = await Notifications.getPermissionsAsync();
     const settings = await this.getNotificationSettings();
-    
+
     return {
       isEnabled: settings.enabled,
       hasPermission: status === 'granted',
@@ -584,4 +638,4 @@ export class NotificationService {
 }
 
 // Экспорт singleton instance
-export const notificationService = NotificationService.getInstance(); 
+export const notificationService = NotificationService.getInstance();
