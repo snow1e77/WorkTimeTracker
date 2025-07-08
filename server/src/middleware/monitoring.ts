@@ -19,7 +19,7 @@ class MonitoringService {
 
   logRequest(metrics: RequestMetrics) {
     this.metrics.push(metrics);
-    
+
     // Сохраняем только последние N метрик в памяти
     if (this.metrics.length > this.maxMetrics) {
       this.metrics = this.metrics.slice(-this.maxMetrics);
@@ -27,11 +27,13 @@ class MonitoringService {
 
     // Логируем медленные запросы
     if (metrics.duration > 1000) {
-      }
+      // TODO: Логирование медленных запросов
+    }
 
     // Логируем ошибки
     if (metrics.statusCode >= 400) {
-      }
+      // TODO: Логирование ошибок
+    }
   }
 
   getMetrics(limit = 100): RequestMetrics[] {
@@ -40,13 +42,16 @@ class MonitoringService {
 
   getAverageResponseTime(): number {
     if (this.metrics.length === 0) return 0;
-    const total = this.metrics.reduce((sum, metric) => sum + metric.duration, 0);
+    const total = this.metrics.reduce(
+      (sum, metric) => sum + metric.duration,
+      0
+    );
     return total / this.metrics.length;
   }
 
   getErrorRate(): number {
     if (this.metrics.length === 0) return 0;
-    const errors = this.metrics.filter(m => m.statusCode >= 400).length;
+    const errors = this.metrics.filter((m) => m.statusCode >= 400).length;
     return (errors / this.metrics.length) * 100;
   }
 }
@@ -54,20 +59,24 @@ class MonitoringService {
 const monitoringService = new MonitoringService();
 
 // Middleware для метрик производительности
-export const performanceMonitoring = (req: Request, res: Response, next: NextFunction) => {
+export const performanceMonitoring = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const startTime = performance.now();
   const originalSend = res.send;
   let responseSize = 0;
 
   // Переопределяем метод send для подсчета размера ответа
-  res.send = function(data) {
+  res.send = function (data) {
     responseSize = Buffer.byteLength(data || '', 'utf8');
     return originalSend.call(this, data);
   };
 
   res.on('finish', () => {
     const duration = performance.now() - startTime;
-    
+
     const metrics: RequestMetrics = {
       timestamp: new Date(),
       method: req.method,
@@ -77,7 +86,7 @@ export const performanceMonitoring = (req: Request, res: Response, next: NextFun
       duration: Math.round(duration),
       statusCode: res.statusCode,
       userId: req.user?.id,
-      responseSize
+      responseSize,
     };
 
     monitoringService.logRequest(metrics);
@@ -94,15 +103,15 @@ export const getMetricsHandler = (req: Request, res: Response): void => {
   }
 
   const limit = parseInt(req.query.limit as string) || 100;
-  
+
   res.json({
     success: true,
     data: {
       metrics: monitoringService.getMetrics(limit),
       averageResponseTime: monitoringService.getAverageResponseTime(),
       errorRate: monitoringService.getErrorRate(),
-      totalRequests: monitoringService.getMetrics().length
-    }
+      totalRequests: monitoringService.getMetrics().length,
+    },
   });
 };
 
@@ -110,7 +119,7 @@ export const getMetricsHandler = (req: Request, res: Response): void => {
 export const healthCheck = (req: Request, res: Response): void => {
   const uptime = process.uptime();
   const memoryUsage = process.memoryUsage();
-  
+
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -118,11 +127,11 @@ export const healthCheck = (req: Request, res: Response): void => {
     memory: {
       rss: Math.round(memoryUsage.rss / 1024 / 1024) + ' MB',
       heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024) + ' MB',
-      heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024) + ' MB'
+      heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024) + ' MB',
     },
     averageResponseTime: monitoringService.getAverageResponseTime(),
-    errorRate: monitoringService.getErrorRate()
+    errorRate: monitoringService.getErrorRate(),
   });
 };
 
-export { monitoringService }; 
+export { monitoringService };

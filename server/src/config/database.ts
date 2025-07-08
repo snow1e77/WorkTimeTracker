@@ -18,7 +18,7 @@ const dbConfig: PoolConfig = {
 export const pool = new Pool(dbConfig);
 
 // Обработка ошибок подключения
-pool.on('error', (err) => {
+pool.on('error', (_err) => {
   process.exit(-1);
 });
 
@@ -35,19 +35,18 @@ export const testConnection = async (): Promise<boolean> => {
 };
 
 // Выполнение запроса с обработкой ошибок
-export const query = async (text: string, params?: any[]): Promise<any> => {
-  const start = Date.now();
-  try {
-    const res = await pool.query(text, params);
-    const duration = Date.now() - start;
-    return res;
-  } catch (error) {
-    throw error;
-  }
+export const query = async (
+  text: string,
+  params?: unknown[]
+): Promise<unknown> => {
+  const res = await pool.query(text, params);
+  return res;
 };
 
 // Транзакция
-export const transaction = async (callback: (client: any) => Promise<any>): Promise<any> => {
+export const transaction = async (
+  callback: (client: unknown) => Promise<unknown>
+): Promise<unknown> => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -62,4 +61,4 @@ export const transaction = async (callback: (client: any) => Promise<any>): Prom
   }
 };
 
-export default pool; 
+export default pool;

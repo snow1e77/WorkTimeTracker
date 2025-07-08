@@ -4,78 +4,84 @@ import { UserService } from '../services/UserService';
 import { JWTPayload, User } from '../types';
 
 // Расширяем интерфейс Request для добавления информации о пользователе
-declare global {
-  namespace Express {
-    interface Request {
-      user?: User;
-      jwt?: JWTPayload;
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    user?: User;
+    jwt?: JWTPayload;
   }
 }
 
 // Middleware для проверки JWT токена
-export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
+export const authenticateToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader) {
       return res.status(401).json({
         success: false,
-        error: 'Access token required'
+        error: 'Access token required',
       });
     }
 
     const token = authHeader.split(' ')[1]; // Извлекаем токен из "Bearer TOKEN"
-    
+
     if (!token) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid authorization header format'
+        error: 'Invalid authorization header format',
       });
     }
 
     // Проверяем токен
     const decoded = AuthService.verifyAccessToken(token);
-    
+
     if (!decoded) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid or expired access token'
+        error: 'Invalid or expired access token',
       });
     }
 
     // Получаем актуальную информацию о пользователе
     const user = await UserService.getUserById(decoded.userId);
-    
+
     if (!user) {
       return res.status(401).json({
         success: false,
-        error: 'User not found'
+        error: 'User not found',
       });
     }
 
     if (!user.isActive) {
       return res.status(401).json({
         success: false,
-        error: 'User account is deactivated'
+        error: 'User account is deactivated',
       });
     }
 
     // Добавляем информацию о пользователе в request
     req.user = user;
     req.jwt = decoded;
-    
+
     return next();
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Authentication failed'
+      error: 'Authentication failed',
     });
   }
 };
 
 // Проверка роли администратора
-export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+export const requireAdmin = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   if (!req.user) {
     res.status(401).json({ error: 'Пользователь не аутентифицирован' });
     return;
@@ -90,7 +96,11 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
 };
 
 // Проверка роли суперадмина
-export const requireSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
+export const requireSuperAdmin = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   if (!req.user) {
     res.status(401).json({ error: 'Пользователь не аутентифицирован' });
     return;
@@ -105,13 +115,21 @@ export const requireSuperAdmin = (req: Request, res: Response, next: NextFunctio
 };
 
 // Проверка роли прораба
-export const requireForeman = (req: Request, res: Response, next: NextFunction) => {
+export const requireForeman = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   if (!req.user) {
     res.status(401).json({ error: 'Пользователь не аутентифицирован' });
     return;
   }
 
-  if (req.user.role !== 'foreman' && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+  if (
+    req.user.role !== 'foreman' &&
+    req.user.role !== 'admin' &&
+    req.user.role !== 'superadmin'
+  ) {
     res.status(403).json({ error: 'Требуются права прораба или выше' });
     return;
   }
@@ -120,7 +138,9 @@ export const requireForeman = (req: Request, res: Response, next: NextFunction) 
 };
 
 // Универсальная проверка ролей
-export const requireRole = (...roles: Array<'worker' | 'foreman' | 'admin' | 'superadmin'>) => {
+export const requireRole = (
+  ...roles: Array<'worker' | 'foreman' | 'admin' | 'superadmin'>
+) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       res.status(401).json({ error: 'Пользователь не аутентифицирован' });
@@ -128,8 +148,8 @@ export const requireRole = (...roles: Array<'worker' | 'foreman' | 'admin' | 'su
     }
 
     if (!roles.includes(req.user.role)) {
-      res.status(403).json({ 
-        error: `Недостаточно прав. Требуется одна из ролей: ${roles.join(', ')}` 
+      res.status(403).json({
+        error: `Недостаточно прав. Требуется одна из ролей: ${roles.join(', ')}`,
       });
       return;
     }
@@ -144,12 +164,12 @@ export const requireOwnershipOrAdmin = (userIdParam: string = 'userId') => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
     }
 
     const requestedUserId = req.params[userIdParam];
-    
+
     // Админ может получить любые данные
     if (req.user.role === 'admin') {
       return next();
@@ -162,31 +182,35 @@ export const requireOwnershipOrAdmin = (userIdParam: string = 'userId') => {
 
     return res.status(403).json({
       success: false,
-      error: 'Access denied: insufficient permissions'
+      error: 'Access denied: insufficient permissions',
     });
   };
 };
 
 // Опциональная аутентификация (не требует токен, но если он есть, то проверяет его)
-export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
+export const optionalAuth = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader) {
       return next(); // Продолжаем без аутентификации
     }
 
     const token = authHeader.split(' ')[1];
-    
+
     if (!token) {
       return next(); // Продолжаем без аутентификации
     }
 
     const decoded = AuthService.verifyAccessToken(token);
-    
+
     if (decoded) {
       const user = await UserService.getUserById(decoded.userId);
-      
+
       if (user && user.isActive) {
         req.user = user;
         req.jwt = decoded;
@@ -201,26 +225,26 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
 };
 
 // Middleware для логирования запросов с информацией о пользователе
-export const logUserAction = (action: string) => {
+export const logUserAction = (_action: string) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const user = req.user;
-    const timestamp = new Date().toISOString();
-    const ip = req.ip || req.connection.remoteAddress;
-    
+    // Логирование реализовано в основном middleware логирования
     return next();
   };
 };
 
 // Middleware для валидации JSON
-export const validateJSON = (req: Request, res: Response, next: NextFunction) => {
+export const validateJSON = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
     if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Request body is required'
+        error: 'Request body is required',
       });
     }
   }
   return next();
-}; 
-
+};

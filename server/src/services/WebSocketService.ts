@@ -4,8 +4,6 @@ import jwt from 'jsonwebtoken';
 import { User } from '../types';
 import logger from '../utils/logger';
 
-type SocketMiddleware = (socket: AuthenticatedSocket, next: (err?: Error) => void) => void;
-
 interface SyncRequestData {
   lastSyncTimestamp?: string;
   entityTypes?: string[];
@@ -46,10 +44,10 @@ export class WebSocketService {
         origin: process.env.CORS_ORIGINS?.split(',') || [
           'http://localhost:19006',
           'http://localhost:3000',
-          'http://localhost:8081'
+          'http://localhost:8081',
         ],
-        credentials: true
-      }
+        credentials: true,
+      },
     });
 
     this.setupMiddleware();
@@ -58,36 +56,40 @@ export class WebSocketService {
 
   private setupMiddleware(): void {
     // Аутентификация через WebSocket
-    this.io.use(async (socket: AuthenticatedSocket, next: (err?: Error) => void) => {
-      try {
-        const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
-        
-        if (!token) {
-          return next(new Error('No token provided'));
-        }
+    this.io.use(
+      async (socket: AuthenticatedSocket, next: (err?: Error) => void) => {
+        try {
+          const token =
+            socket.handshake.auth.token ||
+            socket.handshake.headers.authorization?.replace('Bearer ', '');
 
-        if (!process.env.JWT_SECRET) {
-          throw new Error('JWT_SECRET environment variable is required');
-        }
-        const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
-        
-        // В реальном приложении здесь была бы проверка пользователя в БД
-        socket.user = {
-          id: decoded.id,
-          phoneNumber: decoded.phoneNumber,
-          name: decoded.name,
-          role: decoded.role,
-          isActive: true,
-          isVerified: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
+          if (!token) {
+            return next(new Error('No token provided'));
+          }
 
-        next();
-      } catch (error) {
-        next(new Error('Authentication failed'));
+          if (!process.env.JWT_SECRET) {
+            throw new Error('JWT_SECRET environment variable is required');
+          }
+          const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
+
+          // В реальном приложении здесь была бы проверка пользователя в БД
+          socket.user = {
+            id: decoded.id,
+            phoneNumber: decoded.phoneNumber,
+            name: decoded.name,
+            role: decoded.role,
+            isActive: true,
+            isVerified: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+
+          next();
+        } catch (error) {
+          next(new Error('Authentication failed'));
+        }
       }
-    });
+    );
   }
 
   private setupEventHandlers(): void {
@@ -99,7 +101,7 @@ export class WebSocketService {
       // Присоединяемся к комнате пользователя для персонализированных уведомлений
       if (socket.user) {
         socket.join(`user_${socket.user.id}`);
-        
+
         // Если админ, присоединяемся к админ комнате
         if (socket.user.role === 'admin') {
           socket.join('admins');
@@ -133,30 +135,36 @@ export class WebSocketService {
       socket.emit('connected', {
         message: 'Connected to WorkTime sync server',
         timestamp: new Date(),
-        user: socket.user
+        user: socket.user,
       });
     });
   }
 
   // Обработка запроса синхронизации
-  private async handleSyncRequest(socket: AuthenticatedSocket, data: SyncRequestData): Promise<void> {
+  private async handleSyncRequest(
+    socket: AuthenticatedSocket,
+    _data: SyncRequestData
+  ): Promise<void> {
     try {
       // Здесь была бы логика синхронизации
       // Пока отправляем подтверждение
       socket.emit('sync_response', {
         success: true,
         timestamp: new Date(),
-        message: 'Sync completed successfully'
+        message: 'Sync completed successfully',
       });
     } catch (error) {
       socket.emit('sync_error', {
-        error: 'Failed to process sync request'
+        error: 'Failed to process sync request',
       });
     }
   }
 
   // Обработка начала смены
-  private async handleShiftStarted(socket: AuthenticatedSocket, data: ShiftData): Promise<void> {
+  private async handleShiftStarted(
+    socket: AuthenticatedSocket,
+    data: ShiftData
+  ): Promise<void> {
     try {
       // Уведомляем всех админов о начале смены
       this.io.to('admins').emit('user_shift_started', {
@@ -165,24 +173,27 @@ export class WebSocketService {
         siteId: data.siteId,
         siteName: data.siteName,
         timestamp: new Date(),
-        location: data.location
+        location: data.location,
       });
 
       // Подтверждение пользователю
       socket.emit('shift_start_confirmed', {
         success: true,
         shiftId: data.shiftId,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     } catch (error) {
       socket.emit('shift_start_error', {
-        error: 'Failed to start shift'
+        error: 'Failed to start shift',
       });
     }
   }
 
   // Обработка окончания смены
-  private async handleShiftEnded(socket: AuthenticatedSocket, data: ShiftData): Promise<void> {
+  private async handleShiftEnded(
+    socket: AuthenticatedSocket,
+    data: ShiftData
+  ): Promise<void> {
     try {
       // Уведомляем админов об окончании смены
       this.io.to('admins').emit('user_shift_ended', {
@@ -191,23 +202,26 @@ export class WebSocketService {
         shiftId: data.shiftId,
         duration: data.duration,
         timestamp: new Date(),
-        location: data.location
+        location: data.location,
       });
 
       socket.emit('shift_end_confirmed', {
         success: true,
         shiftId: data.shiftId,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     } catch (error) {
       socket.emit('shift_end_error', {
-        error: 'Failed to end shift'
+        error: 'Failed to end shift',
       });
     }
   }
 
   // Обработка создания назначения
-  private async handleAssignmentCreated(socket: AuthenticatedSocket, data: AssignmentData): Promise<void> {
+  private async handleAssignmentCreated(
+    socket: AuthenticatedSocket,
+    data: AssignmentData
+  ): Promise<void> {
     try {
       // Уведомляем конкретного пользователя о новом назначении
       if (data.userId) {
@@ -219,7 +233,7 @@ export class WebSocketService {
           timestamp: new Date(),
           validFrom: data.validFrom,
           validTo: data.validTo,
-          notes: data.notes
+          notes: data.notes,
         });
       }
 
@@ -227,27 +241,31 @@ export class WebSocketService {
       socket.emit('assignment_created_confirmed', {
         success: true,
         assignmentId: data.assignmentId,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     } catch (error) {
       socket.emit('assignment_creation_error', {
-        error: 'Failed to create assignment'
+        error: 'Failed to create assignment',
       });
     }
   }
 
   // Отправка уведомления конкретному пользователю
-  public notifyUser(userId: string, event: string, data: Record<string, unknown>): void {
+  public notifyUser(
+    userId: string,
+    event: string,
+    data: Record<string, unknown>
+  ): void {
     try {
       this.io.to(`user_${userId}`).emit(event, {
         ...data,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     } catch (error) {
       logger.error(`Failed to notify user ${userId}`, {
         error: error instanceof Error ? error.message : 'Unknown error',
         userId,
-        event
+        event,
       });
     }
   }
@@ -257,12 +275,12 @@ export class WebSocketService {
     try {
       this.io.to('admins').emit(event, {
         ...data,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     } catch (error) {
       logger.error('Failed to notify admins', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        event
+        event,
       });
     }
   }
@@ -272,12 +290,12 @@ export class WebSocketService {
     try {
       this.io.emit(event, {
         ...data,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     } catch (error) {
       logger.error('Failed to broadcast message', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        event
+        event,
       });
     }
   }
@@ -288,11 +306,15 @@ export class WebSocketService {
   }
 
   // Получить список подключенных пользователей
-  public getConnectedUsers(): Array<{ id: string; name: string; role: string }> {
-    return Array.from(this.connectedUsers.values()).map(socket => ({
+  public getConnectedUsers(): Array<{
+    id: string;
+    name: string;
+    role: string;
+  }> {
+    return Array.from(this.connectedUsers.values()).map((socket) => ({
       id: socket.user!.id,
       name: socket.user!.name,
-      role: socket.user!.role
+      role: socket.user!.role,
     }));
   }
 
@@ -307,7 +329,6 @@ export class WebSocketService {
     if (socket) {
       socket.disconnect(true);
       this.connectedUsers.delete(userId);
-      }
+    }
   }
-} 
-
+}

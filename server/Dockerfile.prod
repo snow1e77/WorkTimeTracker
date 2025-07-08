@@ -6,21 +6,20 @@ RUN apk add --no-cache \
     python3 \
     make \
     g++ \
-    && rm -rf /var/cache/apk/*
+    postgresql-client \
+    curl
 
 # Create app directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-COPY tsconfig.json ./
 
 # Install all dependencies (including dev for build)
-RUN npm ci \
-    && npm cache clean --force
+RUN npm ci --only=production && npm cache clean --force
 
 # Copy source code
-COPY src/ ./src/
+COPY . .
 
 # Build the application
 RUN npm run build
@@ -29,26 +28,27 @@ RUN npm run build
 FROM node:18-alpine AS production
 
 # Create non-root user (if not exists)
-RUN addgroup -g 1001 -S nodeapp 2>/dev/null || true && \
-    adduser -S nodeapp -u 1001 -G nodeapp 2>/dev/null || true
+RUN addgroup -g 1001 -S nodejs 2>/dev/null || true && \
+    adduser -S worktime -u 1001 -G nodejs 2>/dev/null || true
 
 # Install security updates
 RUN apk update && apk upgrade && \
     apk add --no-cache \
     dumb-init \
-    ca-certificates \
+    postgresql-client \
+    curl \
     && rm -rf /var/cache/apk/*
 
 # Create app directory
 WORKDIR /app
 
 # Copy built application
-COPY --from=builder --chown=nodeapp:nodeapp /app/dist ./dist
-COPY --from=builder --chown=nodeapp:nodeapp /app/node_modules ./node_modules
-COPY --from=builder --chown=nodeapp:nodeapp /app/package*.json ./
+COPY --from=builder --chown=worktime:nodejs /app/dist ./dist
+COPY --from=builder --chown=worktime:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=worktime:nodejs /app/package*.json ./
 
 # Create logs directory
-RUN mkdir -p /app/logs && chown -R nodeapp:nodeapp /app/logs
+RUN mkdir -p /app/logs /app/uploads /app/backups && chown -R worktime:nodejs /app/logs /app/uploads /app/backups
 
 # Remove unnecessary files and set permissions
 RUN rm -rf /tmp/* /var/tmp/* \
@@ -56,14 +56,14 @@ RUN rm -rf /tmp/* /var/tmp/* \
     && chmod -R 777 /app/logs
 
 # Switch to non-root user
-USER nodeapp
+USER worktime
 
 # Expose port
 EXPOSE 3001
 
 # Add health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:3001/health || exit 1
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]

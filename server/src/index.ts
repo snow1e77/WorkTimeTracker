@@ -5,20 +5,25 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { createServer } from 'http';
 import { testConnection } from './config/database';
 import { AuthService } from './services/AuthService';
 import { SyncService, setWebSocketServiceGetter } from './services/SyncService';
 import { WebSocketService } from './services/WebSocketService';
-import logger, { logSecurityEvent, logPerformance, logAPIRequest } from './utils/logger';
-import { 
-  strictRateLimit, 
+import logger, {
+  logSecurityEvent,
+  logPerformance,
+  logAPIRequest,
+} from './utils/logger';
+import {
+  strictRateLimit,
   authRateLimit,
-  requireValidUserAgent, 
+  requireValidUserAgent,
   logSuspiciousActivity,
   setSecurityHeaders,
   csrfProtection,
-  preventXSS
+  preventXSS,
 } from './middleware/security';
 
 // Загружаем переменные окружения
@@ -26,7 +31,9 @@ dotenv.config();
 
 // Проверяем критические переменные окружения
 const requiredEnvVars = ['JWT_SECRET', 'DB_PASSWORD'];
-const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+const missingEnvVars = requiredEnvVars.filter(
+  (varName) => !process.env[varName]
+);
 
 if (missingEnvVars.length > 0 && process.env.NODE_ENV === 'production') {
   process.exit(1);
@@ -43,7 +50,9 @@ if (process.env.JWT_SECRET.length < 32) {
   if (process.env.NODE_ENV === 'production') {
     process.exit(1);
   } else {
-    logger.warn('JWT_SECRET is too short - this is acceptable only in development');
+    logger.warn(
+      'JWT_SECRET is too short - this is acceptable only in development'
+    );
   }
 }
 
@@ -70,41 +79,65 @@ let webSocketService: WebSocketService;
 export const getWebSocketService = (): WebSocketService => webSocketService;
 
 // Расширенная настройка CORS с проверкой origin
-const allowedOrigins = process.env.CORS_ORIGINS?.split(',').map((origin: string) => origin.trim()) || [
+const allowedOrigins = process.env.CORS_ORIGINS?.split(',').map(
+  (origin: string) => origin.trim()
+) || [
   // Только для разработки
-  ...(process.env.NODE_ENV === 'development' ? [
-    'http://localhost:19006',
-    'http://localhost:3000',
-    'http://localhost:8081'
-  ] : [])
+  ...(process.env.NODE_ENV === 'development'
+    ? [
+        'http://localhost:19006',
+        'http://localhost:3000',
+        'http://localhost:8081',
+      ]
+    : []),
 ];
 
 const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+  origin: (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void
+  ) => {
     // В продакшене строго проверяем origin
     if (process.env.NODE_ENV === 'production') {
       if (!origin) {
         // В продакшене не разрешаем запросы без origin
-        logger.warn('CORS: Request without origin blocked in production', { ip: 'unknown' });
-        return callback(new Error('Origin header required in production'), false);
+        logger.warn('CORS: Request without origin blocked in production', {
+          ip: 'unknown',
+        });
+        return callback(
+          new Error('Origin header required in production'),
+          false
+        );
       }
-      
+
       if (!allowedOrigins.includes(origin)) {
-        logger.warn('CORS: Blocked request from unauthorized origin', { origin });
-        logSecurityEvent('cors_violation', { origin, allowedOrigins }, 'medium');
-        return callback(new Error(`Origin ${origin} not allowed by CORS`), false);
+        logger.warn('CORS: Blocked request from unauthorized origin', {
+          origin,
+        });
+        logSecurityEvent(
+          'cors_violation',
+          { origin, allowedOrigins },
+          'medium'
+        );
+        return callback(
+          new Error(`Origin ${origin} not allowed by CORS`),
+          false
+        );
       }
-      
+
       logger.info('CORS: Allowed request from authorized origin', { origin });
       callback(null, true);
     } else {
       // В разработке разрешаем запросы без origin (мобильные приложения)
       if (!origin) return callback(null, true);
-      
+
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        logger.warn('CORS: Blocked request from unauthorized origin in development', { origin });
+        logger.warn(
+          'CORS: Blocked request from unauthorized origin in development',
+          { origin }
+        );
         callback(new Error(`Origin ${origin} not allowed by CORS`), false);
       }
     }
@@ -112,74 +145,84 @@ const corsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
+    'Content-Type',
+    'Authorization',
     'X-Requested-With',
     'X-CSRF-Token',
     'X-Privacy-Consent',
-    'X-Privacy-Consent-Timestamp'
+    'X-Privacy-Consent-Timestamp',
   ],
   exposedHeaders: [
     'X-RateLimit-Limit',
     'X-RateLimit-Remaining',
-    'X-RateLimit-Reset'
+    'X-RateLimit-Reset',
   ],
   maxAge: process.env.NODE_ENV === 'production' ? 86400 : 3600, // 24 hours в production, 1 час в dev
   optionsSuccessStatus: 200, // Для legacy браузеров
-  preflightContinue: false
+  preflightContinue: false,
 };
 
 // Улучшенная конфигурация Helmet
-app.use(helmet({
-  crossOriginEmbedderPolicy: false,
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: process.env.NODE_ENV === 'production' ? 
-        ["'self'"] : 
-        ["'self'", "'unsafe-eval'", "'unsafe-inline'"], // Только для разработки
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "wss:", "ws:"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
-      baseUri: ["'self'"],
-      formAction: ["'self'"]
+app.use(
+  helmet({
+    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc:
+          process.env.NODE_ENV === 'production'
+            ? ["'self'"]
+            : ["'self'", "'unsafe-eval'", "'unsafe-inline'"], // Только для разработки
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'", 'wss:', 'ws:'],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
     },
-  },
-  hsts: process.env.NODE_ENV === 'production' ? {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true
-  } : false, // Отключаем HSTS в разработке
-  frameguard: { action: 'deny' },
-  noSniff: true,
-  xssFilter: true,
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
-}));
+    hsts:
+      process.env.NODE_ENV === 'production'
+        ? {
+            maxAge: 31536000,
+            includeSubDomains: true,
+            preload: true,
+          }
+        : false, // Отключаем HSTS в разработке
+    frameguard: { action: 'deny' },
+    noSniff: true,
+    xssFilter: true,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  })
+);
 
 app.use(cors(corsOptions));
 app.use(compression());
 
 // Ограничиваем размер тела запроса
-app.use(express.json({ 
-  limit: '1mb',
-  verify: (req: express.Request, res: express.Response, buf: Buffer) => {
-    // Проверяем на потенциально опасный JSON
-    const body = buf.toString();
-    if (body.includes('<script') || body.includes('javascript:')) {
-      throw new Error('Potentially malicious JSON detected');
-    }
-  }
-}));
+app.use(
+  express.json({
+    limit: '1mb',
+    verify: (req: express.Request, res: express.Response, buf: Buffer) => {
+      // Проверяем на потенциально опасный JSON
+      const body = buf.toString();
+      if (body.includes('<script') || body.includes('javascript:')) {
+        throw new Error('Potentially malicious JSON detected');
+      }
+    },
+  })
+);
 
-app.use(express.urlencoded({ 
-  extended: true, 
-  limit: '1mb',
-  parameterLimit: 100 // Ограничиваем количество параметров
-}));
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: '1mb',
+    parameterLimit: 100, // Ограничиваем количество параметров
+  })
+);
 
 // Применяем middleware безопасности
 app.use(setSecurityHeaders);
@@ -194,72 +237,76 @@ const globalLimiter = rateLimit({
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '1000'), // 1000 запросов на IP
   message: {
     error: 'Too many requests from this IP, please try again later.',
-    retryAfter: 15 * 60
+    retryAfter: 15 * 60,
   },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req: express.Request) => {
     // Пропускаем health check
     return req.path === '/health';
-  }
+  },
 });
 
 app.use(globalLimiter);
 
 // Middleware для логирования всех запросов с расширенной информацией
-app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const start = Date.now();
-  const requestId = Math.random().toString(36).substring(7);
-  
-  // Добавляем ID запроса для трассировки
-  req.headers['x-request-id'] = requestId;
-  
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    
-    // Используем безопасный API логгер
-    logAPIRequest(
-      req.method,
-      req.originalUrl,
-      res.statusCode,
-      duration,
-      req.user?.id,
-      { ip: req.ip, userAgent: req.get('User-Agent')?.substring(0, 100) }
-    );
-    
-    // Логируем медленные запросы
-    if (duration > 1000) {
-      logPerformance('slow_request', duration, {
-        method: req.method,
-        url: req.originalUrl,
-        userId: req.user?.id
-      });
-    }
-    
-    // Логируем подозрительную активность
-    if (res.statusCode === 403 || res.statusCode === 401) {
-      logSecurityEvent('unauthorized_access', {
-        ip: req.ip,
-        url: req.originalUrl,
-        userAgent: req.get('User-Agent')?.substring(0, 100), // Ограничиваем длину
-        method: req.method
-      });
-    }
-  });
-  
-  next();
-});
+app.use(
+  (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const start = Date.now();
+    const requestId = Math.random().toString(36).substring(7);
+
+    // Добавляем ID запроса для трассировки
+    req.headers['x-request-id'] = requestId;
+
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+
+      // Используем безопасный API логгер
+      logAPIRequest(
+        req.method,
+        req.originalUrl,
+        res.statusCode,
+        duration,
+        req.user?.id,
+        { ip: req.ip, userAgent: req.get('User-Agent')?.substring(0, 100) }
+      );
+
+      // Логируем медленные запросы
+      if (duration > 1000) {
+        logPerformance('slow_request', duration, {
+          method: req.method,
+          url: req.originalUrl,
+          userId: req.user?.id,
+        });
+      }
+
+      // Логируем подозрительную активность
+      if (res.statusCode === 403 || res.statusCode === 401) {
+        logSecurityEvent('unauthorized_access', {
+          ip: req.ip,
+          url: req.originalUrl,
+          userAgent: req.get('User-Agent')?.substring(0, 100), // Ограничиваем длину
+          method: req.method,
+        });
+      }
+    });
+
+    next();
+  }
+);
 
 // Обслуживание статических файлов веб-приложения
 const webDistPath = path.join(__dirname, '../web-dist');
-const webDistExists = require('fs').existsSync(webDistPath);
+const webDistExists = fs.existsSync(webDistPath);
 
 if (webDistExists) {
-  app.use(express.static(webDistPath, {
-    maxAge: '1d',
-    etag: true,
-    lastModified: true
-  }));
+  app.use(
+    express.static(webDistPath, {
+      maxAge: '1d',
+      etag: true,
+      lastModified: true,
+    })
+  );
   logger.info(`Serving web app from: ${webDistPath}`);
 } else {
   logger.warn(`Web app dist folder not found at: ${webDistPath}`);
@@ -286,13 +333,13 @@ app.get('/health', async (req, res) => {
       timestamp: new Date().toISOString(),
       database: dbConnection ? 'connected' : 'disconnected',
       environment: process.env.NODE_ENV || 'development',
-      version: '1.0.0'
+      version: '1.0.0',
     });
   } catch (error) {
     res.status(500).json({
       status: 'error',
       timestamp: new Date().toISOString(),
-      error: 'Health check failed'
+      error: 'Health check failed',
     });
   }
 });
@@ -305,12 +352,12 @@ app.get('/api/info', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     features: [
       'JWT Authentication',
-              'Phone Authentication',
+      'Phone Authentication',
       'User Management',
       'Site Management',
       'Work Shifts Tracking',
       'Real-time Sync',
-      'Reports Generation'
+      'Reports Generation',
     ],
     endpoints: {
       auth: '/api/auth',
@@ -320,40 +367,47 @@ app.get('/api/info', (req, res) => {
       shifts: '/api/shifts',
       reports: '/api/reports',
       sync: '/api/sync',
-      notifications: '/api/notifications'
-    }
+      notifications: '/api/notifications',
+    },
   });
 });
 
 // Fallback для SPA - возвращаем index.html для всех не-API маршрутов
 app.get('*', (req, res) => {
   const indexPath = path.join(__dirname, '../web-dist/index.html');
-  const indexExists = require('fs').existsSync(indexPath);
-  
+  const indexExists = fs.existsSync(indexPath);
+
   if (indexExists && !req.originalUrl.startsWith('/api/')) {
     res.sendFile(indexPath);
   } else {
     res.status(404).json({
       success: false,
       error: 'Endpoint not found',
-      message: `Route ${req.method} ${req.originalUrl} not found`
+      message: `Route ${req.method} ${req.originalUrl} not found`,
     });
   }
 });
 
 // Глобальная обработка ошибок
-app.use((error: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  logger.error('Unhandled error:', { 
-    message: error.message, 
-    stack: error.stack,
-    url: req.url,
-    method: req.method
-  });
-  res.status(500).json({ 
-    success: false, 
-    error: 'Internal server error' 
-  });
-});
+app.use(
+  (
+    error: Error,
+    req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction
+  ) => {
+    logger.error('Unhandled error:', {
+      message: error.message,
+      stack: error.stack,
+      url: req.url,
+      method: req.method,
+    });
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
@@ -370,37 +424,40 @@ process.on('SIGINT', () => {
 const startServer = async () => {
   try {
     logger.info('Starting WorkTime Tracker Server...');
-    
+
     // Проверяем подключение к базе данных
     logger.info('Testing database connection...');
     const isDbConnected = await testConnection();
-    
+
     if (!isDbConnected) {
       logger.error('Failed to connect to database');
       process.exit(1);
     }
-    
+
     logger.info('Database connection successful');
-    
+
     // Инициализируем таблицы синхронизации
     logger.info('Initializing sync tables...');
     await SyncService.initializeSyncTables();
     logger.info('Sync tables initialized');
-    
+
     // Инициализируем WebSocket сервер
     logger.info('Initializing WebSocket server...');
     webSocketService = new WebSocketService(httpServer);
-    
+
     // Связываем WebSocket сервис с SyncService
     setWebSocketServiceGetter(() => webSocketService);
-    
+
     logger.info('WebSocket server initialized');
-    
+
     // Запускаем очистку истекших токенов каждый час
-    setInterval(() => {
-      AuthService.cleanupExpiredTokens();
-    }, 60 * 60 * 1000);
-    
+    setInterval(
+      () => {
+        AuthService.cleanupExpiredTokens();
+      },
+      60 * 60 * 1000
+    );
+
     // Запуск сервера
     httpServer.listen(PORT, () => {
       logger.info('Server started successfully', {
@@ -409,13 +466,13 @@ const startServer = async () => {
         apiBaseUrl: `http://localhost:${PORT}/api`,
         healthCheck: `http://localhost:${PORT}/health`,
         webSocketUrl: `ws://localhost:${PORT}`,
-        connectedUsers: webSocketService.getConnectedUsersCount()
+        connectedUsers: webSocketService.getConnectedUsersCount(),
       });
-      
+
       if (process.env.NODE_ENV !== 'production') {
         logger.debug('Available endpoints', {
           endpoints: [
-                          'POST /api/auth/login - Simple phone login',
+            'POST /api/auth/login - Simple phone login',
             'POST /api/auth/register - Register new user',
             'POST /api/auth/refresh - Refresh access token',
             'POST /api/auth/logout - Logout user',
@@ -424,16 +481,15 @@ const startServer = async () => {
             'GET  /api/assignments - Get user assignments',
             'GET  /api/shifts - Get work shifts',
             'GET  /api/reports - Get work reports',
-            'POST /api/sync - Synchronize data'
-          ]
+            'POST /api/sync - Synchronize data',
+          ],
         });
       }
     });
-    
   } catch (error) {
-    logger.error('Failed to start server', { 
+    logger.error('Failed to start server', {
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
     process.exit(1);
   }
@@ -442,4 +498,4 @@ const startServer = async () => {
 // Запускаем сервер
 startServer();
 
-export default app; 
+export default app;

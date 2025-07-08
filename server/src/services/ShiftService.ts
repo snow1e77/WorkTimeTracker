@@ -11,7 +11,7 @@ export class ShiftService {
     notes?: string;
   }): Promise<WorkShift> {
     const { userId, siteId, startLocation, notes } = shiftData;
-    
+
     const shiftId = uuidv4();
     const startTime = new Date();
 
@@ -20,13 +20,13 @@ export class ShiftService {
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
-        shiftId, 
-        userId, 
-        siteId, 
-        startTime, 
-        true, 
+        shiftId,
+        userId,
+        siteId,
+        startTime,
+        true,
         startLocation ? JSON.stringify(startLocation) : null,
-        notes || null
+        notes || null,
       ]
     );
 
@@ -34,10 +34,13 @@ export class ShiftService {
   }
 
   // Завершение рабочей смены
-  static async endShift(shiftId: string, endData: {
-    endLocation?: { latitude: number; longitude: number };
-    notes?: string;
-  }): Promise<WorkShift | null> {
+  static async endShift(
+    shiftId: string,
+    endData: {
+      endLocation?: { latitude: number; longitude: number };
+      notes?: string;
+    }
+  ): Promise<WorkShift | null> {
     const { endLocation, notes } = endData;
     const endTime = new Date();
 
@@ -50,7 +53,7 @@ export class ShiftService {
         endTime,
         endLocation ? JSON.stringify(endLocation) : null,
         notes,
-        shiftId
+        shiftId,
       ]
     );
 
@@ -58,20 +61,30 @@ export class ShiftService {
   }
 
   // Получение всех смен с пагинацией
-  static async getAllShifts(options: {
-    page?: number;
-    limit?: number;
-    isActive?: boolean;
-    userId?: string;
-    siteId?: string;
-    startDate?: Date;
-    endDate?: Date;
-  } = {}): Promise<{ shifts: WorkShift[]; total: number }> {
-    const { page = 1, limit = 20, isActive, userId, siteId, startDate, endDate } = options;
+  static async getAllShifts(
+    options: {
+      page?: number;
+      limit?: number;
+      isActive?: boolean;
+      userId?: string;
+      siteId?: string;
+      startDate?: Date;
+      endDate?: Date;
+    } = {}
+  ): Promise<{ shifts: WorkShift[]; total: number }> {
+    const {
+      page = 1,
+      limit = 20,
+      isActive,
+      userId,
+      siteId,
+      startDate,
+      endDate,
+    } = options;
     const offset = (page - 1) * limit;
 
-    let whereConditions: string[] = [];
-    let queryParams: any[] = [];
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (isActive !== undefined) {
@@ -99,7 +112,10 @@ export class ShiftService {
       queryParams.push(endDate);
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(' AND ')}`
+        : '';
 
     // Получаем общее количество
     const countResult = await query(
@@ -127,7 +143,7 @@ export class ShiftService {
       userName: row.user_name,
       userPhone: row.user_phone,
       siteName: row.site_name,
-      siteAddress: row.site_address
+      siteAddress: row.site_address,
     }));
 
     return { shifts, total };
@@ -154,7 +170,7 @@ export class ShiftService {
       userName: row.user_name,
       userPhone: row.user_phone,
       siteName: row.site_name,
-      siteAddress: row.site_address
+      siteAddress: row.site_address,
     };
   }
 
@@ -177,39 +193,48 @@ export class ShiftService {
     return {
       ...this.mapRowToShift(row),
       siteName: row.site_name,
-      siteAddress: row.site_address
+      siteAddress: row.site_address,
     };
   }
 
   // Получение смен пользователя
-  static async getUserShifts(userId: string, options: {
-    page?: number;
-    limit?: number;
-    isActive?: boolean;
-    startDate?: Date;
-    endDate?: Date;
-  } = {}): Promise<{ shifts: WorkShift[]; total: number }> {
+  static async getUserShifts(
+    userId: string,
+    options: {
+      page?: number;
+      limit?: number;
+      isActive?: boolean;
+      startDate?: Date;
+      endDate?: Date;
+    } = {}
+  ): Promise<{ shifts: WorkShift[]; total: number }> {
     return this.getAllShifts({ ...options, userId });
   }
 
   // Получение смен объекта
-  static async getSiteShifts(siteId: string, options: {
-    page?: number;
-    limit?: number;
-    isActive?: boolean;
-    startDate?: Date;
-    endDate?: Date;
-  } = {}): Promise<{ shifts: WorkShift[]; total: number }> {
+  static async getSiteShifts(
+    siteId: string,
+    options: {
+      page?: number;
+      limit?: number;
+      isActive?: boolean;
+      startDate?: Date;
+      endDate?: Date;
+    } = {}
+  ): Promise<{ shifts: WorkShift[]; total: number }> {
     return this.getAllShifts({ ...options, siteId });
   }
 
   // Обновление смены
-  static async updateShift(shiftId: string, updates: {
-    startTime?: Date;
-    endTime?: Date;
-    notes?: string;
-    isActive?: boolean;
-  }): Promise<WorkShift | null> {
+  static async updateShift(
+    shiftId: string,
+    updates: {
+      startTime?: Date;
+      endTime?: Date;
+      notes?: string;
+      isActive?: boolean;
+    }
+  ): Promise<WorkShift | null> {
     const updateFields: string[] = [];
     const queryParams: any[] = [];
     let paramIndex = 1;
@@ -252,12 +277,18 @@ export class ShiftService {
 
   // Удаление смены
   static async deleteShift(shiftId: string): Promise<boolean> {
-    const result = await query('DELETE FROM work_shifts WHERE id = $1', [shiftId]);
+    const result = await query('DELETE FROM work_shifts WHERE id = $1', [
+      shiftId,
+    ]);
     return result.rowCount > 0;
   }
 
   // Получение рабочих часов пользователя за период
-  static async getUserWorkHours(userId: string, startDate: Date, endDate: Date): Promise<{
+  static async getUserWorkHours(
+    userId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<{
     totalHours: number;
     totalShifts: number;
     completedShifts: number;
@@ -286,17 +317,20 @@ export class ShiftService {
       totalShifts,
       completedShifts,
       activeShifts,
-      averageHoursPerShift: completedShifts > 0 ? totalHours / completedShifts : 0
+      averageHoursPerShift:
+        completedShifts > 0 ? totalHours / completedShifts : 0,
     };
   }
 
   // Получение статистики смен
-  static async getShiftStats(options: {
-    userId?: string;
-    siteId?: string;
-    startDate?: Date;
-    endDate?: Date;
-  } = {}): Promise<{
+  static async getShiftStats(
+    options: {
+      userId?: string;
+      siteId?: string;
+      startDate?: Date;
+      endDate?: Date;
+    } = {}
+  ): Promise<{
     totalShifts: number;
     activeShifts: number;
     completedShifts: number;
@@ -307,8 +341,8 @@ export class ShiftService {
   }> {
     const { userId, siteId, startDate, endDate } = options;
 
-    let whereConditions: string[] = [];
-    let queryParams: any[] = [];
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (userId) {
@@ -331,7 +365,10 @@ export class ShiftService {
       queryParams.push(endDate);
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(' AND ')}`
+        : '';
 
     const result = await query(
       `SELECT 
@@ -355,7 +392,7 @@ export class ShiftService {
       totalHours: parseFloat(row.total_hours) || 0,
       uniqueWorkers: parseInt(row.unique_workers) || 0,
       uniqueSites: parseInt(row.unique_sites) || 0,
-      averageShiftDuration: parseFloat(row.average_shift_duration) || 0
+      averageShiftDuration: parseFloat(row.average_shift_duration) || 0,
     };
   }
 
@@ -367,13 +404,17 @@ export class ShiftService {
       siteId: row.site_id,
       startTime: new Date(row.start_time),
       endTime: row.end_time ? new Date(row.end_time) : undefined,
-      totalHours: row.total_hours ? parseFloat(row.total_hours.toString()) : undefined,
+      totalHours: row.total_hours
+        ? parseFloat(row.total_hours.toString())
+        : undefined,
       isActive: row.is_active,
-      startLocation: row.start_location ? JSON.parse(row.start_location) : undefined,
+      startLocation: row.start_location
+        ? JSON.parse(row.start_location)
+        : undefined,
       endLocation: row.end_location ? JSON.parse(row.end_location) : undefined,
       notes: row.notes || undefined,
       createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at)
+      updatedAt: new Date(row.updated_at),
     };
   }
-} 
+}

@@ -27,22 +27,24 @@ export class AuthService {
     }
     return secret;
   })();
-  private static readonly JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '15m';
-  private static readonly REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+  private static readonly JWT_EXPIRES_IN: string =
+    process.env.JWT_EXPIRES_IN || '15m';
+  private static readonly REFRESH_EXPIRES_IN =
+    process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
   // Simple login with phone number only
-  static async login(data: LoginRequest): Promise<{ 
-    success: boolean; 
-    user?: User; 
+  static async login(data: LoginRequest): Promise<{
+    success: boolean;
+    user?: User;
     tokens?: AuthTokens;
     error?: string;
     needsContact?: boolean;
   }> {
     try {
       // Логируем входящие данные (убираем чувствительную информацию)
-      logger.info('AuthService login called', { 
+      logger.info('AuthService login called', {
         phoneNumber: data.phoneNumber?.replace(/\d(?=\d{4})/g, '*'), // Маскируем номер телефона
-        hasPhoneNumber: !!data.phoneNumber
+        hasPhoneNumber: !!data.phoneNumber,
       });
 
       const { phoneNumber } = data;
@@ -57,42 +59,50 @@ export class AuthService {
         }
 
         const tokens = await this.generateTokens(user);
-        logger.info('Successful user login', { 
-          userId: user.id, 
-          phoneNumber: phoneNumber?.replace(/\d(?=\d{4})/g, '*') // Маскируем номер
+        logger.info('Successful user login', {
+          userId: user.id,
+          phoneNumber: phoneNumber?.replace(/\d(?=\d{4})/g, '*'), // Маскируем номер
         });
         return { success: true, user, tokens };
       }
 
       // User not found in system
-      logger.warn('Login attempt for non-existent user', { 
-        phoneNumber: phoneNumber?.replace(/\d(?=\d{4})/g, '*') // Маскируем номер
+      logger.warn('Login attempt for non-existent user', {
+        phoneNumber: phoneNumber?.replace(/\d(?=\d{4})/g, '*'), // Маскируем номер
       });
-      return { 
-        success: false, 
-        error: 'Your phone number is not found in the system. Please contact your supervisor or team leader to be added to the database.',
-        needsContact: true
+      return {
+        success: false,
+        error:
+          'Your phone number is not found in the system. Please contact your supervisor or team leader to be added to the database.',
+        needsContact: true,
       };
     } catch (error) {
-      logger.error('Login error', { 
+      logger.error('Login error', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        phoneNumber: data.phoneNumber?.replace(/\d(?=\d{4})/g, '*') // Маскируем номер
+        phoneNumber: data.phoneNumber?.replace(/\d(?=\d{4})/g, '*'), // Маскируем номер
       });
       return { success: false, error: 'System login error' };
     }
   }
 
   // Register new user (deprecated endpoint - no longer used)
-  static async register(data: RegisterRequest): Promise<{ 
-    success: boolean; 
-    user?: User; 
+  static async register(data: RegisterRequest): Promise<{
+    success: boolean;
+    user?: User;
     tokens?: AuthTokens;
     error?: string;
   }> {
     try {
-      return { success: false, error: 'Registration is no longer supported. Users are added by administrators.' };
+      return {
+        success: false,
+        error:
+          'Registration is no longer supported. Users are added by administrators.',
+      };
     } catch (error) {
-      logger.error('Registration error', { error, phoneNumber: data.phoneNumber });
+      logger.error('Registration error', {
+        error,
+        phoneNumber: data.phoneNumber,
+      });
       return { success: false, error: 'Registration error' };
     }
   }
@@ -104,16 +114,19 @@ export class AuthService {
     error?: string;
   }> {
     try {
-      const result = await query(
+      const result = (await query(
         'SELECT user_id FROM refresh_tokens WHERE token = $1 AND expires_at > NOW()',
         [refreshToken]
-      );
+      )) as { rows: Array<{ user_id: string }> };
 
       if (result.rows.length === 0) {
         return { success: false, error: 'Invalid or expired refresh token' };
       }
 
-      const userId = result.rows[0].user_id;
+      const userId = result.rows[0]?.user_id;
+      if (!userId) {
+        return { success: false, error: 'Invalid token data' };
+      }
       const user = await UserService.getUserById(userId);
 
       if (!user || !user.isActive) {
@@ -121,7 +134,9 @@ export class AuthService {
       }
 
       // Delete old refresh token
-      await query('DELETE FROM refresh_tokens WHERE token = $1', [refreshToken]);
+      await query('DELETE FROM refresh_tokens WHERE token = $1', [
+        refreshToken,
+      ]);
 
       // Generate new tokens
       const tokens = await this.generateTokens(user);
@@ -136,7 +151,9 @@ export class AuthService {
   // Logout
   static async logout(refreshToken: string): Promise<{ success: boolean }> {
     try {
-      await query('DELETE FROM refresh_tokens WHERE token = $1', [refreshToken]);
+      await query('DELETE FROM refresh_tokens WHERE token = $1', [
+        refreshToken,
+      ]);
       return { success: true };
     } catch (error) {
       logger.error('Logout error', { error });
@@ -158,10 +175,12 @@ export class AuthService {
     const payload: JWTPayload = {
       userId: user.id,
       phoneNumber: user.phoneNumber,
-      role: user.role
+      role: user.role,
     };
 
-    const accessToken = jwt.sign(payload, this.JWT_SECRET, { expiresIn: this.JWT_EXPIRES_IN } as jwt.SignOptions);
+    const accessToken = jwt.sign(payload, this.JWT_SECRET, {
+      expiresIn: this.JWT_EXPIRES_IN,
+    } as jwt.SignOptions);
 
     const refreshToken = uuidv4();
     const expiresAt = new Date();
@@ -184,4 +203,32 @@ export class AuthService {
       logger.error('Cleanup expired tokens error', { error });
     }
   }
-} 
+
+  static async findUserByPhoneOrEmail(
+    phoneOrEmail: string
+  ): Promise<User | null> {
+    const isEmail = phoneOrEmail.includes('@');
+    const queryString = isEmail
+      ? 'SELECT * FROM users WHERE email = $1'
+      : 'SELECT * FROM users WHERE phone_number = $1';
+
+    try {
+      const result = (await query(queryString, [phoneOrEmail])) as {
+        rows: Array<{ id: string }>;
+      };
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const userId = result.rows[0]?.id;
+      if (!userId) {
+        return null;
+      }
+      return UserService.getUserById(userId);
+    } catch (error) {
+      logger.error('Error finding user by phone or email:', error);
+      throw new Error('Failed to find user');
+    }
+  }
+}

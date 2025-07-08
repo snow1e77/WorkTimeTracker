@@ -1,30 +1,34 @@
 import { query } from '../config/database';
-import { WorkReport, WorkShift, ViolationsSummary } from '../types';
+import { WorkReport, ViolationsSummary } from '../types';
 
 export class ReportService {
   // Псевдоним для совместимости с роутами
-  static async generateWorkReport(options: {
-    startDate?: Date;
-    endDate?: Date;
-    userId?: string;
-    siteId?: string;
-    groupBy?: 'user' | 'site' | 'date';
-  } = {}): Promise<WorkReport[]> {
+  static async generateWorkReport(
+    options: {
+      startDate?: Date;
+      endDate?: Date;
+      userId?: string;
+      siteId?: string;
+      groupBy?: 'user' | 'site' | 'date';
+    } = {}
+  ): Promise<WorkReport[]> {
     return this.getWorkReports(options);
   }
 
   // Получение рабочих отчетов
-  static async getWorkReports(options: {
-    startDate?: Date;
-    endDate?: Date;
-    userId?: string;
-    siteId?: string;
-    groupBy?: 'user' | 'site' | 'date';
-  } = {}): Promise<WorkReport[]> {
+  static async getWorkReports(
+    options: {
+      startDate?: Date;
+      endDate?: Date;
+      userId?: string;
+      siteId?: string;
+      groupBy?: 'user' | 'site' | 'date';
+    } = {}
+  ): Promise<WorkReport[]> {
     const { startDate, endDate, userId, siteId, groupBy = 'user' } = options;
 
-    let whereConditions: string[] = [];
-    let queryParams: any[] = [];
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (startDate) {
@@ -50,7 +54,10 @@ export class ReportService {
     // Добавляем условие для завершенных смен
     whereConditions.push('ws.end_time IS NOT NULL');
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(' AND ')}`
+        : '';
 
     let groupByClause = '';
     let selectFields = '';
@@ -116,24 +123,27 @@ export class ReportService {
       date: row.date,
       shiftsCount: parseInt(row.shifts_count),
       totalHours: parseFloat(row.total_hours),
-      violationsCount: parseInt(row.violations_count)
+      violationsCount: parseInt(row.violations_count),
     }));
   }
 
   // Получение отчета по нарушениям
-  static async getViolationsReport(options: {
-    startDate?: Date;
-    endDate?: Date;
-    userId?: string;
-    siteId?: string;
-    severity?: 'low' | 'medium' | 'high';
-    type?: string;
-    resolved?: boolean;
-  } = {}): Promise<ViolationsSummary> {
-    const { startDate, endDate, userId, siteId, severity, type, resolved } = options;
+  static async getViolationsReport(
+    options: {
+      startDate?: Date;
+      endDate?: Date;
+      userId?: string;
+      siteId?: string;
+      severity?: 'low' | 'medium' | 'high';
+      type?: string;
+      resolved?: boolean;
+    } = {}
+  ): Promise<ViolationsSummary> {
+    const { startDate, endDate, userId, siteId, severity, type, resolved } =
+      options;
 
-    let whereConditions: string[] = [];
-    let queryParams: any[] = [];
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (startDate) {
@@ -170,7 +180,10 @@ export class ReportService {
       whereConditions.push(`(v.resolved_at IS ${resolved ? 'NOT' : ''} NULL)`);
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(' AND ')}`
+        : '';
 
     // Получаем общую статистику
     const summaryResult = await query(
@@ -216,42 +229,51 @@ export class ReportService {
       bySeverity: {
         low: parseInt(severityStats.low) || 0,
         medium: parseInt(severityStats.medium) || 0,
-        high: parseInt(severityStats.high) || 0
-      }
+        high: parseInt(severityStats.high) || 0,
+      },
     };
   }
 
   // Псевдоним для совместимости с роутами
-  static async generateViolationReport(options: {
-    startDate?: Date;
-    endDate?: Date;
-    userId?: string;
-    siteId?: string;
-    severity?: 'low' | 'medium' | 'high';
-    type?: string;
-    resolved?: boolean;
-  } = {}): Promise<ViolationsSummary> {
+  static async generateViolationReport(
+    options: {
+      startDate?: Date;
+      endDate?: Date;
+      userId?: string;
+      siteId?: string;
+      severity?: 'low' | 'medium' | 'high';
+      type?: string;
+      resolved?: boolean;
+    } = {}
+  ): Promise<ViolationsSummary> {
     return this.getViolationsReport(options);
   }
 
   // Псевдоним для совместимости с роутами
-  static async getGeneralStatistics(options: {
-    startDate?: Date;
-    endDate?: Date;
-  } = {}) {
+  static async getGeneralStatistics(
+    options: {
+      startDate?: Date;
+      endDate?: Date;
+    } = {}
+  ) {
     return this.getSystemStatistics(options);
   }
 
   // Псевдоним для совместимости с роутами
-  static async exportReport(type: 'work' | 'violations', options: any = {}): Promise<string> {
+  static async exportReport(
+    type: 'work' | 'violations',
+    options: any = {}
+  ): Promise<string> {
     return this.exportToCSV(type, options);
   }
 
   // Получение общей статистики системы
-  static async getSystemStatistics(options: {
-    startDate?: Date;
-    endDate?: Date;
-  } = {}): Promise<{
+  static async getSystemStatistics(
+    options: {
+      startDate?: Date;
+      endDate?: Date;
+    } = {}
+  ): Promise<{
     users: {
       total: number;
       active: number;
@@ -277,7 +299,7 @@ export class ReportService {
     const { startDate, endDate } = options;
 
     let dateFilter = '';
-    let dateParams: any[] = [];
+    const dateParams: any[] = [];
     let paramIndex = 1;
 
     if (startDate) {
@@ -292,7 +314,7 @@ export class ReportService {
 
     // Статистика пользователей
     const usersResult = await query(
-      'SELECT COUNT(*) as total, COUNT(CASE WHEN is_active THEN 1 END) as active, COUNT(CASE WHEN role = \'worker\' THEN 1 END) as workers, COUNT(CASE WHEN role = \'admin\' THEN 1 END) as admins FROM users',
+      "SELECT COUNT(*) as total, COUNT(CASE WHEN is_active THEN 1 END) as active, COUNT(CASE WHEN role = 'worker' THEN 1 END) as workers, COUNT(CASE WHEN role = 'admin' THEN 1 END) as admins FROM users",
       []
     );
 
@@ -335,54 +357,79 @@ export class ReportService {
         total: parseInt(users.total),
         active: parseInt(users.active),
         workers: parseInt(users.workers),
-        admins: parseInt(users.admins)
+        admins: parseInt(users.admins),
       },
       sites: {
         total: parseInt(sites.total),
-        active: parseInt(sites.active)
+        active: parseInt(sites.active),
       },
       shifts: {
         total: parseInt(shifts.total),
         active: parseInt(shifts.active),
         completed: parseInt(shifts.completed),
-        totalHours: parseFloat(shifts.total_hours)
+        totalHours: parseFloat(shifts.total_hours),
       },
       violations: {
         total: parseInt(violations.total),
         resolved: parseInt(violations.resolved),
-        unresolved: parseInt(violations.unresolved)
-      }
+        unresolved: parseInt(violations.unresolved),
+      },
     };
   }
 
   // Экспорт отчетов в CSV формат
-  static async exportToCSV(type: 'work' | 'violations' | 'statistics', options: any = {}): Promise<string> {
+  static async exportToCSV(
+    type: 'work' | 'violations' | 'statistics',
+    options: any = {}
+  ): Promise<string> {
     let data: any[] = [];
     let headers: string[] = [];
 
     switch (type) {
       case 'work':
         data = await this.getWorkReports(options);
-        headers = ['User Name', 'Site Name', 'Shifts Count', 'Total Hours', 'Violations Count'];
+        headers = [
+          'User Name',
+          'Site Name',
+          'Shifts Count',
+          'Total Hours',
+          'Violations Count',
+        ];
         break;
-      case 'violations':
+      case 'violations': {
         const violationsData = await this.getViolationsReport(options);
         data = [violationsData];
-        headers = ['Total', 'Resolved', 'Unresolved', 'Low Severity', 'Medium Severity', 'High Severity'];
+        headers = [
+          'Total',
+          'Resolved',
+          'Unresolved',
+          'Low Severity',
+          'Medium Severity',
+          'High Severity',
+        ];
         break;
-      case 'statistics':
+      }
+      case 'statistics': {
         const statsData = await this.getSystemStatistics(options);
         data = [statsData];
-        headers = ['Total Users', 'Active Users', 'Total Sites', 'Active Sites', 'Total Shifts', 'Completed Shifts'];
+        headers = [
+          'Total Users',
+          'Active Users',
+          'Total Sites',
+          'Active Sites',
+          'Total Shifts',
+          'Completed Shifts',
+        ];
         break;
+      }
     }
 
     // Создаем CSV строку
     const csvRows = [headers.join(',')];
-    
+
     data.forEach((row: any) => {
       let csvRow: string[] = [];
-      
+
       switch (type) {
         case 'work':
           csvRow = [
@@ -390,7 +437,7 @@ export class ReportService {
             row.siteName || '',
             row.shiftsCount.toString(),
             row.totalHours.toString(),
-            row.violationsCount.toString()
+            row.violationsCount.toString(),
           ];
           break;
         case 'violations':
@@ -400,7 +447,7 @@ export class ReportService {
             row.unresolved.toString(),
             row.bySeverity.low.toString(),
             row.bySeverity.medium.toString(),
-            row.bySeverity.high.toString()
+            row.bySeverity.high.toString(),
           ];
           break;
         case 'statistics':
@@ -410,11 +457,11 @@ export class ReportService {
             row.sites.total.toString(),
             row.sites.active.toString(),
             row.shifts.total.toString(),
-            row.shifts.completed.toString()
+            row.shifts.completed.toString(),
           ];
           break;
       }
-      
+
       csvRows.push(csvRow.join(','));
     });
 
@@ -422,10 +469,13 @@ export class ReportService {
   }
 
   // Получение детального отчета по пользователю
-  static async getUserDetailedReport(userId: string, options: {
-    startDate?: Date;
-    endDate?: Date;
-  } = {}): Promise<{
+  static async getUserDetailedReport(
+    userId: string,
+    options: {
+      startDate?: Date;
+      endDate?: Date;
+    } = {}
+  ): Promise<{
     user: any;
     workSummary: any;
     violations: any[];
@@ -447,12 +497,19 @@ export class ReportService {
     const user = userResult.rows[0];
 
     // Получаем рабочую статистику
-    const workReports = await this.getWorkReports({ userId, startDate, endDate });
-    const workSummary = workReports.length > 0 ? workReports[0] : {
-      shiftsCount: 0,
-      totalHours: 0,
-      violationsCount: 0
-    };
+    const workReports = await this.getWorkReports({
+      userId,
+      startDate,
+      endDate,
+    });
+    const workSummary =
+      workReports.length > 0
+        ? workReports[0]
+        : {
+            shiftsCount: 0,
+            totalHours: 0,
+            violationsCount: 0,
+          };
 
     // Получаем нарушения
     const violationsResult = await query(
@@ -494,7 +551,7 @@ export class ReportService {
       workSummary,
       violations: violationsResult.rows,
       shifts: shiftsResult.rows,
-      assignments: assignmentsResult.rows
+      assignments: assignmentsResult.rows,
     };
   }
-} 
+}

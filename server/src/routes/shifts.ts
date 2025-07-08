@@ -1,6 +1,6 @@
 ﻿import express from 'express';
 import Joi from 'joi';
-import { authenticateToken, requireAdmin, validateJSON } from '../middleware/auth';
+import { requireAdmin, validateJSON } from '../middleware/auth';
 import { ShiftService } from '../services/ShiftService';
 import { AssignmentService } from '../services/AssignmentService';
 import { SiteService } from '../services/SiteService';
@@ -13,24 +13,24 @@ const startShiftSchema = Joi.object({
   siteId: Joi.string().uuid().required(),
   location: Joi.object({
     latitude: Joi.number().min(-90).max(90).required(),
-    longitude: Joi.number().min(-180).max(180).required()
+    longitude: Joi.number().min(-180).max(180).required(),
   }).optional(),
-  notes: Joi.string().max(500).optional()
+  notes: Joi.string().max(500).optional(),
 });
 
 const endShiftSchema = Joi.object({
   location: Joi.object({
     latitude: Joi.number().min(-90).max(90).required(),
-    longitude: Joi.number().min(-180).max(180).required()
+    longitude: Joi.number().min(-180).max(180).required(),
   }).optional(),
-  notes: Joi.string().max(500).optional()
+  notes: Joi.string().max(500).optional(),
 });
 
 const updateShiftSchema = Joi.object({
   startTime: Joi.date().optional(),
   endTime: Joi.date().optional(),
   notes: Joi.string().max(500).optional().allow(null),
-  isActive: Joi.boolean().optional()
+  isActive: Joi.boolean().optional(),
 });
 
 const getShiftsQuerySchema = Joi.object({
@@ -40,7 +40,7 @@ const getShiftsQuerySchema = Joi.object({
   userId: Joi.string().uuid().optional(),
   siteId: Joi.string().uuid().optional(),
   startDate: Joi.date().optional(),
-  endDate: Joi.date().optional()
+  endDate: Joi.date().optional(),
 });
 
 // Все маршруты требуют аутентификации
@@ -50,20 +50,29 @@ const getShiftsQuerySchema = Joi.object({
 router.get('/', async (req, res) => {
   try {
     const { error, value } = getShiftsQuerySchema.validate(req.query);
-    
+
     if (error) {
       return res.status(400).json({
         success: false,
-        error: error.details[0]?.message || 'Validation error'
+        error: error.details[0]?.message || 'Validation error',
       });
     }
 
     const { page, limit, isActive, userId, siteId, startDate, endDate } = value;
-    
+
     // Обычные пользователи могут видеть только свои смены
-    const filters = req.user?.role === 'admin' 
-      ? { page, limit, isActive, userId, siteId, startDate, endDate }
-      : { page, limit, isActive, userId: req.user?.id, siteId, startDate, endDate };
+    const filters =
+      req.user?.role === 'admin'
+        ? { page, limit, isActive, userId, siteId, startDate, endDate }
+        : {
+            page,
+            limit,
+            isActive,
+            userId: req.user?.id,
+            siteId,
+            startDate,
+            endDate,
+          };
 
     const result = await ShiftService.getAllShifts(filters);
     const totalPages = Math.ceil(result.total / limit);
@@ -76,13 +85,13 @@ router.get('/', async (req, res) => {
         page,
         limit,
         total: result.total,
-        totalPages
-      }
+        totalPages,
+      },
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to retrieve shifts'
+      error: 'Failed to retrieve shifts',
     });
   }
 });
@@ -93,7 +102,7 @@ router.get('/my', async (req, res) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
     }
 
@@ -101,9 +110,12 @@ router.get('/my', async (req, res) => {
     const result = await ShiftService.getUserShifts(req.user.id, {
       page: parseInt(page as string),
       limit: parseInt(limit as string),
-      ...(isActive !== undefined && { isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined }),
+      ...(isActive !== undefined && {
+        isActive:
+          isActive === 'true' ? true : isActive === 'false' ? false : undefined,
+      }),
       ...(startDate && { startDate: new Date(startDate as string) }),
-      ...(endDate && { endDate: new Date(endDate as string) })
+      ...(endDate && { endDate: new Date(endDate as string) }),
     });
 
     const totalPages = Math.ceil(result.total / parseInt(limit as string));
@@ -116,13 +128,13 @@ router.get('/my', async (req, res) => {
         page: parseInt(page as string),
         limit: parseInt(limit as string),
         total: result.total,
-        totalPages
-      }
+        totalPages,
+      },
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to retrieve user shifts'
+      error: 'Failed to retrieve user shifts',
     });
   }
 });
@@ -133,7 +145,7 @@ router.get('/active', async (req, res) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
     }
 
@@ -142,12 +154,12 @@ router.get('/active', async (req, res) => {
     return res.json({
       success: true,
       message: activeShift ? 'Active shift found' : 'No active shift',
-      data: activeShift
+      data: activeShift,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to retrieve active shift'
+      error: 'Failed to retrieve active shift',
     });
   }
 });
@@ -156,23 +168,23 @@ router.get('/active', async (req, res) => {
 router.get('/stats', requireAdmin, async (req, res) => {
   try {
     const { userId, siteId, startDate, endDate } = req.query;
-    
+
     const stats = await ShiftService.getShiftStats({
       ...(userId && { userId: userId as string }),
       ...(siteId && { siteId: siteId as string }),
       ...(startDate && { startDate: new Date(startDate as string) }),
-      ...(endDate && { endDate: new Date(endDate as string) })
+      ...(endDate && { endDate: new Date(endDate as string) }),
     });
-    
+
     return res.json({
       success: true,
       message: 'Shift statistics retrieved successfully',
-      data: stats
+      data: stats,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to retrieve shift statistics'
+      error: 'Failed to retrieve shift statistics',
     });
   }
 });
@@ -181,29 +193,32 @@ router.get('/stats', requireAdmin, async (req, res) => {
 router.post('/start', validateJSON, async (req, res) => {
   try {
     const { error, value } = startShiftSchema.validate(req.body);
-    
+
     if (error) {
       return res.status(400).json({
         success: false,
-        error: error.details[0]?.message || 'Validation error'
+        error: error.details[0]?.message || 'Validation error',
       });
     }
 
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
     }
 
     const { siteId, location, notes } = value;
 
     // Проверяем, что у пользователя есть назначение на данный объект
-    const hasAssignment = await AssignmentService.checkUserAssignment(req.user.id, siteId);
+    const hasAssignment = await AssignmentService.checkUserAssignment(
+      req.user.id,
+      siteId
+    );
     if (!hasAssignment) {
       return res.status(403).json({
         success: false,
-        error: 'You are not assigned to this construction site'
+        error: 'You are not assigned to this construction site',
       });
     }
 
@@ -212,7 +227,7 @@ router.post('/start', validateJSON, async (req, res) => {
     if (activeShift) {
       return res.status(400).json({
         success: false,
-        error: 'You already have an active shift. Please end it first.'
+        error: 'You already have an active shift. Please end it first.',
       });
     }
 
@@ -221,21 +236,25 @@ router.post('/start', validateJSON, async (req, res) => {
     if (!site) {
       return res.status(404).json({
         success: false,
-        error: 'Construction site not found'
+        error: 'Construction site not found',
       });
     }
 
     // Если указана локация, проверяем, что пользователь находится в радиусе объекта
     if (location) {
-      const locationCheck = await SiteService.checkLocationInSite(siteId, location.latitude, location.longitude);
+      const locationCheck = await SiteService.checkLocationInSite(
+        siteId,
+        location.latitude,
+        location.longitude
+      );
       if (!locationCheck.inRadius) {
         return res.status(400).json({
           success: false,
           error: `You are ${Math.round(locationCheck.distance)}m away from the construction site. You must be within ${site.radius}m to start a shift.`,
           data: {
             distance: locationCheck.distance,
-            requiredRadius: site.radius
-          }
+            requiredRadius: site.radius,
+          },
         });
       }
     }
@@ -244,18 +263,18 @@ router.post('/start', validateJSON, async (req, res) => {
       userId: req.user.id,
       siteId,
       startLocation: location,
-      notes
+      notes,
     });
 
     return res.status(201).json({
       success: true,
       message: 'Shift started successfully',
-      data: shift
+      data: shift,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to start shift'
+      error: 'Failed to start shift',
     });
   }
 });
@@ -264,27 +283,27 @@ router.post('/start', validateJSON, async (req, res) => {
 router.post('/:shiftId/end', validateJSON, async (req, res) => {
   try {
     const { shiftId } = req.params;
-    
+
     if (!shiftId) {
       return res.status(400).json({
         success: false,
-        error: 'Shift ID is required'
+        error: 'Shift ID is required',
       });
     }
-    
+
     const { error, value } = endShiftSchema.validate(req.body);
-    
+
     if (error) {
       return res.status(400).json({
         success: false,
-        error: error.details[0]?.message || 'Validation error'
+        error: error.details[0]?.message || 'Validation error',
       });
     }
 
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
     }
 
@@ -295,7 +314,7 @@ router.post('/:shiftId/end', validateJSON, async (req, res) => {
     if (!existingShift) {
       return res.status(404).json({
         success: false,
-        error: 'Shift not found'
+        error: 'Shift not found',
       });
     }
 
@@ -303,7 +322,7 @@ router.post('/:shiftId/end', validateJSON, async (req, res) => {
     if (existingShift.userId !== req.user.id) {
       return res.status(403).json({
         success: false,
-        error: 'You can only end your own shifts'
+        error: 'You can only end your own shifts',
       });
     }
 
@@ -311,41 +330,45 @@ router.post('/:shiftId/end', validateJSON, async (req, res) => {
     if (!existingShift.isActive || existingShift.endTime) {
       return res.status(400).json({
         success: false,
-        error: 'Shift is already ended'
+        error: 'Shift is already ended',
       });
     }
 
     // Если указана локация, проверяем, что пользователь находится в радиусе объекта
     if (location) {
-      const locationCheck = await SiteService.checkLocationInSite(existingShift.siteId, location.latitude, location.longitude);
+      const locationCheck = await SiteService.checkLocationInSite(
+        existingShift.siteId,
+        location.latitude,
+        location.longitude
+      );
       const site = await SiteService.getSiteById(existingShift.siteId);
-      
+
       if (!locationCheck.inRadius && site) {
         return res.status(400).json({
           success: false,
           error: `You are ${Math.round(locationCheck.distance)}m away from the construction site. You must be within ${site.radius}m to end a shift.`,
           data: {
             distance: locationCheck.distance,
-            requiredRadius: site.radius
-          }
+            requiredRadius: site.radius,
+          },
         });
       }
     }
 
     const shift = await ShiftService.endShift(shiftId as string, {
       endLocation: location,
-      notes
+      notes,
     });
 
     return res.json({
       success: true,
       message: 'Shift ended successfully',
-      data: shift
+      data: shift,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to end shift'
+      error: 'Failed to end shift',
     });
   }
 });
@@ -354,20 +377,20 @@ router.post('/:shiftId/end', validateJSON, async (req, res) => {
 router.get('/:shiftId', async (req, res) => {
   try {
     const { shiftId } = req.params;
-    
+
     if (!shiftId) {
       return res.status(400).json({
         success: false,
-        error: 'Shift ID is required'
+        error: 'Shift ID is required',
       });
     }
 
     const shift = await ShiftService.getShiftById(shiftId);
-    
+
     if (!shift) {
       return res.status(404).json({
         success: false,
-        error: 'Shift not found'
+        error: 'Shift not found',
       });
     }
 
@@ -375,19 +398,19 @@ router.get('/:shiftId', async (req, res) => {
     if (req.user?.role !== 'admin' && shift.userId !== req.user?.id) {
       return res.status(403).json({
         success: false,
-        error: 'Access denied'
+        error: 'Access denied',
       });
     }
 
     return res.json({
       success: true,
       message: 'Shift retrieved successfully',
-      data: shift
+      data: shift,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to retrieve shift'
+      error: 'Failed to retrieve shift',
     });
   }
 });
@@ -396,20 +419,20 @@ router.get('/:shiftId', async (req, res) => {
 router.put('/:shiftId', requireAdmin, validateJSON, async (req, res) => {
   try {
     const { shiftId } = req.params;
-    
+
     if (!shiftId) {
       return res.status(400).json({
         success: false,
-        error: 'Shift ID is required'
+        error: 'Shift ID is required',
       });
     }
 
     const { error, value } = updateShiftSchema.validate(req.body);
-    
+
     if (error) {
       return res.status(400).json({
         success: false,
-        error: error.details[0]?.message || 'Validation error'
+        error: error.details[0]?.message || 'Validation error',
       });
     }
 
@@ -418,28 +441,28 @@ router.put('/:shiftId', requireAdmin, validateJSON, async (req, res) => {
     if (!existingShift) {
       return res.status(404).json({
         success: false,
-        error: 'Shift not found'
+        error: 'Shift not found',
       });
     }
 
     const updatedShift = await ShiftService.updateShift(shiftId, value);
-    
+
     if (!updatedShift) {
       return res.status(400).json({
         success: false,
-        error: 'Failed to update shift'
+        error: 'Failed to update shift',
       });
     }
 
     return res.json({
       success: true,
       message: 'Shift updated successfully',
-      data: updatedShift
+      data: updatedShift,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to update shift'
+      error: 'Failed to update shift',
     });
   }
 });
@@ -448,11 +471,11 @@ router.put('/:shiftId', requireAdmin, validateJSON, async (req, res) => {
 router.delete('/:shiftId', requireAdmin, async (req, res) => {
   try {
     const { shiftId } = req.params;
-    
+
     if (!shiftId) {
       return res.status(400).json({
         success: false,
-        error: 'Shift ID is required'
+        error: 'Shift ID is required',
       });
     }
 
@@ -461,27 +484,27 @@ router.delete('/:shiftId', requireAdmin, async (req, res) => {
     if (!existingShift) {
       return res.status(404).json({
         success: false,
-        error: 'Shift not found'
+        error: 'Shift not found',
       });
     }
 
     const success = await ShiftService.deleteShift(shiftId);
-    
+
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: 'Failed to delete shift'
+        error: 'Failed to delete shift',
       });
     }
 
     return res.json({
       success: true,
-      message: 'Shift deleted successfully'
+      message: 'Shift deleted successfully',
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to delete shift'
+      error: 'Failed to delete shift',
     });
   }
 });
@@ -491,18 +514,24 @@ router.get('/user/:userId/hours', async (req, res) => {
   try {
     const { userId } = req.params;
     const { startDate, endDate } = req.query;
-    
+
     if (!userId) {
       return res.status(400).json({
         success: false,
-        error: 'User ID is required'
+        error: 'User ID is required',
       });
     }
 
-    if (!startDate || !endDate || typeof startDate !== 'string' || typeof endDate !== 'string') {
+    if (
+      !startDate ||
+      !endDate ||
+      typeof startDate !== 'string' ||
+      typeof endDate !== 'string'
+    ) {
       return res.status(400).json({
         success: false,
-        error: 'Start date and end date are required and must be valid date strings'
+        error:
+          'Start date and end date are required and must be valid date strings',
       });
     }
 
@@ -510,7 +539,7 @@ router.get('/user/:userId/hours', async (req, res) => {
     if (req.user?.role !== 'admin' && req.user?.id !== userId) {
       return res.status(403).json({
         success: false,
-        error: 'Access denied'
+        error: 'Access denied',
       });
     }
 
@@ -519,7 +548,7 @@ router.get('/user/:userId/hours', async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: 'User not found'
+        error: 'User not found',
       });
     }
 
@@ -536,21 +565,21 @@ router.get('/user/:userId/hours', async (req, res) => {
         user: {
           id: user.id,
           name: user.name,
-          phoneNumber: user.phoneNumber
+          phoneNumber: user.phoneNumber,
         },
         period: {
           startDate,
-          endDate
+          endDate,
         },
-        ...workHours
-      }
+        ...workHours,
+      },
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Failed to retrieve work hours'
+      error: 'Failed to retrieve work hours',
     });
   }
 });
 
-export default router; 
+export default router;

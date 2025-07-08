@@ -1,0 +1,44 @@
+# Production Dockerfile для WorkTimeTracker Frontend
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Установка системных зависимостей
+RUN apk add --no-cache python3 make g++
+
+# Копирование package.json
+COPY package*.json ./
+
+# Установка зависимостей
+RUN npm ci && npm cache clean --force
+
+# Копирование исходного кода
+COPY . .
+
+# Сборка приложения для продакшена
+RUN npm run build
+
+# Production image
+FROM nginx:alpine
+
+# Установка дополнительных инструментов
+RUN apk add --no-cache curl
+
+# Копирование собранного приложения
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Копирование конфигурации nginx
+COPY nginx/nginx.prod.conf /etc/nginx/nginx.conf
+
+# Создание директории для логов
+RUN mkdir -p /var/log/nginx
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:80/health || exit 1
+
+# Открытие порта
+EXPOSE 80
+
+# Запуск nginx
+CMD ["nginx", "-g", "daemon off;"] 

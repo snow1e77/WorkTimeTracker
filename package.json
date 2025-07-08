@@ -22,13 +22,16 @@
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
-    "clean": "npm cache clean --force && rm -rf node_modules server/node_modules",
+    "clean": "npm cache clean --force ; if (Test-Path node_modules) { Remove-Item -Recurse -Force node_modules } ; if (Test-Path server/node_modules) { Remove-Item -Recurse -Force server/node_modules }",
     "clean:mac": "npm cache clean --force; rm -rf node_modules server/node_modules",
+    "clean:windows": "powershell.exe -ExecutionPolicy Bypass -Command \"npm cache clean --force ; if (Test-Path node_modules) { Remove-Item -Recurse -Force node_modules } ; if (Test-Path server/node_modules) { Remove-Item -Recurse -Force server/node_modules }\"",
     "reset:mac": "npm run clean:mac && npm install && cd server && npm install && cd ..",
+    "reset:windows": "powershell.exe -ExecutionPolicy Bypass -Command \"npm run clean:windows ; npm install ; cd server ; npm install ; cd ..\"",
     "setup:env": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-env.ps1",
+    "setup:git-hooks": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-git-hooks.ps1",
     "deploy:prod": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy-production.ps1",
     "setup:prod": "cd server && npm ci --production",
-    "prepare": "husky install",
+    "prepare": "husky install && npm run setup:git-hooks",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json}\"",
@@ -37,11 +40,11 @@
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
-      "eslint --fix",
+      "eslint --fix --max-warnings=100",
       "prettier --write"
     ],
     "server/src/**/*.{ts,tsx}": [
-      "powershell -Command \"cd server; npm run lint:fix\"",
+      "powershell.exe -ExecutionPolicy Bypass -Command \"cd server ; npx eslint src/**/*.ts --fix --max-warnings=100\"",
       "prettier --write"
     ],
     "*.json": [

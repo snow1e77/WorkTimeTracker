@@ -1,10 +1,18 @@
 import { query } from '../config/database';
-import { AdminLimits, CreateAdminLimitsRequest, UpdateAdminLimitsRequest } from '../types';
+import {
+  AdminLimits,
+  CreateAdminLimitsRequest,
+  UpdateAdminLimitsRequest,
+  QueryResult,
+  AdminLimitsRow,
+} from '../types';
 
 export class AdminLimitsService {
-  
   // Создание лимитов для админа
-  static async createAdminLimits(data: CreateAdminLimitsRequest, createdBy: string): Promise<AdminLimits> {
+  static async createAdminLimits(
+    data: CreateAdminLimitsRequest,
+    createdBy: string
+  ): Promise<AdminLimits> {
     const {
       adminId,
       companyName,
@@ -17,10 +25,10 @@ export class AdminLimitsService {
       canViewReports = true,
       canChatWithWorkers = true,
       validFrom,
-      validTo
+      validTo,
     } = data;
 
-    const result = await query(
+    const result = (await query(
       `INSERT INTO admin_limits (
         admin_id, company_name, max_users, max_sites, max_projects,
         can_export_excel, can_manage_users, can_manage_sites, 
@@ -29,12 +37,21 @@ export class AdminLimitsService {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *`,
       [
-        adminId, companyName, maxUsers, maxSites, maxProjects,
-        canExportExcel, canManageUsers, canManageSites,
-        canViewReports, canChatWithWorkers,
-        validFrom || new Date(), validTo, createdBy
+        adminId,
+        companyName,
+        maxUsers,
+        maxSites,
+        maxProjects,
+        canExportExcel,
+        canManageUsers,
+        canManageSites,
+        canViewReports,
+        canChatWithWorkers,
+        validFrom || new Date(),
+        validTo,
+        createdBy,
       ]
-    );
+    )) as QueryResult<AdminLimitsRow>;
 
     // Обновляем запись пользователя
     await query(
@@ -47,10 +64,10 @@ export class AdminLimitsService {
 
   // Получение лимитов админа
   static async getAdminLimits(adminId: string): Promise<AdminLimits | null> {
-    const result = await query(
+    const result = (await query(
       'SELECT * FROM admin_limits WHERE admin_id = $1 AND is_active = true',
       [adminId]
-    );
+    )) as QueryResult<AdminLimitsRow>;
 
     if (result.rows.length === 0) {
       return null;
@@ -61,12 +78,12 @@ export class AdminLimitsService {
 
   // Обновление лимитов админа
   static async updateAdminLimits(
-    adminId: string, 
+    adminId: string,
     updates: UpdateAdminLimitsRequest,
-    updatedBy: string
+    _updatedBy: string
   ): Promise<AdminLimits | null> {
     const existingLimits = await this.getAdminLimits(adminId);
-    
+
     if (!existingLimits) {
       throw new Error('Admin limits not found');
     }
@@ -132,32 +149,34 @@ export class AdminLimitsService {
     updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
     updateValues.push(adminId);
 
-    const result = await query(
+    const result = (await query(
       `UPDATE admin_limits 
        SET ${updateFields.join(', ')}
        WHERE admin_id = $${paramIndex}
        RETURNING *`,
       updateValues
-    );
+    )) as QueryResult<AdminLimitsRow>;
 
     // Обновляем company_name в таблице users если изменилось
     if (updates.companyName !== undefined) {
-      await query(
-        'UPDATE users SET company_name = $1 WHERE id = $2',
-        [updates.companyName, adminId]
-      );
+      await query('UPDATE users SET company_name = $1 WHERE id = $2', [
+        updates.companyName,
+        adminId,
+      ]);
     }
 
     return this.mapRowToAdminLimits(result.rows[0]);
   }
 
   // Получение всех админов с лимитами
-  static async getAllAdminLimits(options: {
-    page?: number;
-    limit?: number;
-    isActive?: boolean;
-    companyName?: string;
-  } = {}): Promise<{
+  static async getAllAdminLimits(
+    options: {
+      page?: number;
+      limit?: number;
+      isActive?: boolean;
+      companyName?: string;
+    } = {}
+  ): Promise<{
     adminLimits: (AdminLimits & { adminName: string; adminPhone: string })[];
     total: number;
     page: number;
@@ -166,8 +185,8 @@ export class AdminLimitsService {
     const { page = 1, limit = 20, isActive, companyName } = options;
     const offset = (page - 1) * limit;
 
-    let whereConditions: string[] = ['u.role = \'admin\''];
-    let queryParams: any[] = [];
+    const whereConditions: string[] = ["u.role = 'admin'"];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (isActive !== undefined) {
@@ -180,19 +199,22 @@ export class AdminLimitsService {
       queryParams.push(`%${companyName}%`);
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(' AND ')}`
+        : '';
 
     // Получение общего количества
-    const countResult = await query(
+    const countResult = (await query(
       `SELECT COUNT(*) as total
        FROM users u
        LEFT JOIN admin_limits al ON u.id = al.admin_id
        ${whereClause}`,
       queryParams
-    );
+    )) as QueryResult<{ total: string }>;
 
     // Получение данных с пагинацией
-    const dataResult = await query(
+    const dataResult = (await query(
       `SELECT 
          al.*,
          u.name as admin_name,
@@ -203,19 +225,21 @@ export class AdminLimitsService {
        ORDER BY u.name ASC
        LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
       [...queryParams, limit, offset]
-    );
+    )) as QueryResult<
+      AdminLimitsRow & { admin_name: string; admin_phone: string }
+    >;
 
-    const adminLimits = dataResult.rows.map((row: any) => ({
+    const adminLimits = dataResult.rows.map((row) => ({
       ...this.mapRowToAdminLimits(row),
       adminName: row.admin_name,
-      adminPhone: row.admin_phone
+      adminPhone: row.admin_phone,
     }));
 
     return {
       adminLimits,
       total: parseInt(countResult.rows[0].total),
       page,
-      limit
+      limit,
     };
   }
 
@@ -231,63 +255,72 @@ export class AdminLimitsService {
     violations?: string[];
   }> {
     const limits = await this.getAdminLimits(adminId);
-    
+
     if (!limits) {
       return { hasLimits: false };
     }
 
     // Проверка текущего использования
-    const usageResult = await query(
+    const usageResult = (await query(
       `SELECT 
          (SELECT COUNT(*) FROM users WHERE company_id = $1) as users_count,
          (SELECT COUNT(*) FROM construction_sites WHERE company_id = $1) as sites_count,
          (SELECT COUNT(*) FROM projects WHERE company_id = $1) as projects_count`,
       [limits.companyName]
-    );
+    )) as QueryResult<{
+      users_count: string;
+      sites_count: string;
+      projects_count: string;
+    }>;
 
     const currentUsage = {
       users: parseInt(usageResult.rows[0].users_count),
       sites: parseInt(usageResult.rows[0].sites_count),
-      projects: parseInt(usageResult.rows[0].projects_count)
+      projects: parseInt(usageResult.rows[0].projects_count),
     };
 
     const violations: string[] = [];
-    
+
     if (currentUsage.users > limits.maxUsers) {
-      violations.push(`Превышен лимит пользователей: ${currentUsage.users}/${limits.maxUsers}`);
+      violations.push(
+        `Превышен лимит пользователей: ${currentUsage.users}/${limits.maxUsers}`
+      );
     }
     if (currentUsage.sites > limits.maxSites) {
-      violations.push(`Превышен лимит объектов: ${currentUsage.sites}/${limits.maxSites}`);
+      violations.push(
+        `Превышен лимит объектов: ${currentUsage.sites}/${limits.maxSites}`
+      );
     }
     if (currentUsage.projects > limits.maxProjects) {
-      violations.push(`Превышен лимит проектов: ${currentUsage.projects}/${limits.maxProjects}`);
+      violations.push(
+        `Превышен лимит проектов: ${currentUsage.projects}/${limits.maxProjects}`
+      );
     }
 
     return {
       hasLimits: true,
       limits,
       currentUsage,
-      violations: violations.length > 0 ? violations : undefined
+      violations: violations.length > 0 ? violations : undefined,
     };
   }
 
   // Удаление лимитов админа
   static async deleteAdminLimits(adminId: string): Promise<boolean> {
-    const result = await query(
+    const result = (await query(
       'UPDATE admin_limits SET is_active = false WHERE admin_id = $1',
       [adminId]
-    );
+    )) as QueryResult;
 
-    await query(
-      'UPDATE users SET admin_limit_id = NULL WHERE id = $1',
-      [adminId]
-    );
+    await query('UPDATE users SET admin_limit_id = NULL WHERE id = $1', [
+      adminId,
+    ]);
 
     return result.rowCount > 0;
   }
 
   // Вспомогательный метод для маппинга данных из БД
-  private static mapRowToAdminLimits(row: any): AdminLimits {
+  private static mapRowToAdminLimits(row: AdminLimitsRow): AdminLimits {
     return {
       id: row.id,
       adminId: row.admin_id,
@@ -305,7 +338,7 @@ export class AdminLimitsService {
       isActive: row.is_active,
       createdBy: row.created_by,
       createdAt: row.created_at,
-      updatedAt: row.updated_at
+      updatedAt: row.updated_at,
     };
   }
-} 
+}

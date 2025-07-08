@@ -11,8 +11,14 @@ export class UserService {
     companyId?: string;
     foremanId?: string; // ID прораба для работников
   }): Promise<User> {
-    const { phoneNumber, name, role = 'worker', companyId, foremanId } = userData;
-    
+    const {
+      phoneNumber,
+      name,
+      role = 'worker',
+      companyId,
+      foremanId,
+    } = userData;
+
     // Проверяем, не существует ли уже пользователь с таким номером
     const existingUser = await this.getUserByPhoneNumber(phoneNumber);
     if (existingUser) {
@@ -25,7 +31,16 @@ export class UserService {
       `INSERT INTO users (id, phone_number, name, role, company_id, foreman_id, is_verified, is_active)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id, phone_number, name, role, company_id, foreman_id, is_verified, is_active, created_at, updated_at`,
-      [userId, phoneNumber, name, role, companyId || null, foremanId, true, true]
+      [
+        userId,
+        phoneNumber,
+        name,
+        role,
+        companyId || null,
+        foremanId,
+        true,
+        true,
+      ]
     );
 
     return this.mapRowToUser(result.rows[0]);
@@ -42,13 +57,16 @@ export class UserService {
   }
 
   // Получение пользователя с паролем для аутентификации
-  static async getUserWithPasswordByPhoneNumber(phoneNumber: string): Promise<UserWithPassword | null> {
-    const result = await query(
-      'SELECT * FROM users WHERE phone_number = $1',
-      [phoneNumber]
-    );
+  static async getUserWithPasswordByPhoneNumber(
+    phoneNumber: string
+  ): Promise<UserWithPassword | null> {
+    const result = await query('SELECT * FROM users WHERE phone_number = $1', [
+      phoneNumber,
+    ]);
 
-    return result.rows.length > 0 ? this.mapRowToUserWithPassword(result.rows[0]) : null;
+    return result.rows.length > 0
+      ? this.mapRowToUserWithPassword(result.rows[0])
+      : null;
   }
 
   // Получение пользователя по ID
@@ -62,18 +80,20 @@ export class UserService {
   }
 
   // Получение всех пользователей с пагинацией
-  static async getAllUsers(options: {
-    page?: number;
-    limit?: number;
-    role?: 'worker' | 'foreman' | 'admin' | 'superadmin';
-    isActive?: boolean;
-    search?: string;
-  } = {}): Promise<{ users: User[]; total: number }> {
+  static async getAllUsers(
+    options: {
+      page?: number;
+      limit?: number;
+      role?: 'worker' | 'foreman' | 'admin' | 'superadmin';
+      isActive?: boolean;
+      search?: string;
+    } = {}
+  ): Promise<{ users: User[]; total: number }> {
     const { page = 1, limit = 20, role, isActive, search } = options;
     const offset = (page - 1) * limit;
 
-    let whereConditions: string[] = [];
-    let queryParams: any[] = [];
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (role) {
@@ -87,12 +107,17 @@ export class UserService {
     }
 
     if (search) {
-      whereConditions.push(`(name ILIKE $${paramIndex++} OR phone_number ILIKE $${paramIndex++})`);
+      whereConditions.push(
+        `(name ILIKE $${paramIndex++} OR phone_number ILIKE $${paramIndex++})`
+      );
       queryParams.push(`%${search}%`, `%${search}%`);
       paramIndex++;
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(' AND ')}`
+        : '';
 
     // Получаем общее количество
     const countResult = await query(
@@ -116,14 +141,17 @@ export class UserService {
   }
 
   // Обновление пользователя
-  static async updateUser(userId: string, updates: {
-    name?: string;
-    role?: 'worker' | 'foreman' | 'admin' | 'superadmin';
-    isActive?: boolean;
-    isVerified?: boolean;
-    companyId?: string;
-    foremanId?: string;
-  }): Promise<User | null> {
+  static async updateUser(
+    userId: string,
+    updates: {
+      name?: string;
+      role?: 'worker' | 'foreman' | 'admin' | 'superadmin';
+      isActive?: boolean;
+      isVerified?: boolean;
+      companyId?: string;
+      foremanId?: string;
+    }
+  ): Promise<User | null> {
     const updateFields: string[] = [];
     const queryParams: any[] = [];
     let paramIndex = 1;
@@ -181,13 +209,19 @@ export class UserService {
   }
 
   // Проверка пароля (не используется в текущей системе аутентификации)
-  static async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  static async verifyPassword(
+    _password: string,
+    _hashedPassword: string
+  ): Promise<boolean> {
     // Пароли не используются в системе простой аутентификации по номеру телефона
     return false;
   }
 
   // Обновление пароля (не используется в текущей системе аутентификации)
-  static async updatePassword(userId: string, newPassword: string): Promise<boolean> {
+  static async updatePassword(
+    _userId: string,
+    _newPassword: string
+  ): Promise<boolean> {
     // Пароли не используются в системе простой аутентификации по номеру телефона
     // Возвращаем false, чтобы API вернул ошибку о недоступности функции
     return false;
@@ -255,7 +289,10 @@ export class UserService {
   }
 
   // Назначение прораба работнику
-  static async assignForemanToWorker(workerId: string, foremanId: string): Promise<User | null> {
+  static async assignForemanToWorker(
+    workerId: string,
+    foremanId: string
+  ): Promise<User | null> {
     const result = await query(
       'UPDATE users SET foreman_id = $1 WHERE id = $2 AND role = $3 RETURNING id, phone_number, name, role, company_id, company_name, foreman_id, is_verified, is_active, created_at, updated_at',
       [foremanId, workerId, 'worker']
@@ -299,4 +336,4 @@ export class UserService {
       passwordHash: undefined, // Пароли больше не используются
     };
   }
-} 
+}

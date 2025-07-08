@@ -26,7 +26,7 @@ export class PreRegistrationService {
     addedBy: string;
   }): Promise<PreRegisteredUser> {
     const { phoneNumber, name, role = 'worker', companyId, addedBy } = userData;
-    
+
     // Check if user is not already pre-registered
     const existingUser = await this.getPreRegisteredUserByPhone(phoneNumber);
     if (existingUser) {
@@ -38,7 +38,7 @@ export class PreRegistrationService {
       'SELECT id FROM users WHERE phone_number = $1',
       [phoneNumber]
     );
-    
+
     if (userExistsResult.rows.length > 0) {
       throw new Error('User with this phone number is already registered');
     }
@@ -66,27 +66,33 @@ export class PreRegistrationService {
   }
 
   // Get pre-registered user by phone number
-  static async getPreRegisteredUserByPhone(phoneNumber: string): Promise<PreRegisteredUser | null> {
+  static async getPreRegisteredUserByPhone(
+    phoneNumber: string
+  ): Promise<PreRegisteredUser | null> {
     const result = await query(
       'SELECT * FROM pre_registered_users WHERE phone_number = $1',
       [phoneNumber]
     );
 
-    return result.rows.length > 0 ? this.mapRowToPreRegisteredUser(result.rows[0]) : null;
+    return result.rows.length > 0
+      ? this.mapRowToPreRegisteredUser(result.rows[0])
+      : null;
   }
 
   // Get all pre-registered users
-  static async getAllPreRegisteredUsers(options: {
-    page?: number;
-    limit?: number;
-    isActivated?: boolean;
-    search?: string;
-  } = {}): Promise<{ users: PreRegisteredUser[]; total: number }> {
+  static async getAllPreRegisteredUsers(
+    options: {
+      page?: number;
+      limit?: number;
+      isActivated?: boolean;
+      search?: string;
+    } = {}
+  ): Promise<{ users: PreRegisteredUser[]; total: number }> {
     const { page = 1, limit = 20, isActivated, search } = options;
     const offset = (page - 1) * limit;
 
-    let whereConditions: string[] = [];
-    let queryParams: any[] = [];
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (isActivated !== undefined) {
@@ -95,12 +101,17 @@ export class PreRegistrationService {
     }
 
     if (search) {
-      whereConditions.push(`(name ILIKE $${paramIndex++} OR phone_number ILIKE $${paramIndex++})`);
+      whereConditions.push(
+        `(name ILIKE $${paramIndex++} OR phone_number ILIKE $${paramIndex++})`
+      );
       queryParams.push(`%${search}%`, `%${search}%`);
       paramIndex++;
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(' AND ')}`
+        : '';
 
     // Get total count
     const countResult = await query(
@@ -123,7 +134,9 @@ export class PreRegistrationService {
   }
 
   // Activate pre-registered user
-  static async activatePreRegisteredUser(phoneNumber: string): Promise<PreRegisteredUser | null> {
+  static async activatePreRegisteredUser(
+    phoneNumber: string
+  ): Promise<PreRegisteredUser | null> {
     const result = await query(
       `UPDATE pre_registered_users 
        SET is_activated = true, activated_at = CURRENT_TIMESTAMP 
@@ -132,12 +145,17 @@ export class PreRegistrationService {
       [phoneNumber]
     );
 
-    return result.rows.length > 0 ? this.mapRowToPreRegisteredUser(result.rows[0]) : null;
+    return result.rows.length > 0
+      ? this.mapRowToPreRegisteredUser(result.rows[0])
+      : null;
   }
 
   // Remove pre-registered user
   static async removePreRegisteredUser(id: string): Promise<boolean> {
-    const result = await query('DELETE FROM pre_registered_users WHERE id = $1', [id]);
+    const result = await query(
+      'DELETE FROM pre_registered_users WHERE id = $1',
+      [id]
+    );
     return result.rowCount > 0;
   }
 
@@ -158,26 +176,27 @@ export class PreRegistrationService {
       return {
         canLogin: true,
         isPreRegistered: true,
-        isActivated: true
+        isActivated: true,
       };
     }
 
     // Check pre-registration
-    const preRegisteredUser = await this.getPreRegisteredUserByPhone(phoneNumber);
-    
+    const preRegisteredUser =
+      await this.getPreRegisteredUserByPhone(phoneNumber);
+
     if (!preRegisteredUser) {
       return {
         canLogin: false,
         isPreRegistered: false,
         isActivated: false,
-        needsContact: true
+        needsContact: true,
       };
     }
 
     return {
       canLogin: preRegisteredUser.isActivated,
       isPreRegistered: true,
-      isActivated: preRegisteredUser.isActivated
+      isActivated: preRegisteredUser.isActivated,
     };
   }
 
@@ -198,4 +217,4 @@ export class PreRegistrationService {
       updatedAt: row.updated_at,
     };
   }
-} 
+}

@@ -1,4 +1,9 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
-npm run pre-commit
+if command -v powershell.exe > /dev/null 2>&1; then
+  # Запуск в PowerShell на Windows
+  powershell.exe -ExecutionPolicy Bypass -Command "npm run pre-commit"
+else
+  # Fallback для Unix систем
+  . "$(dirname -- "$0")/_/husky.sh"
+  npm run pre-commit
+fi

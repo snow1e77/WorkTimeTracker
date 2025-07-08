@@ -13,33 +13,46 @@ export class SiteService {
     companyId?: string;
     createdBy: string;
   }): Promise<ConstructionSite> {
-    const { name, address, latitude, longitude, radius, companyId, createdBy } = siteData;
-    
+    const { name, address, latitude, longitude, radius, companyId, createdBy } =
+      siteData;
+
     const siteId = uuidv4();
 
     const result = await query(
       `INSERT INTO construction_sites (id, name, address, latitude, longitude, radius, company_id, created_by, is_active)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [siteId, name, address, latitude, longitude, radius, companyId || null, createdBy, true]
+      [
+        siteId,
+        name,
+        address,
+        latitude,
+        longitude,
+        radius,
+        companyId || null,
+        createdBy,
+        true,
+      ]
     );
 
     return this.mapRowToSite(result.rows[0]);
   }
 
   // Получение всех строительных объектов с пагинацией
-  static async getAllSites(options: {
-    page?: number;
-    limit?: number;
-    isActive?: boolean;
-    search?: string;
-    createdBy?: string;
-  } = {}): Promise<{ sites: ConstructionSite[]; total: number }> {
+  static async getAllSites(
+    options: {
+      page?: number;
+      limit?: number;
+      isActive?: boolean;
+      search?: string;
+      createdBy?: string;
+    } = {}
+  ): Promise<{ sites: ConstructionSite[]; total: number }> {
     const { page = 1, limit = 20, isActive, search, createdBy } = options;
     const offset = (page - 1) * limit;
 
-    let whereConditions: string[] = [];
-    let queryParams: any[] = [];
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (isActive !== undefined) {
@@ -53,12 +66,17 @@ export class SiteService {
     }
 
     if (search) {
-      whereConditions.push(`(name ILIKE $${paramIndex++} OR address ILIKE $${paramIndex++})`);
+      whereConditions.push(
+        `(name ILIKE $${paramIndex++} OR address ILIKE $${paramIndex++})`
+      );
       queryParams.push(`%${search}%`, `%${search}%`);
       paramIndex++;
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(' AND ')}`
+        : '';
 
     // Получаем общее количество
     const countResult = await query(
@@ -91,15 +109,18 @@ export class SiteService {
   }
 
   // Обновление строительного объекта
-  static async updateSite(siteId: string, updates: {
-    name?: string;
-    address?: string;
-    latitude?: number;
-    longitude?: number;
-    radius?: number;
-    companyId?: string;
-    isActive?: boolean;
-  }): Promise<ConstructionSite | null> {
+  static async updateSite(
+    siteId: string,
+    updates: {
+      name?: string;
+      address?: string;
+      latitude?: number;
+      longitude?: number;
+      radius?: number;
+      companyId?: string;
+      isActive?: boolean;
+    }
+  ): Promise<ConstructionSite | null> {
     const updateFields: string[] = [];
     const queryParams: any[] = [];
     let paramIndex = 1;
@@ -157,7 +178,9 @@ export class SiteService {
 
   // Удаление строительного объекта
   static async deleteSite(siteId: string): Promise<boolean> {
-    const result = await query('DELETE FROM construction_sites WHERE id = $1', [siteId]);
+    const result = await query('DELETE FROM construction_sites WHERE id = $1', [
+      siteId,
+    ]);
     return result.rowCount > 0;
   }
 
@@ -177,26 +200,32 @@ export class SiteService {
   }
 
   // Проверка, находится ли точка в радиусе строительного объекта
-  static async checkLocationInSite(siteId: string, latitude: number, longitude: number): Promise<{
+  static async checkLocationInSite(
+    siteId: string,
+    latitude: number,
+    longitude: number
+  ): Promise<{
     inRadius: boolean;
     distance: number;
     site: ConstructionSite | null;
   }> {
     const site = await this.getSiteById(siteId);
-    
+
     if (!site) {
       return { inRadius: false, distance: 0, site: null };
     }
 
     const distance = this.calculateDistance(
-      latitude, longitude,
-      site.latitude, site.longitude
+      latitude,
+      longitude,
+      site.latitude,
+      site.longitude
     );
 
     return {
       inRadius: distance <= site.radius,
       distance: Math.round(distance),
-      site
+      site,
     };
   }
 
@@ -226,14 +255,21 @@ export class SiteService {
   }
 
   // Расчет расстояния между двумя точками (формула Haversine)
-  private static calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  private static calculateDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number {
     const R = 6371000; // Радиус Земли в метрах
     const dLat = this.toRad(lat2 - lat1);
     const dLon = this.toRad(lon2 - lon1);
-    const a = 
+    const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.cos(this.toRad(lat1)) *
+        Math.cos(this.toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
@@ -263,4 +299,4 @@ export class SiteService {
 
     return site;
   }
-} 
+}

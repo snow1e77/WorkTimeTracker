@@ -77,14 +77,18 @@ export interface WorkShift {
   endTime?: Date | undefined;
   totalHours?: number | undefined;
   isActive: boolean;
-  startLocation?: {
-    latitude: number;
-    longitude: number;
-  } | undefined;
-  endLocation?: {
-    latitude: number;
-    longitude: number;
-  } | undefined;
+  startLocation?:
+    | {
+        latitude: number;
+        longitude: number;
+      }
+    | undefined;
+  endLocation?:
+    | {
+        latitude: number;
+        longitude: number;
+      }
+    | undefined;
   notes?: string | undefined;
   createdAt: Date;
   updatedAt: Date;
@@ -127,7 +131,12 @@ export interface Violation {
   userId: string;
   siteId: string;
   shiftId?: string;
-  type: 'late_start' | 'early_end' | 'location_violation' | 'no_checkout' | 'other';
+  type:
+    | 'late_start'
+    | 'early_end'
+    | 'location_violation'
+    | 'no_checkout'
+    | 'other';
   description: string;
   severity: 'low' | 'medium' | 'high';
   resolvedAt?: Date;
@@ -387,7 +396,8 @@ export interface CreateAdminLimitsRequest {
   validTo?: Date;
 }
 
-export interface UpdateAdminLimitsRequest extends Partial<CreateAdminLimitsRequest> {
+export interface UpdateAdminLimitsRequest
+  extends Partial<CreateAdminLimitsRequest> {
   isActive?: boolean;
 }
 
@@ -400,4 +410,41 @@ export interface ExcelExportRequest {
   format?: 'xlsx' | 'csv';
   includeCharts?: boolean;
   includeSummary?: boolean;
-} 
+}
+
+// Database Query Result Types
+export interface QueryResult<T = any> {
+  rows: T[];
+  rowCount: number;
+  command: string;
+  oid: number;
+  fields: any[];
+}
+
+export interface CountResult {
+  count: string;
+}
+
+export interface StatsResult {
+  [key: string]: string | number;
+}
+
+export interface AdminLimitsRow {
+  id: string;
+  admin_id: string;
+  company_name: string;
+  max_users: number;
+  max_sites: number;
+  max_projects: number;
+  can_export_excel: boolean;
+  can_manage_users: boolean;
+  can_manage_sites: boolean;
+  can_view_reports: boolean;
+  can_chat_with_workers: boolean;
+  valid_from: Date;
+  valid_to: Date | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
