@@ -1,143 +1,257 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WorkTime Tracker - Admin Panel</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-        .loading-container {
-            text-align: center;
-            color: white;
-        }
+      .loading-container {
+        text-align: center;
+        color: white;
+      }
 
-        .logo {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-        }
+      .logo {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+      }
 
-        .loading-text {
-            font-size: 1.1rem;
-            margin-bottom: 2rem;
-            opacity: 0.9;
-        }
+      .loading-text {
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+        opacity: 0.9;
+      }
 
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 4px solid white;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
+      .spinner {
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top: 4px solid white;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+      }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
         }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
 
-        .error-message {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 1rem;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
+      .error-message {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
 
-        .back-btn {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            margin-top: 1rem;
-            transition: all 0.3s ease;
-        }
+      .back-btn {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        margin-top: 1rem;
+        transition: all 0.3s ease;
+      }
 
-        .back-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
+      .back-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .iframe-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9999;
+        display: none;
+      }
+
+      .iframe-container iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
     </style>
-</head>
-<body>
-    <div class="loading-container">
-        <div class="logo">WorkTime Tracker</div>
-        <div class="loading-text">Loading Admin Panel...</div>
-        <div class="spinner"></div>
-        <div id="error-container" style="display: none;">
-            <div class="error-message">
-                <p>Failed to load admin panel. Please check your connection and try again.</p>
-                <a href="/" class="back-btn">← Back to Home</a>
-            </div>
+  </head>
+  <body>
+    <div class="loading-container" id="loading-container">
+      <div class="logo">WorkTime Tracker</div>
+      <div class="loading-text" id="loading-text">Loading Admin Panel...</div>
+      <div class="spinner" id="spinner"></div>
+      <div id="error-container" style="display: none">
+        <div class="error-message">
+          <p id="error-text">
+            Failed to load admin panel. Please check your connection and try
+            again.
+          </p>
+          <a href="/" class="back-btn">← Back to Home</a>
+          <button
+            class="back-btn"
+            onclick="retryLoad()"
+            style="margin-left: 10px"
+          >
+            🔄 Retry
+          </button>
         </div>
+      </div>
+    </div>
+
+    <div class="iframe-container" id="iframe-container">
+      <iframe id="main-iframe" src=""></iframe>
     </div>
 
     <script>
-        // Check if running in development mode
-        const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const baseUrl = isDev ? 'http://localhost:19006' : window.location.origin;
-        
-        // Try to load the main web app with admin route
-        function loadAdminPanel() {
-            // Create iframe to load React app
-            const iframe = document.createElement('iframe');
-            iframe.style.position = 'fixed';
-            iframe.style.top = '0';
-            iframe.style.left = '0';
-            iframe.style.width = '100%';
-            iframe.style.height = '100%';
-            iframe.style.border = 'none';
-            iframe.style.zIndex = '9999';
-            
-            // Set source to main web app with admin parameter
-            iframe.src = `${baseUrl}/?route=admin`;
-            
-            iframe.onload = function() {
-                // Hide loading screen and show iframe
-                document.body.style.display = 'none';
-                document.body.appendChild(iframe);
-                document.body.style.display = 'block';
-            };
-            
-            iframe.onerror = function() {
-                showError();
-            };
-            
-            // Fallback timeout
-            setTimeout(() => {
-                if (!iframe.contentDocument && !iframe.contentWindow) {
-                    showError();
-                }
-            }, 10000);
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      // Determine base URL more reliably
+      function getBaseUrl() {
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+        const port = window.location.port;
+
+        // Development mode detection
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+          // Try different common dev ports
+          const devPorts = ['19006', '3000', '8080'];
+          if (port && devPorts.includes(port)) {
+            return `${protocol}//${hostname}:${port}`;
+          }
+          return `${protocol}//${hostname}:19006`; // Default Expo port
         }
 
-        function showError() {
-            document.getElementById('error-container').style.display = 'block';
-            document.querySelector('.spinner').style.display = 'none';
-            document.querySelector('.loading-text').textContent = 'Error loading admin panel';
+        // Production mode
+        return window.location.origin;
+      }
+
+      function updateStatus(text) {
+        document.getElementById('loading-text').textContent = text;
+      }
+
+      function showError(errorMessage = null) {
+        document.getElementById('error-container').style.display = 'block';
+        document.getElementById('spinner').style.display = 'none';
+
+        if (errorMessage) {
+          document.getElementById('error-text').textContent = errorMessage;
         }
 
-        // Start loading after a short delay
+        updateStatus('Error loading admin panel');
+      }
+
+      function hideLoading() {
+        document.getElementById('loading-container').style.display = 'none';
+      }
+
+      function showIframe() {
+        document.getElementById('iframe-container').style.display = 'block';
+      }
+
+      function retryLoad() {
+        retryCount++;
+        document.getElementById('error-container').style.display = 'none';
+        document.getElementById('spinner').style.display = 'block';
+        updateStatus(`Retrying... (${retryCount}/${maxRetries})`);
+
         setTimeout(loadAdminPanel, 1000);
+      }
+
+      function loadAdminPanel() {
+        const baseUrl = getBaseUrl();
+        const iframe = document.getElementById('main-iframe');
+
+        updateStatus('Connecting to admin panel...');
+
+        // Set up iframe load handlers
+        iframe.onload = function () {
+          setTimeout(() => {
+            hideLoading();
+            showIframe();
+          }, 500);
+        };
+
+        iframe.onerror = function () {
+          handleLoadError('Failed to connect to the application server');
+        };
+
+        // Set iframe source with admin route
+        const adminUrl = `${baseUrl}/?route=admin&t=${Date.now()}`;
+        iframe.src = adminUrl;
+
+        // Fallback timeout
+        const timeout = setTimeout(() => {
+          if (
+            document.getElementById('loading-container').style.display !==
+            'none'
+          ) {
+            handleLoadError(
+              'Connection timeout - please check if the server is running'
+            );
+          }
+        }, 15000);
+
+        // Clear timeout if iframe loads successfully
+        iframe.onload = function () {
+          clearTimeout(timeout);
+          setTimeout(() => {
+            hideLoading();
+            showIframe();
+          }, 500);
+        };
+      }
+
+      function handleLoadError(errorMessage) {
+        if (retryCount < maxRetries) {
+          setTimeout(() => {
+            retryLoad();
+          }, 2000);
+        } else {
+          showError(
+            errorMessage || 'Failed to load admin panel after multiple attempts'
+          );
+        }
+      }
+
+      // Global error handler for unhandled errors
+      window.addEventListener('error', function (event) {
+        console.error('Global error:', event.error);
+        if (
+          document.getElementById('loading-container').style.display !== 'none'
+        ) {
+          handleLoadError('Unexpected error occurred while loading');
+        }
+      });
+
+      // Start loading after a short delay
+      setTimeout(() => {
+        updateStatus('Initializing...');
+        setTimeout(loadAdminPanel, 1000);
+      }, 500);
     </script>
-</body>
-</html> 
+  </body>
+</html>
